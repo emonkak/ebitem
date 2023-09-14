@@ -1,21 +1,5 @@
-const HOLE = getUUID();
-const HOLE_COMMENT = '<!--' + HOLE + '-->';
-
-const SPACES = ` \\f\\n\\r\\t`;
-const TAG_START = `<[A-Za-z][A-Za-z0-9:._-]*`;
-const TAG_END = `[${SPACES}]*/?>`;
-const ATTRIBUTE_NAME = `[${SPACES}]+[^${SPACES}"'>/=]+`;
-const ATTRIBUTE_VALUE =
-    `\\s*=\\s*(?:'[^']*'|"[^"]*"|<[^>]*>|[^${SPACES}"'=><\`])`;
-
-const TAG_PATTERN = new RegExp(
-    `(${TAG_START})(${ATTRIBUTE_NAME}(?:${ATTRIBUTE_VALUE})?)+(${TAG_END})`,
-    'g'
-);
-const ATTRIBUTE_HOLE_PATTERN = new RegExp(
-    `(${ATTRIBUTE_NAME}\\s*=\\s*)([\'"]?)${HOLE_COMMENT}\\2`,
-    'g'
-);
+const UUID = getUUID();
+const HOLE_MAKER = '{{' + UUID + '}}';
 
 const BlockStatus = {
     INITIALIZED: 1,
@@ -39,7 +23,7 @@ class Context {
         let template = this._templateCaches.get(strings);
 
         if (!template) {
-            template = Template.create(strings);
+            template = Template.parse(strings);
             this._templateCaches.set(strings, template);
         }
 
@@ -73,25 +57,25 @@ class Context {
         return [hook.state, hook.setState.bind(hook)];
     }
 
-    useEffect(perform, deps) {
+    useEffect(setup, deps) {
         const { hooks } = this._currentBlock;
         let hook = hooks[this._hookIndex];
         let shouldPerform;
 
         if (hook) {
-            hook.perform = perform;
+            hook.setup = setup;
             hook.deps = deps;
             shouldPerform = !shallowEqual(hook.deps, deps);
         } else {
             hooks[this._hookIndex] = hook = {
-                perform,
+                setup,
                 deps,
                 finalize: null,
                 commit(context) {
                     if (this.finalize) {
                         this.finalize(context);
                     }
-                    this.finalize = this.perform(context);
+                    this.finalize = this.setup(context);
                 },
             };
             shouldPerform = true;
@@ -111,9 +95,7 @@ class Context {
             }
         } else {
             this._currentBlock = block;
-            if (!this._isRendering) {
-                this._startRendering();
-            }
+            this._startRendering();
         }
     }
 
@@ -122,13 +104,16 @@ class Context {
     }
 
     _startRendering() {
+        if (this._isRendering) {
+            return;
+        }
         this._isRendering = true;
-        scheduler.postTask(this._background_loop, {
+        scheduler.postTask(this._backgroundLoop, {
             'priority': 'background',
         });
     }
 
-    _background_loop = () => {
+    _backgroundLoop = () => {
         console.time('Background Loop')
 
         while (this._currentBlock) {
@@ -137,14 +122,14 @@ class Context {
             this._currentBlock = this._pendingBlocks.dequeue();
         }
 
-        scheduler.postTask(this._user_blocking_loop, {
+        scheduler.postTask(this._userBlockingLoop, {
             'priority': 'user-blocking',
         });
 
         console.timeEnd('Background Loop');
     };
 
-    _user_blocking_loop = () => {
+    _userBlockingLoop = () => {
         console.time('User Blocking Loop');
 
         let effect;
@@ -160,9 +145,10 @@ class Context {
 }
 
 class Template {
-    static create(strings) {
-        const html = formatHtml(strings);
-        const template = parseHtml(html);
+    static parse(strings) {
+        const html = strings.join(HOLE_MAKER);
+        const template = document.createElement('template');
+        template.innerHTML = html;
         const holes = [];
         parseChildren(template.content, holes, []);
         return new Template(template, holes);
@@ -216,7 +202,7 @@ class Template {
             const oldValue = oldValues[i];
             const newValue = newValues[i];
 
-            if (oldValue === newValue) {
+            if (Object.is(oldValue, newValue)) {
                 continue;
             }
 
@@ -243,11 +229,11 @@ class AttributePart {
         return this._commitedValue;
     }
 
-    setValue(value, context) {
-        if (value instanceof Directive) {
-            value.handle(this, context);
+    setValue(newValue, context) {
+        if (newValue instanceof Directive) {
+            newValue.handle(this, context);
         } else {
-            this._pendingValue = value;
+            this._pendingValue = newValue;
             context.enqueueEffect(this);
         }
     }
@@ -256,16 +242,18 @@ class AttributePart {
         const {
             _element: element,
             _attribute: attribute,
-            pendingValue: value,
+            _pendingValue: newValue,
         } = this;
 
-        if (value === true) {
+        if (newValue === true) {
             element.setAttribute(attribute, '');
-        } else if (value === false || value == null) {
+        } else if (newValue === false || newValue == null) {
             element.removeAttribute(attribute);
         } else {
-            element.setAttribute(attribute, value.toString());
+            element.setAttribute(attribute, newValue.toString());
         }
+
+        this._commitedValue = newValue;
     }
 }
 
@@ -310,7 +298,7 @@ class EventPart {
             element.addEventListener(event, newValue);
         }
 
-        this.commitedValue = newValue;
+        this._commitedValue = newValue;
     }
 }
 
@@ -551,9 +539,6 @@ class Block extends Child {
         }
     }
 
-    commit(_containerPart) {
-    }
-
     mount(containerPart) {
         const container = containerPart.node;
         const parent = container.parentNode;
@@ -567,6 +552,9 @@ class Block extends Child {
         for (const node of this._nodes) {
             node.remove();
         }
+    }
+
+    commit(_containerPart) {
     }
 }
 
@@ -864,34 +852,13 @@ function getUUID() {
         return crypto.randomUUID();
     }
     const s = [...crypto.getRandomValues(new Uint8Array(16))]
-        .map((v) => v.toString(16).padStart('0', 2))
+        .map((byte) => byte.toString(16).padStart(2, '0'))
         .join('');
     return s.slice(0, 8) + '-' +
         s.slice(8, 12) + '-' +
         s.slice(12, 16) + '-' +
         s.slice(16, 20) + '-' +
         s.slice(20, 32);
-}
-
-function formatHtml(strings) {
-    return strings
-        .join(HOLE_COMMENT)
-        .replace(TAG_PATTERN, replaceTag)
-        .trim();
-}
-
-function parseHtml(html) {
-    const template = document.createElement('template');
-    template.innerHTML = html;
-    return template;
-}
-
-function replaceTag(_$0, $1, $2, $3) {
-    return $1 + $2.replace(ATTRIBUTE_HOLE_PATTERN, replaceHoleInAttributes) + $3;
-}
-
-function replaceHoleInAttributes(_$0, $1, _$2) {
-    return $1 + '"' + HOLE + '"';
 }
 
 function parseChildren(node, holes, path) {
@@ -906,15 +873,40 @@ function parseChildren(node, holes, path) {
                     parseChildren(child, holes, [...path, i]);
                 }
                 break;
-            case Node.COMMENT_NODE:
-                if (child.data === HOLE) {
-                    holes.push({
-                        type: 'child',
-                        path,
-                        index: i,
-                    });
+            case Node.TEXT_NODE: {
+                const components = child.data.split(HOLE_MAKER);
+                if (components.length > 1) {
+                    const componentEnd = components.length - 1;
+
+                    for (let j = 0; j < componentEnd; j++) {
+                        if (components[j] !== '') {
+                            const text = document.createTextNode(components[j]);
+                            node.insertBefore(text, child);
+                            i++;
+                            l++;
+                        }
+
+                        holes.push({
+                            type: 'child',
+                            path,
+                            index: i + j,
+                        });
+
+                        node.insertBefore(createMaker(), child);
+                        i++;
+                        l++;
+                    }
+
+                    if (components[componentEnd] !== '') {
+                        child.data = components[componentEnd];
+                    } else {
+                        child.remove();
+                        i--;
+                        l--;
+                    }
                 }
                 break;
+            }
         }
     }
 }
@@ -923,7 +915,7 @@ function parseAttribtues(node, holes, path, index) {
     const { attributes } = node;
     for (let i = 0, l = attributes.length; i < l; i++) {
         const attribute = attributes[i];
-        if (attribute.value === HOLE) {
+        if (attribute.value === HOLE_MAKER) {
             holes.push({
                 type: 'attribute',
                 path,
@@ -940,16 +932,18 @@ function createMaker() {
 }
 
 function shallowEqual(first, second) {
-    if (first === second) {
+    if (Object.is(first, second)) {
         return true;
     }
 
     if (
-        typeof first !== 'object' ||
-        typeof second !== 'object' ||
-        first === null ||
-        second === null
+        typeof first !== 'object' || first === null ||
+        typeof second !== 'object' || second === null
     ) {
+        return false;
+    }
+
+    if (Object.getPrototypeOf(first) !== Object.getPrototypeOf(second)) {
         return false;
     }
 
@@ -962,8 +956,8 @@ function shallowEqual(first, second) {
 
     for (let i = 0, l = firstKeys.length; i < l; i++) {
         if (
-            !second.hasOwnProperty(firstKeys[i]) ||
-            first[firstKeys[i]] !== second[firstKeys[i]]
+            !Object.prototype.hasOwnProperty.call(second, firstKeys[i]) ||
+            !Object.is(first[firstKeys[i]], second[firstKeys[i]])
         ) {
             return false;
         }
@@ -1010,9 +1004,11 @@ function Counter(props, context) {
     return context.html`
         <div>
             <span class="count-label">COUNT: </span>
-            <span class="count-value">${props.count}</span>
+            <span class="count-value" data-count=${props.count}>${props.count}</span>
         </div>
     `;
 }
 
-boot(document.body, new Block(App, {}));
+if (typeof document === 'object') {
+    boot(document.body, new Block(App, {}));
+}
