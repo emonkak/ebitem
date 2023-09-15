@@ -5,7 +5,7 @@ const BlockStatus = {
     INITIALIZED: 1,
     MOUNTED: 2,
     DIRTY: 3,
-    REMOVED: 4,
+    CLEANING: 4,
     UNMOUNTED: 5,
 };
 
@@ -262,21 +262,19 @@ class Template {
     }
 
     mount(values, context) {
-        const element = this._template.content.cloneNode(true);
+        const node = this._template.content.cloneNode(true);
         const parts = new Array(this._holes.length);
 
         for (let i = 0, l = this._holes.length; i < l; i++) {
             const hole = this._holes[i];
 
-            let child = element;
+            let child = node;
 
             for (let j = 0, m = hole.path.length; j < m; j++) {
                 child = child.childNodes[hole.path[j]];
             }
 
             child = child.childNodes[hole.index];
-
-            const value = values[i];
 
             let part;
 
@@ -291,19 +289,17 @@ class Template {
                 part = new ChildPart(child);
             }
 
-            part.setValue(value, context);
+            updatePart(part, values[i], context);
 
             parts[i] = part;
         }
 
-        return { element, parts };
+        return { node, parts };
     }
 
     patch(parts, values, context) {
         for (let i = 0, l = this._holes.length; i < l; i++) {
-            const value = values[i];
-            const part = parts[i];
-            part.setValue(value, context);
+            updatePart(parts[i], values[i], context);
         }
     }
 }
@@ -325,14 +321,14 @@ class AttributePart {
     }
 
     setValue(newValue, context) {
-        if (!Object.is(newValue, this._committedValue)) {
-            if (newValue instanceof Directive) {
-                newValue.handle(this, context);
-            } else {
-                this._pendingValue = newValue;
-                context.enqueueMutationEffect(this);
-            }
+        if (newValue === this._committedValue) {
+            return false;
         }
+        if (newValue instanceof Directive) {
+            return newValue.handle(this, context);
+        }
+        this._pendingValue = newValue;
+        return true;
     }
 
     commit(_context) {
@@ -371,14 +367,14 @@ class EventPart {
     }
 
     setValue(newValue, context) {
-        if (!Object.is(newValue, this._committedValue)) {
-            if (newValue instanceof Directive) {
-                newValue.handle(this, context);
-            } else {
-                this._pendingValue = newValue;
-                context.enqueueMutationEffect(this);
-            }
+        if (newValue === this._committedValue) {
+            return false;
         }
+        if (newValue instanceof Directive) {
+            return newValue.handle(this, context);
+        }
+        this._pendingValue = newValue;
+        return true;
     }
 
     commit(_context) {
@@ -402,14 +398,20 @@ class EventPart {
 }
 
 class ChildPart {
-    constructor(node) {
-        this._node = node;
+    constructor(endNode) {
+        this._endNode = endNode;
         this._committedValue = null;
         this._pendingValue = null;
     }
 
-    get node() {
-        return this._node;
+    get startNode() {
+        return this._committedValue ?
+            this._committedValue.startNode ?? this._endNode :
+            this._endNode;
+    }
+
+    get endNode() {
+        return this._endNode;
     }
 
     get value() {
@@ -417,14 +419,17 @@ class ChildPart {
     }
 
     setValue(newValue, context) {
-        if (!Object.is(newValue, this._committedValue)) {
-            if (newValue instanceof Directive) {
-                newValue.handle(this, context);
-            } else {
-                this._pendingValue = Child.from(newValue);
-                context.enqueueMutationEffect(this);
-            }
+        if (newValue === this._committedValue) {
+            return false;
         }
+        if (newValue instanceof Directive) {
+            return newValue.handle(this, context);
+        }
+        if (this._committedValue) {
+            this._committedValue.clean(this, context);
+        }
+        this._pendingValue = Child.from(newValue);
+        return true;
     }
 
     commit(context) {
@@ -445,16 +450,23 @@ class ChildPart {
 }
 
 class ItemPart {
-    constructor(node, referencePart) {
-        this._node = node;
+    constructor(endNode, containerPart, referencePart) {
+        this._endNode = endNode;
+        this._containerPart = containerPart;
         this._referencePart = referencePart;
         this._committedValue = null;
         this._pendingValue = null;
-        this._isReordered = true;
+        this._hasReordered = true;
     }
 
-    get node() {
-        return this._node;
+    get startNode() {
+        return this._committedValue ?
+            this._committedValue.startNode ?? this._endNode :
+            this._endNode;
+    }
+
+    get endNode() {
+        return this._endNode;
     }
 
     get value() {
@@ -462,28 +474,33 @@ class ItemPart {
     }
 
     setValue(newValue, context) {
-        if (!Object.is(newValue, this._committedValue)) {
-            if (newValue instanceof Directive) {
-                newValue.handle(this, context);
-            } else {
-                this._pendingValue = Child.from(newValue);
-                context.enqueueMutationEffect(this);
-            }
+        if (newValue === this._committedValue) {
+            return this._hasReordered;
         }
+        if (newValue instanceof Directive) {
+            return newValue.handle(this, context) || this._hasReordered;
+        }
+        if (this._committedValue) {
+            this._committedValue.clean(this, context);
+        }
+        this._pendingValue = Child.from(newValue);
+        return true;
     }
 
     setReferencePart(newReferencePart) {
         this._referencePart = newReferencePart;
-        this._isReordered = true;
+        this._hasReordered = true;
     }
 
     commit(context) {
         const oldValue = this._committedValue;
         const newValue = this._pendingValue;
 
-        if (this._isReordered) {
-            const reference = this._referencePart.node;
-            reference.parentNode.insertBefore(this._node, reference);
+        if (this._hasReordered) {
+            const reference = this._referencePart ?
+                this._referencePart.startNode :
+                this._containerPart.endNode;
+            reference.parentNode.insertBefore(this._endNode, reference);
         }
 
         if (oldValue !== newValue) {
@@ -492,7 +509,7 @@ class ItemPart {
             }
             newValue.mount(this, context);
         } else {
-            if (this._isReordered) {
+            if (this._hasReordered) {
                 newValue.mount(this, context);
             } else {
                 newValue.update(this, context);
@@ -500,14 +517,14 @@ class ItemPart {
         }
 
         this._committedValue = newValue;
-        this._isReordered = false;
+        this._hasReordered = false;
     }
 
     remove(context) {
         if (this._committedValue) {
             this._committedValue.unmount(this, context)
         }
-        this._node.remove();
+        this._endNode.remove();
     }
 }
 
@@ -522,6 +539,14 @@ class Child {
         return new Text(value);
     }
 
+    get startNode() {
+        return null;
+    }
+
+    get endNode() {
+        return null;
+    }
+
     mount(_containerPart, _context) {
     }
 
@@ -530,6 +555,9 @@ class Child {
 
     unmount(_containerPart, _context) {
     }
+
+    clean(_containerPart, _context) {
+    }
 }
 
 class Text extends Child {
@@ -537,6 +565,14 @@ class Text extends Child {
         super();
         this._value = value;
         this._node = document.createTextNode(value.toString());
+    }
+
+    get startNode() {
+        return this._node;
+    }
+
+    get endNode() {
+        return this._node;
     }
 
     get value() {
@@ -548,7 +584,7 @@ class Text extends Child {
     }
 
     mount(containerPart, _context) {
-        const container = containerPart.node;
+        const container = containerPart.endNode;
         container.parentNode.insertBefore(this._node, container);
     }
 
@@ -563,15 +599,6 @@ class Text extends Child {
 
 class None extends Child {
     static instance = new None();
-
-    mount(_containerPart, _context) {
-    }
-
-    update(_containerPart, _context) {
-    }
-
-    unmount(_containerPart, _context) {
-    }
 }
 
 class Fragment extends Child {
@@ -582,6 +609,14 @@ class Fragment extends Child {
         this._memoizedValues = values;
         this._nodes = [];
         this._parts = [];
+    }
+
+    get startNode() {
+        return this._nodes[0] ?? null;
+    }
+
+    get endNode() {
+        return this._nodes[this._nodes.length - 1] ?? null;
     }
 
     get template() {
@@ -597,10 +632,9 @@ class Fragment extends Child {
     }
 
     mount(containerPart, _context) {
-        const container = containerPart.node;
+        const container = containerPart.endNode;
         const parent = container.parentNode;
         for (const node of this._nodes) {
-            node.remove();
             parent.insertBefore(node, container);
         }
     }
@@ -616,15 +650,23 @@ class Fragment extends Child {
 
     render(context) {
         if (this._memoizedValues === this._pendingValues) {
-            const { element, parts } = this._template.mount(
+            const { node, parts } = this._template.mount(
                 this._pendingValues,
                 context
             );
-            this._nodes = [...element.childNodes];
+            this._nodes = [...node.childNodes];
             this._parts = parts;
         } else {
             this._template.patch(this._parts, this._pendingValues, context);
             this._memoizedValues = this._pendingValues;
+        }
+    }
+
+    clean(_containerPart, context) {
+        for (const part of this._parts) {
+            if (part instanceof ChildPart) {
+                cleanPart(part, context);
+            }
         }
     }
 }
@@ -640,6 +682,14 @@ class Block extends Child {
         this._parts = [];
         this._values = [];
         this._hooks = [];
+    }
+
+    get startNode() {
+        return this._nodes[0] ?? null;
+    }
+
+    get endNode() {
+        return this._nodes[this._nodes.length - 1] ?? null;
     }
 
     get type() {
@@ -666,17 +716,13 @@ class Block extends Child {
         this._status = BlockStatus.DIRTY;
     }
 
-    markAsRemoved() {
-        this._status = BlockStatus.REMOVED;
-    }
-
     render(context) {
         if (this._status === BlockStatus.INITIALIZED) {
             const render = this._type;
             const { template, values } = render(this._pendingProps, context);
-            const { element, parts } = template.mount(values, context);
+            const { node, parts } = template.mount(values, context);
             this._memoizedProps = this._pendingProps;
-            this._nodes = [...element.childNodes];
+            this._nodes = [...node.childNodes];
             this._parts = parts;
             this._values = values;
             this._status = BlockStatus.MOUNTED;
@@ -687,11 +733,18 @@ class Block extends Child {
             this._memoizedProps = this._pendingProps;
             this._values = values;
             this._status = BlockStatus.MOUNTED;
-        } else if (this._status === BlockStatus.REMOVED) {
+        } else if (this._status === BlockStatus.CLEANING) {
             for (let i = 0, l = this._hooks.length; i < l; i++) {
                 const hook = this._hooks[i];
                 if (hook instanceof HookEffect && hook.clean) {
-                    hook.clean(this);
+                    hook.clean(context);
+                    hook.clean = null;
+                }
+            }
+            for (let i = 0, l = this._parts.length; i < l; i++) {
+                const part = this._parts[i];
+                if (part instanceof ChildPart) {
+                    cleanPart(part, context);
                 }
             }
             this._status = BlockStatus.UNMOUNTED;
@@ -699,7 +752,7 @@ class Block extends Child {
     }
 
     mount(containerPart, _context) {
-        const container = containerPart.node;
+        const container = containerPart.endNode;
         const parent = container.parentNode;
 
         for (const node of this._nodes) {
@@ -715,6 +768,11 @@ class Block extends Child {
             node.remove();
         }
     }
+
+    clean(_containerPart, context) {
+        this._status = BlockStatus.CLEANING;
+        context.requestUpdate(this);
+    }
 }
 
 class List extends Child {
@@ -725,8 +783,8 @@ class List extends Child {
         for (let i = 0, l = values.length; i < l; i++) {
             const value = values[i];
             const key = keySelector(value, i);
-            const part = new ItemPart(createMaker(), containerPart);
-            part.setValue(value, context);
+            const part = new ItemPart(createMaker(), containerPart, null);
+            updatePart(part, value, context);
             parts[i] = part;
             keys[i] = key;
         }
@@ -735,6 +793,16 @@ class List extends Child {
         this._commitedKeys = keys;
         this._pendingParts = parts;
         this._pendingKeys = keys;
+    }
+
+    get startNode() {
+        const parts = this._commitedParts;
+        return parts.length > 0 ? parts[0].startNode : null;
+    }
+
+    get endNode() {
+        const parts = this._commitedParts;
+        return parts.length > 0 ? parts[parts.length - 1].endNode : null;
     }
 
     setValues(newValues, keySelector, context) {
@@ -764,22 +832,22 @@ class List extends Child {
             } else if (oldKeys[oldHead] === newKeys[newHead]) {
                 // Old head matches new head; update in place
                 const part = oldParts[oldHead];
-                part.setValue(newValues[newHead], context);
+                updatePart(part, newValues[newHead], context);
                 newParts[newHead] = part;
                 oldHead++;
                 newHead++;
             } else if (oldKeys[oldTail] === newKeys[newTail]) {
                 // Old tail matches new tail; update in place
                 const part = oldParts[oldTail];
-                part.setValue(newValues[newTail], context);
+                updatePart(part, newValues[newTail], context);
                 newParts[newTail] = part;
                 oldTail--;
                 newTail--;
             } else if (oldKeys[oldHead] === newKeys[newTail]) {
                 // Old tail matches new head; update and move to new head
                 const part = oldParts[oldHead];
-                part.setReferencePart(newParts[newTail + 1] ?? this._containerPart);
-                part.setValue(newValues[newTail], context);
+                part.setReferencePart(newParts[newTail + 1] ?? null);
+                updatePart(part, newValues[newTail], context);
                 newParts[newTail] = part;
                 oldHead++;
                 newTail--;
@@ -787,7 +855,7 @@ class List extends Child {
                 // Old tail matches new head; update and move to new head
                 const part = oldParts[oldTail];
                 part.setReferencePart(oldParts[oldHead]);
-                part.setValue(newValues[newHead], context);
+                updatePart(part, newValues[newHead], context);
                 newParts[newHead] = part;
                 oldTail--;
                 newHead++;
@@ -801,11 +869,13 @@ class List extends Child {
                 if (!newKeyToIndexMap.has(oldKeys[oldHead])) {
                     // Old head is no longer in new list; remove
                     const part = oldParts[oldHead];
+                    cleanPart(part, context);
                     context.enqueueMutationEffect(new RemoveItemPart(part));
                     oldHead++;
                 } else if (!newKeyToIndexMap.has(oldKeys[oldTail])) {
                     // Old tail is no longer in new list; remove
                     const part = oldParts[oldTail];
+                    cleanPart(part, context);
                     context.enqueueMutationEffect(new RemoveItemPart(part));
                     oldTail--;
                 } else {
@@ -817,14 +887,18 @@ class List extends Child {
                     if (oldPart === null) {
                         // No old part for this value; create a new one and
                         // insert it
-                        const part = new ItemPart(createMaker(), oldParts[oldHead]);
-                        part.setValue(newValues[newHead], context);
+                        const part = new ItemPart(
+                            createMaker(),
+                            this._containerPart,
+                            oldParts[oldHead]
+                        );
+                        updatePart(part, newValues[newHead], context);
                         newParts[newHead] = part;
                     } else {
                         // Reuse old part
                         newParts[newHead] = oldPart;
                         oldPart.setReferencePart(oldParts[oldHead]);
-                        oldPart.setValue(newValues[newHead], context);
+                        updatePart(oldPart, newValues[newHead], context);
                         // This marks the old part as having been used, so that
                         // it will be skipped in the first two checks above
                         oldParts[oldIndex] = null;
@@ -838,8 +912,12 @@ class List extends Child {
         while (newHead <= newTail) {
             // For all remaining additions, we insert before last new
             // tail, since old pointers are no longer valid
-            const newPart = new ItemPart(createMaker(), this._containerPart);
-            newPart.setValue(newValues[newHead], context);
+            const newPart = new ItemPart(
+                createMaker(),
+                this._containerPart,
+                null
+            );
+            updatePart(newPart, newValues[newHead], context);
             newParts[newHead++] = newPart;
         }
 
@@ -847,6 +925,7 @@ class List extends Child {
         while (oldHead <= oldTail) {
             const oldPart = oldParts[oldHead++];
             if (oldPart !== null) {
+                cleanPart(oldPart, context);
                 context.enqueueMutationEffect(new RemoveItemPart(oldPart));
             }
         }
@@ -868,10 +947,17 @@ class List extends Child {
             part.unmount();
         }
     }
+
+    clean(_containerPart, context) {
+        for (const part of this._commitedParts) {
+            cleanPart(part.value.clean(part, context));
+        }
+    }
 }
 
 class Directive {
     handle(_part, _context) {
+        return false;
     }
 }
 
@@ -882,33 +968,42 @@ class BlockDirective extends Directive {
         this._props = props;
     }
 
+    get type() {
+        return this._type;
+    }
+
+    get props() {
+        return this._props;
+    }
+
     handle(part, context) {
         const value = part.value;
 
-        let shouldMount;
+        let needsMount = false;
+        let hasChanged = false;
 
         if (value instanceof Block) {
             if (value.type === this._type) {
                 value.setProps(this._props);
                 value.markAsDirty();
-                shouldMount = false;
+                context.requestUpdate(value);
             } else {
-                value.markAsRemoved();
-                shouldMount = true;
+                value.clean(part, context);
+                needsMount = true;
             }
-
-            context.requestUpdate(value);
         } else {
-            shouldMount = true;
+            needsMount = true;
         }
 
-        if (shouldMount) {
+        if (needsMount) {
             const newBlock = new Block(this._type, this._props);
 
-            part.setValue(newBlock, context);
+            hasChanged = part.setValue(newBlock, context);
 
             context.requestUpdate(newBlock);
         }
+
+        return hasChanged;
     }
 }
 
@@ -924,7 +1019,7 @@ class ListDirective extends Directive {
 
         if (value instanceof List) {
             value.setValues(this._values, this._keySelector, context);
-            context.enqueueMutationEffect(part);
+            return true;
         } else {
             const list = new List(
                 this._values,
@@ -932,7 +1027,7 @@ class ListDirective extends Directive {
                 part,
                 context
             );
-            part.setValue(list, context);
+            return part.setValue(list, context);
         }
     }
 }
@@ -955,28 +1050,30 @@ class TemplateResult extends Directive {
     handle(part, context) {
         const value = part.value;
 
-        let shouldMount;
+        let needsMount = false;
+        let hasChanged = false;
 
         if (value instanceof Fragment) {
             if (value.type === this._type) {
                 value.setValues(this._values);
-                shouldMount = false;
             } else {
-                shouldMount = true;
+                needsMount = true;
             }
 
             context.requestUpdate(value);
         } else {
-            shouldMount = true;
+            needsMount = true;
         }
 
-        if (shouldMount) {
+        if (needsMount) {
             const newFragment = new Fragment(this._template, this._values);
 
-            part.setValue(newFragment, context);
+            hasChanged = part.setValue(newFragment, context);
 
             context.requestUpdate(newFragment);
         }
+
+        return hasChanged;
     }
 }
 
@@ -995,7 +1092,7 @@ class Ref extends Directive {
     }
 
     handle(part) {
-        this.current = part.node;
+        this.current = part.value;
     }
 }
 
@@ -1059,6 +1156,14 @@ class RingBuffer {
         return value;
     }
 
+    peek() {
+        if (this._write_index == this._read_index) {
+            return;
+        }
+        const index = this._read_index % this._buffer.length;
+        return this._buffer[index];
+    }
+
     extend(newSize) {
         if (newSize <= this._buffer.length) {
             return;
@@ -1085,11 +1190,8 @@ function getUUID() {
     const s = [...crypto.getRandomValues(new Uint8Array(16))]
         .map((byte) => byte.toString(16).padStart(2, '0'))
         .join('');
-    return s.slice(0, 8) + '-' +
-        s.slice(8, 12) + '-' +
-        s.slice(12, 16) + '-' +
-        s.slice(16, 20) + '-' +
-        s.slice(20, 32);
+    return s.slice(0, 8) + '-' + s.slice(8, 12) + '-' + s.slice(12, 16) + '-' +
+        s.slice(16, 20) + '-' + s.slice(20, 32);
 }
 
 function parseChildren(node, holes, path) {
@@ -1105,7 +1207,7 @@ function parseChildren(node, holes, path) {
                 }
                 break;
             case Node.TEXT_NODE: {
-                const components = child.data.split(HOLE_MAKER);
+                const components = child.textContent.split(HOLE_MAKER);
                 if (components.length <= 1) {
                     continue;
                 }
@@ -1131,7 +1233,7 @@ function parseChildren(node, holes, path) {
                 }
 
                 if (components[componentEnd] !== '') {
-                    child.data = components[componentEnd];
+                    child.textContent = components[componentEnd];
                 } else {
                     child.remove();
                     i--;
@@ -1216,6 +1318,18 @@ function yieldToMain() {
     });
 }
 
+function updatePart(part, newValue, context) {
+    if (part.setValue(newValue, context)) {
+        context.enqueueMutationEffect(part);
+    }
+}
+
+function cleanPart(part, context) {
+    if (part.value) {
+        part.value.clean(part, context);
+    }
+}
+
 function boot(container, block, context = new Context()) {
     context.enqueueLayoutEffect({
         commit(_context) {
@@ -1230,15 +1344,61 @@ function boot(container, block, context = new Context()) {
 
 function App(_props, context) {
     const [count, setCount] = context.useState(0);
+    const [items, setItems] = context.useState(['foo', 'bar', 'baz', 'qux', 'quux']);
+
+    const itemsList = list(items.map((title, index, items) => block(Item, {
+        title,
+        onUp: context.useEvent(() => {
+            if (index > 0) {
+                const newItems = items.slice();
+                const tmp = newItems[index];
+                newItems[index] = newItems[index - 1];
+                newItems[index - 1] = tmp;
+                setItems(newItems);
+            }
+        }),
+        onDown: context.useEvent(() => {
+            if (index + 1 < items.length) {
+                const newItems = items.slice();
+                const tmp = newItems[index];
+                newItems[index] = newItems[index + 1];
+                newItems[index + 1] = tmp;
+                setItems(newItems);
+            }
+        }),
+        onDelete: context.useEvent(() => {
+            const newItems = items.slice();
+            newItems.splice(index, 1);
+            setItems(newItems);
+        }),
+    })), (item) => item.props.title);
+
+    const onIncrement = context.useEvent((_e) => { setCount(count + 1); });
+
+    const onShuffle = context.useEvent((_e) => {
+        const newItems = shuffle(items.slice());
+        setItems(newItems);
+    });
 
     return context.html`
         <div>
             ${block(Counter, { count })}
-            ${list(['foo', 'bar', 'baz'].map((s) => context.html`<p>${s}${count}</p>`))}
+            ${itemsList}
             <div>
-                <button
-                    onclick="${context.useEvent((_e) => { setCount(count + 1); })}">+1</button>
+                <button type="button" onclick="${onIncrement}">+1</button>
+                <button type="button" onclick="${onShuffle}">Shuffle</button>
             </div>
+        </div>
+    `;
+}
+
+function Item(props, context) {
+    return context.html`
+        <div>
+            <span>${props.title}</span>
+            <button type="button" onclick=${props.onUp}>Up</button>
+            <button type="button" onclick=${props.onDown}>Down</button>
+            <button type="button" onclick=${props.onDelete}>Delete</button>
         </div>
     `;
 }
@@ -1252,6 +1412,20 @@ function Counter(props, context) {
             <span class="count-value" data-count=${props.count}>${props.count}</span>
         </div>
     `;
+}
+
+function shuffle(array) {
+    let currentIndex = array.length;
+
+    while (currentIndex > 0) {
+        const randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+        const tmp = array[currentIndex];
+        array[currentIndex] = array[randomIndex];
+        array[randomIndex] = tmp;
+    }
+
+    return array;
 }
 
 if (typeof document === 'object') {
