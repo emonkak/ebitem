@@ -12,8 +12,10 @@ const BlockStatus = {
 class Context {
     constructor() {
         this._currentBlock = null;
-        this._pendingEffects = new RingBuffer(255);
-        this._pendingBlocks = new RingBuffer(64);
+        this._pendingMutationEffects = new RingBuffer(255);
+        this._pendingLayoutEffects = new RingBuffer(255);
+        this._pendingPassiveEffects = new RingBuffer(255);
+        this._pendingBlocks = new RingBuffer(255);
         this._hookIndex = 0;
         this._templateCaches = new WeakMap();
         this._isRendering = false;
@@ -57,32 +59,37 @@ class Context {
         return [hook.state, hook.setState.bind(hook)];
     }
 
-    useEffect(setup, deps) {
-        const { hooks } = this._currentBlock;
+    useEffect(setup, dependencies) {
+        const hooks = this._currentBlock.hooks;
         let hook = hooks[this._hookIndex];
-        let shouldPerform;
 
         if (hook) {
+            if (!shallowEqual(hook.dependencies, dependencies)) {
+                this.enqueuePassiveEffect(hook);
+            }
             hook.setup = setup;
-            hook.deps = deps;
-            shouldPerform = !shallowEqual(hook.deps, deps);
+            hook.dependencies = dependencies;
         } else {
-            hooks[this._hookIndex] = hook = {
-                setup,
-                deps,
-                finalize: null,
-                commit(context) {
-                    if (this.finalize) {
-                        this.finalize(context);
-                    }
-                    this.finalize = this.setup(context);
-                },
-            };
-            shouldPerform = true;
+            hooks[this._hookIndex] = hook = new HookEffect(setup, dependencies);
+            this.enqueuePassiveEffect(hook);
         }
 
-        if (shouldPerform) {
-            this.enqueueEffect(hook);
+        this._hookIndex++;
+    }
+
+    useLayoutEffect(setup, dependencies) {
+        const hooks = this._currentBlock.hooks;
+        let hook = hooks[this._hookIndex];
+
+        if (hook) {
+            if (!shallowEqual(hook.dependencies, dependencies)) {
+                this.enqueueLayoutEffect(hook);
+            }
+            hook.setup = setup;
+            hook.dependencies = dependencies;
+        } else {
+            hooks[this._hookIndex] = hook = new HookEffect(setup, dependencies);
+            this.enqueueLayoutEffect(hook);
         }
 
         this._hookIndex++;
@@ -94,13 +101,21 @@ class Context {
                 this._pendingBlocks.enqueue(block);
             }
         } else {
-            this._currentBlock = block;
+            this._pendingBlocks.enqueue(block);
             this._startRendering();
         }
     }
 
-    enqueueEffect(effect) {
-        this._pendingEffects.enqueue(effect);
+    enqueueMutationEffect(effect) {
+        this._pendingMutationEffects.enqueue(effect);
+    }
+
+    enqueueLayoutEffect(effect) {
+        this._pendingLayoutEffects.enqueue(effect);
+    }
+
+    enqueuePassiveEffect(effect) {
+        this._pendingPassiveEffects.enqueue(effect);
     }
 
     _startRendering() {
@@ -108,39 +123,76 @@ class Context {
             return;
         }
         this._isRendering = true;
-        scheduler.postTask(this._backgroundLoop, {
+        scheduler.postTask(this._renderingPhase, {
             'priority': 'background',
         });
     }
 
-    _backgroundLoop = () => {
-        console.time('Background Loop')
+    _renderingPhase = async () => {
+        console.time('Rendering phase')
 
-        while (this._currentBlock) {
+        while (this._currentBlock = this._pendingBlocks.dequeue() ?? null) {
+            if (navigator.scheduling.isInputPending()) {
+                await yieldToMain();
+            }
             this._hookIndex = 0;
             this._currentBlock.render(this);
-            this._currentBlock = this._pendingBlocks.dequeue();
         }
 
-        scheduler.postTask(this._userBlockingLoop, {
+        scheduler.postTask(this._blockingPhase, {
             'priority': 'user-blocking',
         });
 
-        console.timeEnd('Background Loop');
+        console.timeEnd('Rendering phase');
     };
 
-    _userBlockingLoop = () => {
-        console.time('User Blocking Loop');
+    _blockingPhase = async () => {
+        console.time('Blocking phase');
 
         let effect;
 
-        while (effect = this._pendingEffects.dequeue()) {
+        while (effect = this._pendingMutationEffects.dequeue()) {
+            if (navigator.scheduling.isInputPending()) {
+                await yieldToMain();
+            }
             effect.commit(this);
         }
 
-        this._isRendering = false;
+        while (effect = this._pendingLayoutEffects.dequeue()) {
+            if (navigator.scheduling.isInputPending()) {
+                await yieldToMain();
+            }
+            effect.commit(this);
+        }
 
-        console.timeEnd('User Blocking Loop');
+        scheduler.postTask(this._passiveEffectPhase, {
+            'priority': 'background',
+        });
+
+        console.timeEnd('Blocking phase');
+    };
+
+    _passiveEffectPhase = async () => {
+        console.time('Passive effect phase');
+
+        let effect;
+
+        while (effect = this._pendingPassiveEffects.dequeue()) {
+            if (navigator.scheduling.isInputPending()) {
+                await yieldToMain();
+            }
+            effect.commit(this);
+        }
+
+        if (this._pendingBlocks.isEmpty()) {
+            this._isRendering = false;
+        } else {
+            scheduler.postTask(this._renderingPhase, {
+                'priority': 'background',
+            });
+        }
+
+        console.timeEnd('Passive effect phase');
     };
 }
 
@@ -234,7 +286,7 @@ class AttributePart {
             newValue.handle(this, context);
         } else {
             this._pendingValue = newValue;
-            context.enqueueEffect(this);
+            context.enqueueMutationEffect(this);
         }
     }
 
@@ -278,7 +330,7 @@ class EventPart {
             newValue.handle(this, context);
         } else {
             this._pendingValue = newValue;
-            context.enqueueEffect(this);
+            context.enqueueMutationEffect(this);
         }
     }
 
@@ -322,7 +374,7 @@ class ChildPart {
             newValue.handle(this, context);
         } else {
             this._pendingValue = Child.fromValue(newValue);
-            context.enqueueEffect(this);
+            context.enqueueMutationEffect(this);
         }
     }
 
@@ -365,7 +417,7 @@ class ItemPart {
             newValue.handle(this, context);
         } else {
             this._pendingValue = Child.fromValue(newValue);
-            context.enqueueEffect(this);
+            context.enqueueMutationEffect(this);
         }
     }
 
@@ -531,8 +583,8 @@ class Block extends Child {
         } else if (this._status === BlockStatus.INACTIVE) {
             for (let i = 0, l = this._hooks.length; i < l; i++) {
                 const hook = this._hooks[i];
-                if (hook.finalize) {
-                    hook.finalize();
+                if (hook instanceof HookEffect && hook.clean) {
+                    hook.clean();
                 }
             }
             this._status = BlockStatus.UNMOUNTED;
@@ -642,12 +694,12 @@ class List extends Child {
                 if (!newKeyToIndexMap.has(oldKeys[oldHead])) {
                     // Old head is no longer in new list; remove
                     const part = oldParts[oldHead];
-                    context.enqueueEffect(new RemoveItemPart(part));
+                    context.enqueueMutationEffect(new RemoveItemPart(part));
                     oldHead++;
                 } else if (!newKeyToIndexMap.has(oldKeys[oldTail])) {
                     // Old tail is no longer in new list; remove
                     const part = oldParts[oldTail];
-                    context.enqueueEffect(new RemoveItemPart(part));
+                    context.enqueueMutationEffect(new RemoveItemPart(part));
                     oldTail--;
                 } else {
                     // Any mismatches at this point are due to additions or
@@ -696,7 +748,7 @@ class List extends Child {
         while (oldHead <= oldTail) {
             const oldPart = oldParts[oldHead++];
             if (oldPart !== null) {
-                context.enqueueEffect(new RemoveItemPart(oldPart));
+                context.enqueueMutationEffect(new RemoveItemPart(oldPart));
             }
         }
 
@@ -716,6 +768,21 @@ class List extends Child {
 
         this._commitedParts = newParts;
         this._commitedKeys = newKeys;
+    }
+}
+
+class HookEffect {
+    constructor(setup, dependencies) {
+        this.setup = setup;
+        this.dependencies = dependencies;
+        this.clean = null;
+    }
+
+    commit(context) {
+        if (this.clean) {
+            this.clean(context);
+        }
+        this.clean = this.setup(context);
     }
 }
 
@@ -766,7 +833,7 @@ class Component extends Directive {
 
             part.setValue(newBlock, context);
 
-            context.enqueueEffect(part);
+            context.enqueueMutationEffect(part);
             context.requestUpdate(newBlock);
         }
     }
@@ -789,7 +856,7 @@ class For extends Directive {
             part.setValue(list, context);
         }
 
-        context.enqueueEffect(part);
+        context.enqueueMutationEffect(part);
     }
 }
 
@@ -974,12 +1041,24 @@ function generateMap(list, start, end) {
     return map;
 }
 
+function yieldToMain() {
+    if ('scheduler' in globalThis && 'yield' in scheduler) {
+        return scheduler.yield();
+    }
+
+    return new Promise(resolve => {
+        setTimeout(resolve, 0);
+    });
+}
+
 function boot(container, block) {
     const context = new Context();
 
-    context.enqueueEffect({
+    context.enqueueLayoutEffect({
         commit() {
-            block.nodes.forEach((node) => container.appendChild(node));
+            for (const node of block.nodes) {
+                container.appendChild(node);
+            }
         }
     });
 
