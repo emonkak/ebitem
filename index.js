@@ -1,11 +1,11 @@
-const UUID = getUUID();
-const HOLE_MAKER = '{{' + UUID + '}}';
+const HOLE_UUID = getUUID();
+const HOLE_MAKER = '{{' + HOLE_UUID + '}}';
 
 const BlockStatus = {
     INITIALIZED: 1,
     MOUNTED: 2,
     DIRTY: 3,
-    INACTIVE: 4,
+    REMOVED: 4,
     UNMOUNTED: 5,
 };
 
@@ -614,8 +614,8 @@ class Block extends Child {
         this._status = BlockStatus.DIRTY;
     }
 
-    markAsInactive() {
-        this._status = BlockStatus.INACTIVE;
+    markAsRemoved() {
+        this._status = BlockStatus.REMOVED;
     }
 
     render(context) {
@@ -624,7 +624,7 @@ class Block extends Child {
             const { template, values } = render(this._pendingProps, context);
             const { element, parts } = template.mount(values, context);
             this._memoizedProps = this._pendingProps;
-            this._nodes = Array.from(element.childNodes);
+            this._nodes = [...element.childNodes];
             this._parts = parts;
             this._values = values;
             this._status = BlockStatus.MOUNTED;
@@ -635,7 +635,7 @@ class Block extends Child {
             this._memoizedProps = this._pendingProps;
             this._values = values;
             this._status = BlockStatus.MOUNTED;
-        } else if (this._status === BlockStatus.INACTIVE) {
+        } else if (this._status === BlockStatus.REMOVED) {
             for (let i = 0, l = this._hooks.length; i < l; i++) {
                 const hook = this._hooks[i];
                 if (hook instanceof HookEffect && hook.clean) {
@@ -826,37 +826,12 @@ class List extends Child {
     }
 }
 
-class HookEffect {
-    constructor(setup, dependencies) {
-        this.setup = setup;
-        this.dependencies = dependencies;
-        this.clean = null;
-    }
-
-    commit() {
-        if (this.clean) {
-            this.clean();
-        }
-        this.clean = this.setup();
-    }
-}
-
-class RemoveItemPart {
-    constructor(part) {
-        this._part = part;
-    }
-
-    commit() {
-        this._part.remove();
-    }
-}
-
 class Directive {
     handle(_part, _context) {
     }
 }
 
-class Component extends Directive {
+class BlockDirective extends Directive {
     constructor(type, props) {
         super();
         this._type = type;
@@ -874,7 +849,7 @@ class Component extends Directive {
                 child.markAsDirty();
                 shouldMount = false;
             } else {
-                child.markAsInactive();
+                child.markAsRemoved();
                 shouldMount = true;
             }
 
@@ -894,7 +869,7 @@ class Component extends Directive {
     }
 }
 
-class For extends Directive {
+class ListDirective extends Directive {
     constructor(values, keySelector) {
         super();
         this._values = values;
@@ -923,6 +898,31 @@ class Ref extends Directive {
 
     handle(part) {
         this.current = part.node;
+    }
+}
+
+class HookEffect {
+    constructor(setup, dependencies) {
+        this.setup = setup;
+        this.dependencies = dependencies;
+        this.clean = null;
+    }
+
+    commit() {
+        if (this.clean) {
+            this.clean();
+        }
+        this.clean = this.setup();
+    }
+}
+
+class RemoveItemPart {
+    constructor(part) {
+        this._part = part;
+    }
+
+    commit() {
+        this._part.remove();
     }
 }
 
@@ -1008,35 +1008,36 @@ function parseChildren(node, holes, path) {
                 break;
             case Node.TEXT_NODE: {
                 const components = child.data.split(HOLE_MAKER);
-                if (components.length > 1) {
-                    const componentEnd = components.length - 1;
+                if (components.length <= 1) {
+                    continue;
+                }
 
-                    for (let j = 0; j < componentEnd; j++) {
-                        if (components[j] !== '') {
-                            const text = document.createTextNode(components[j]);
-                            node.insertBefore(text, child);
-                            i++;
-                            l++;
-                        }
-
-                        holes.push({
-                            type: 'child',
-                            path,
-                            index: i + j,
-                        });
-
-                        node.insertBefore(createMaker(), child);
+                const componentEnd = components.length - 1;
+                for (let j = 0; j < componentEnd; j++) {
+                    if (components[j] !== '') {
+                        const text = document.createTextNode(components[j]);
+                        node.insertBefore(text, child);
                         i++;
                         l++;
                     }
 
-                    if (components[componentEnd] !== '') {
-                        child.data = components[componentEnd];
-                    } else {
-                        child.remove();
-                        i--;
-                        l--;
-                    }
+                    holes.push({
+                        type: 'child',
+                        path,
+                        index: i + j,
+                    });
+
+                    node.insertBefore(createMaker(), child);
+                    i++;
+                    l++;
+                }
+
+                if (components[componentEnd] !== '') {
+                    child.data = components[componentEnd];
+                } else {
+                    child.remove();
+                    i--;
+                    l--;
                 }
                 break;
             }
@@ -1117,9 +1118,7 @@ function yieldToMain() {
     });
 }
 
-function boot(container, block) {
-    const context = new Context();
-
+function boot(container, block, context = new Context()) {
     context.enqueueLayoutEffect({
         commit() {
             for (const node of block.nodes) {
@@ -1136,7 +1135,7 @@ function App(_props, context) {
 
     return context.html`
         <div>
-            ${new Component(Counter, { count })}
+            ${new BlockDirective(Counter, { count })}
             <div>
                 <button
                     onclick="${context.useEvent((_e) => { setCount(count + 1); })}">+1</button>
