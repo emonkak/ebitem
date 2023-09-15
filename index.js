@@ -29,10 +29,7 @@ class Context {
             this._templateCaches.set(strings, template);
         }
 
-        return {
-            template,
-            values,
-        };
+        return new TemplateResult(template, values);
     }
 
     useCallback(callback, dependencies) {
@@ -208,14 +205,14 @@ class Context {
             if (navigator.scheduling.isInputPending()) {
                 await yieldToMain();
             }
-            effect.commit();
+            effect.commit(this);
         }
 
         while (effect = this._pendingLayoutEffects.dequeue()) {
             if (navigator.scheduling.isInputPending()) {
                 await yieldToMain();
             }
-            effect.commit();
+            effect.commit(this);
         }
 
         scheduler.postTask(this._passiveEffectPhase, {
@@ -234,7 +231,7 @@ class Context {
             if (navigator.scheduling.isInputPending()) {
                 await yieldToMain();
             }
-            effect.commit();
+            effect.commit(this);
         }
 
         if (this._pendingBlocks.isEmpty()) {
@@ -302,18 +299,11 @@ class Template {
         return { element, parts };
     }
 
-    patch(parts, oldValues, newValues, context) {
+    patch(parts, values, context) {
         for (let i = 0, l = this._holes.length; i < l; i++) {
-            const oldValue = oldValues[i];
-            const newValue = newValues[i];
-
-            if (Object.is(oldValue, newValue)) {
-                continue;
-            }
-
+            const value = values[i];
             const part = parts[i];
-
-            part.setValue(newValue, context);
+            part.setValue(value, context);
         }
     }
 }
@@ -322,7 +312,7 @@ class AttributePart {
     constructor(element, attribute) {
         this._element = element;
         this._attribute = attribute;
-        this._commitedValue = null;
+        this._committedValue = null;
         this._pendingValue = null;
     }
 
@@ -331,19 +321,21 @@ class AttributePart {
     }
 
     get value() {
-        return this._commitedValue;
+        return this._committedValue;
     }
 
     setValue(newValue, context) {
-        if (newValue instanceof Directive) {
-            newValue.handle(this, context);
-        } else {
-            this._pendingValue = newValue;
-            context.enqueueMutationEffect(this);
+        if (!Object.is(newValue, this._committedValue)) {
+            if (newValue instanceof Directive) {
+                newValue.handle(this, context);
+            } else {
+                this._pendingValue = newValue;
+                context.enqueueMutationEffect(this);
+            }
         }
     }
 
-    commit() {
+    commit(_context) {
         const {
             _element: element,
             _attribute: attribute,
@@ -358,7 +350,7 @@ class AttributePart {
             element.setAttribute(attribute, newValue.toString());
         }
 
-        this._commitedValue = newValue;
+        this._committedValue = newValue;
     }
 }
 
@@ -366,7 +358,7 @@ class EventPart {
     constructor(element, event) {
         this._element = element;
         this._event = event;
-        this._commitedValue = null;
+        this._committedValue = null;
         this._pendingValue = null;
     }
 
@@ -375,23 +367,25 @@ class EventPart {
     }
 
     get value() {
-        return this._commitedValue;
+        return this._committedValue;
     }
 
     setValue(newValue, context) {
-        if (newValue instanceof Directive) {
-            newValue.handle(this, context);
-        } else {
-            this._pendingValue = newValue;
-            context.enqueueMutationEffect(this);
+        if (!Object.is(newValue, this._committedValue)) {
+            if (newValue instanceof Directive) {
+                newValue.handle(this, context);
+            } else {
+                this._pendingValue = newValue;
+                context.enqueueMutationEffect(this);
+            }
         }
     }
 
-    commit() {
+    commit(_context) {
         const {
             _element: element,
             _event: event,
-            _commitedValue: oldValue,
+            _committedValue: oldValue,
             _pendingValue: newValue
         } = this;
 
@@ -403,14 +397,14 @@ class EventPart {
             element.addEventListener(event, newValue);
         }
 
-        this._commitedValue = newValue;
+        this._committedValue = newValue;
     }
 }
 
 class ChildPart {
     constructor(node) {
         this._node = node;
-        this._commitedValue = null;
+        this._committedValue = null;
         this._pendingValue = null;
     }
 
@@ -419,103 +413,106 @@ class ChildPart {
     }
 
     get value() {
-        return this._commitedValue;
+        return this._committedValue;
     }
 
     setValue(newValue, context) {
-        if (newValue instanceof Directive) {
-            newValue.handle(this, context);
-        } else {
-            this._pendingValue = Child.fromValue(newValue);
-            context.enqueueMutationEffect(this);
+        if (!Object.is(newValue, this._committedValue)) {
+            if (newValue instanceof Directive) {
+                newValue.handle(this, context);
+            } else {
+                this._pendingValue = Child.from(newValue);
+                context.enqueueMutationEffect(this);
+            }
         }
     }
 
-    commit() {
-        const oldValue = this._commitedValue;
+    commit(context) {
+        const oldValue = this._committedValue;
         const newValue = this._pendingValue;
 
         if (oldValue !== newValue) {
             if (oldValue) {
-                oldValue.unmount(this);
+                oldValue.unmount(this, context);
             }
-            newValue.mount(this);
+            newValue.mount(this, context);
+        } else {
+            newValue.update(this, context);
         }
 
-        newValue.commit(this);
-
-        this._commitedValue = newValue;
+        this._committedValue = newValue;
     }
 }
 
 class ItemPart {
     constructor(node, referencePart) {
         this._node = node;
-        this._commitedValue = null;
-        this._commitedReferencePart = null;
+        this._referencePart = referencePart;
+        this._committedValue = null;
         this._pendingValue = null;
-        this._pendingReferencePart = referencePart;
+        this._isReordered = true;
     }
 
     get node() {
-        return _node;
+        return this._node;
     }
 
     get value() {
-        return this._commitedValue;
+        return this._committedValue;
     }
 
     setValue(newValue, context) {
-        if (newValue instanceof Directive) {
-            newValue.handle(this, context);
-        } else {
-            this._pendingValue = Child.fromValue(newValue);
-            context.enqueueMutationEffect(this);
+        if (!Object.is(newValue, this._committedValue)) {
+            if (newValue instanceof Directive) {
+                newValue.handle(this, context);
+            } else {
+                this._pendingValue = Child.from(newValue);
+                context.enqueueMutationEffect(this);
+            }
         }
     }
 
     setReferencePart(newReferencePart) {
-        this._pendingReferencePart = newReferencePart;
+        this._referencePart = newReferencePart;
+        this._isReordered = true;
     }
 
-    commit() {
-        const oldValue = this._commitedValue;
+    commit(context) {
+        const oldValue = this._committedValue;
         const newValue = this._pendingValue;
-        const oldReferencePart = this._commitedReferencePart;
-        const newReferencePart = this._pendingReferencePart;
 
-        if (oldReferencePart === newReferencePart) {
-            if (oldValue !== newValue) {
-                if (oldValue) {
-                    oldValue.unmount(this);
-                }
-                newValue.mount(this);
-            }
-        } else {
-            if (oldValue !== newValue) {
-                if (oldValue) {
-                    oldValue.unmount(this);
-                }
-            }
-            this._commitedReferencePart = newReferencePart;
-            newValue.mount(this);
+        if (this._isReordered) {
+            const reference = this._referencePart.node;
+            reference.parentNode.insertBefore(this._node, reference);
         }
 
-        newValue.commit(this);
+        if (oldValue !== newValue) {
+            if (oldValue) {
+                oldValue.unmount(this);
+            }
+            newValue.mount(this, context);
+        } else {
+            if (this._isReordered) {
+                newValue.mount(this, context);
+            } else {
+                newValue.update(this, context);
+            }
+        }
 
-        this._commitedValue = newValue;
+        this._committedValue = newValue;
+        this._isReordered = false;
     }
 
-    remove() {
-        if (this._commitedValue) {
-            this._commitedValue.unmount(part)
+    remove(context) {
+        if (this._committedValue) {
+            this._committedValue.unmount(this, context)
         }
         this._node.remove();
     }
 }
 
 class Child {
-    static fromValue(value) {
+    static from(value) {
         if (value instanceof Child) {
             return value;
         }
@@ -525,13 +522,13 @@ class Child {
         return new Text(value);
     }
 
-    mount(_containerPart) {
+    mount(_containerPart, _context) {
     }
 
-    unmount(_containerPart) {
+    update(_containerPart, _context) {
     }
 
-    commit(_containerPart) {
+    unmount(_containerPart, _context) {
     }
 }
 
@@ -539,7 +536,7 @@ class Text extends Child {
     constructor(value) {
         super();
         this._value = value;
-        this._node = document.createTextNode('');
+        this._node = document.createTextNode(value.toString());
     }
 
     get value() {
@@ -550,30 +547,85 @@ class Text extends Child {
         this._value = newValue;
     }
 
-    mount(containerPart) {
+    mount(containerPart, _context) {
         const container = containerPart.node;
         container.parentNode.insertBefore(this._node, container);
     }
 
-    unmount(_containerPart) {
-        this._node.remove();
+    update(_containerPart, _context) {
+        this._node.textContent = this._value.toString();
     }
 
-    commit(_containerPart) {
-        this._node.textContent = this._value.toString();
+    unmount(_containerPart, _context) {
+        this._node.remove();
     }
 }
 
 class None extends Child {
     static instance = new None();
 
-    mount(_containerPart) {
+    mount(_containerPart, _context) {
     }
 
-    unmount(_containerPart) {
+    update(_containerPart, _context) {
     }
 
-    commit(_containerPart) {
+    unmount(_containerPart, _context) {
+    }
+}
+
+class Fragment extends Child {
+    constructor(template, values) {
+        super();
+        this._template = template;
+        this._pendingValues = values;
+        this._memoizedValues = values;
+        this._nodes = [];
+        this._parts = [];
+    }
+
+    get template() {
+        return this._template;
+    }
+
+    get values() {
+        return this._memoizedValues;
+    }
+
+    setValues(values) {
+        this._pendingValues = values;
+    }
+
+    mount(containerPart, _context) {
+        const container = containerPart.node;
+        const parent = container.parentNode;
+        for (const node of this._nodes) {
+            node.remove();
+            parent.insertBefore(node, container);
+        }
+    }
+
+    update(_containerPart, _context) {
+    }
+
+    unmount(_containerPart, _context) {
+        for (const node of this._nodes) {
+            node.remove();
+        }
+    }
+
+    render(context) {
+        if (this._memoizedValues === this._pendingValues) {
+            const { element, parts } = this._template.mount(
+                this._pendingValues,
+                context
+            );
+            this._nodes = [...element.childNodes];
+            this._parts = parts;
+        } else {
+            this._template.patch(this._parts, this._pendingValues, context);
+            this._memoizedValues = this._pendingValues;
+        }
     }
 }
 
@@ -631,7 +683,7 @@ class Block extends Child {
         } else if (this._status === BlockStatus.DIRTY) {
             const render = this._type;
             const { template, values } = render(this._pendingProps, context);
-            template.patch(this._parts, this._values, values, context)
+            template.patch(this._parts, values, context)
             this._memoizedProps = this._pendingProps;
             this._values = values;
             this._status = BlockStatus.MOUNTED;
@@ -639,14 +691,14 @@ class Block extends Child {
             for (let i = 0, l = this._hooks.length; i < l; i++) {
                 const hook = this._hooks[i];
                 if (hook instanceof HookEffect && hook.clean) {
-                    hook.clean();
+                    hook.clean(this);
                 }
             }
             this._status = BlockStatus.UNMOUNTED;
         }
     }
 
-    mount(containerPart) {
+    mount(containerPart, _context) {
         const container = containerPart.node;
         const parent = container.parentNode;
 
@@ -655,13 +707,13 @@ class Block extends Child {
         }
     }
 
-    unmount(_containerPart) {
+    update(_containerPart, _context) {
+    }
+
+    unmount(_containerPart, _context) {
         for (const node of this._nodes) {
             node.remove();
         }
-    }
-
-    commit(_containerPart) {
     }
 }
 
@@ -673,14 +725,14 @@ class List extends Child {
         for (let i = 0, l = values.length; i < l; i++) {
             const value = values[i];
             const key = keySelector(value, i);
-            const part = new ItemPart(createMaker(), key, containerPart);
+            const part = new ItemPart(createMaker(), containerPart);
             part.setValue(value, context);
             parts[i] = part;
             keys[i] = key;
         }
         this._containerPart = containerPart;
-        this._commitedParts = [];
-        this._commitedKeys = [];
+        this._commitedParts = parts;
+        this._commitedKeys = keys;
         this._pendingParts = parts;
         this._pendingKeys = keys;
     }
@@ -688,7 +740,7 @@ class List extends Child {
     setValues(newValues, keySelector, context) {
         const oldParts = this._commitedParts;
         const oldKeys = this._commitedKeys;
-        const newParts = new Array(values.length);
+        const newParts = new Array(newValues.length);
         const newKeys = newValues.map(keySelector);
 
         // Head and tail pointers to old parts and new values
@@ -765,11 +817,7 @@ class List extends Child {
                     if (oldPart === null) {
                         // No old part for this value; create a new one and
                         // insert it
-                        const part = new ItemPart(
-                            createMaker(),
-                            newKeys[newHead],
-                            oldParts[oldHead]
-                        );
+                        const part = new ItemPart(createMaker(), oldParts[oldHead]);
                         part.setValue(newValues[newHead], context);
                         newParts[newHead] = part;
                     } else {
@@ -790,11 +838,7 @@ class List extends Child {
         while (newHead <= newTail) {
             // For all remaining additions, we insert before last new
             // tail, since old pointers are no longer valid
-            const newPart = new ItemPart(
-                createMaker(),
-                newKeys[newHead],
-                this._containerPart,
-            );
+            const newPart = new ItemPart(createMaker(), this._containerPart);
             newPart.setValue(newValues[newHead], context);
             newParts[newHead++] = newPart;
         }
@@ -814,15 +858,15 @@ class List extends Child {
     mount(_containerPart) {
     }
 
-    unmount(_containerPart) {
+    update(_containerPart) {
+        this._commitedParts = this._pendingParts;
+        this._commitedKeys = this._pendingKeys;
     }
 
-    commit(_containerPart) {
-        const newParts = this._pendingParts;
-        const newKeys = this._pendingKeys;
-
-        this._commitedParts = newParts;
-        this._commitedKeys = newKeys;
+    unmount(_containerPart) {
+        for (const part of this._commitedParts) {
+            part.unmount();
+        }
     }
 }
 
@@ -839,21 +883,21 @@ class BlockDirective extends Directive {
     }
 
     handle(part, context) {
-        const child = part.value;
+        const value = part.value;
 
         let shouldMount;
 
-        if (child instanceof Block) {
-            if (child.type === this._type) {
-                child.setProps(this._props);
-                child.markAsDirty();
+        if (value instanceof Block) {
+            if (value.type === this._type) {
+                value.setProps(this._props);
+                value.markAsDirty();
                 shouldMount = false;
             } else {
-                child.markAsRemoved();
+                value.markAsRemoved();
                 shouldMount = true;
             }
 
-            context.requestUpdate(child);
+            context.requestUpdate(value);
         } else {
             shouldMount = true;
         }
@@ -863,7 +907,6 @@ class BlockDirective extends Directive {
 
             part.setValue(newBlock, context);
 
-            context.enqueueMutationEffect(part);
             context.requestUpdate(newBlock);
         }
     }
@@ -873,7 +916,7 @@ class ListDirective extends Directive {
     constructor(values, keySelector) {
         super();
         this._values = values;
-        this._keySelector = keySelector ?? ((_value, index) => index);
+        this._keySelector = keySelector;
     }
 
     handle(part, context) {
@@ -881,13 +924,68 @@ class ListDirective extends Directive {
 
         if (value instanceof List) {
             value.setValues(this._values, this._keySelector, context);
+            context.enqueueMutationEffect(part);
         } else {
-            const list = new List(this._values, this._keySelector, part, context);
+            const list = new List(
+                this._values,
+                this._keySelector,
+                part,
+                context
+            );
             part.setValue(list, context);
         }
-
-        context.enqueueMutationEffect(part);
     }
+}
+
+class TemplateResult extends Directive {
+    constructor(template, values) {
+        super();
+        this._template = template;
+        this._values = values;
+    }
+
+    get template() {
+        return this._template;
+    }
+
+    get values() {
+        return this._values;
+    }
+
+    handle(part, context) {
+        const value = part.value;
+
+        let shouldMount;
+
+        if (value instanceof Fragment) {
+            if (value.type === this._type) {
+                value.setValues(this._values);
+                shouldMount = false;
+            } else {
+                shouldMount = true;
+            }
+
+            context.requestUpdate(value);
+        } else {
+            shouldMount = true;
+        }
+
+        if (shouldMount) {
+            const newFragment = new Fragment(this._template, this._values);
+
+            part.setValue(newFragment, context);
+
+            context.requestUpdate(newFragment);
+        }
+    }
+}
+
+function block(type, props = {}) {
+    return new BlockDirective(type, props);
+}
+
+function list(values, keySelector = (_value, index) => index) {
+    return new ListDirective(values, keySelector);
 }
 
 class Ref extends Directive {
@@ -908,11 +1006,11 @@ class HookEffect {
         this.clean = null;
     }
 
-    commit() {
+    commit(context) {
         if (this.clean) {
-            this.clean();
+            this.clean(context);
         }
-        this.clean = this.setup();
+        this.clean = this.setup(context);
     }
 }
 
@@ -921,8 +1019,8 @@ class RemoveItemPart {
         this._part = part;
     }
 
-    commit() {
-        this._part.remove();
+    commit(context) {
+        this._part.remove(context);
     }
 }
 
@@ -1024,7 +1122,7 @@ function parseChildren(node, holes, path) {
                     holes.push({
                         type: 'child',
                         path,
-                        index: i + j,
+                        index: i,
                     });
 
                     node.insertBefore(createMaker(), child);
@@ -1061,8 +1159,8 @@ function parseAttribtues(node, holes, path, index) {
     }
 }
 
-function createMaker() {
-    return document.createComment('');
+function createMaker(name = '') {
+    return document.createComment(name);
 }
 
 function shallowEqual(first, second) {
@@ -1120,7 +1218,7 @@ function yieldToMain() {
 
 function boot(container, block, context = new Context()) {
     context.enqueueLayoutEffect({
-        commit() {
+        commit(_context) {
             for (const node of block.nodes) {
                 container.appendChild(node);
             }
@@ -1135,7 +1233,8 @@ function App(_props, context) {
 
     return context.html`
         <div>
-            ${new BlockDirective(Counter, { count })}
+            ${block(Counter, { count })}
+            ${list(['foo', 'bar', 'baz'].map((s) => context.html`<p>${s}${count}</p>`))}
             <div>
                 <button
                     onclick="${context.useEvent((_e) => { setCount(count + 1); })}">+1</button>
