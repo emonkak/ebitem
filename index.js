@@ -35,28 +35,8 @@ class Context {
         };
     }
 
-    useState(initialState) {
-        const { hooks } = this._currentBlock;
-        let hook = hooks[this._hookIndex];
-
-        if (!hook) {
-            hooks[this._hookIndex] = hook = {
-                state: initialState,
-                block: this._currentBlock,
-                context: this,
-                setState(newState) {
-                    if (this.state !== newState) {
-                        this.state = newState;
-                        this.block.markAsDirty();
-                        this.context.requestUpdate(this.block);
-                    }
-                },
-            };
-        }
-
-        this._hookIndex++;
-
-        return [hook.state, hook.setState.bind(hook)];
+    useCallback(callback, dependencies) {
+        return this.useMemo(() => callback, dependencies);
     }
 
     useEffect(setup, dependencies) {
@@ -64,7 +44,8 @@ class Context {
         let hook = hooks[this._hookIndex];
 
         if (hook) {
-            if (!shallowEqual(hook.dependencies, dependencies)) {
+            if (dependencies === undefined ||
+                !shallowEqual(hook.dependencies, dependencies)) {
                 this.enqueuePassiveEffect(hook);
             }
             hook.setup = setup;
@@ -77,12 +58,26 @@ class Context {
         this._hookIndex++;
     }
 
+    useEvent(handler) {
+        const handlerRef = this.useRef(null);
+
+        this.useLayoutEffect(() => {
+            handlerRef.current = handler;
+        });
+
+        return this.useCallback((...args) => {
+            const currentHandler = handlerRef.current;
+            return currentHandler(...args);
+        }, []);
+    }
+
     useLayoutEffect(setup, dependencies) {
         const hooks = this._currentBlock.hooks;
         let hook = hooks[this._hookIndex];
 
         if (hook) {
-            if (!shallowEqual(hook.dependencies, dependencies)) {
+            if (dependencies === undefined ||
+                !shallowEqual(hook.dependencies, dependencies)) {
                 this.enqueueLayoutEffect(hook);
             }
             hook.setup = setup;
@@ -93,6 +88,64 @@ class Context {
         }
 
         this._hookIndex++;
+    }
+
+    useMemo(create, dependencies) {
+        const hooks = this._currentBlock.hooks;
+        let hook = hooks[this._hookIndex];
+
+        if (hook) {
+            if (dependencies === undefined ||
+                !shallowEqual(hook.dependencies, dependencies)) {
+                hook.value = create();
+            }
+            hook.dependencies = dependencies;
+        } else {
+            hooks[this._hookIndex] = hook = {
+                value: create(),
+                dependencies,
+            };
+        }
+
+        this._hookIndex++;
+
+        return hook.value;
+    }
+
+    useRef(initialValue) {
+        const hooks = this._currentBlock.hooks;
+        let hook = hooks[this._hookIndex];
+
+        if (!hook) {
+            hooks[this._hookIndex] = hook = new Ref(initialValue);
+        }
+
+        this._hookIndex++;
+
+        return hook;
+    }
+
+    useState(initialState) {
+        const block = this._currentBlock;
+        const hooks = block.hooks;
+        let hook = hooks[this._hookIndex];
+
+        if (!hook) {
+            hooks[this._hookIndex] = hook = {
+                state: initialState,
+                setState: (newState) => {
+                    if (!Object.is(hook.state, newState)) {
+                        hook.state = newState;
+                        block.markAsDirty();
+                        this.requestUpdate(block);
+                    }
+                },
+            };
+        }
+
+        this._hookIndex++;
+
+        return [hook.state, hook.setState];
     }
 
     requestUpdate(block) {
@@ -155,14 +208,14 @@ class Context {
             if (navigator.scheduling.isInputPending()) {
                 await yieldToMain();
             }
-            effect.commit(this);
+            effect.commit();
         }
 
         while (effect = this._pendingLayoutEffects.dequeue()) {
             if (navigator.scheduling.isInputPending()) {
                 await yieldToMain();
             }
-            effect.commit(this);
+            effect.commit();
         }
 
         scheduler.postTask(this._passiveEffectPhase, {
@@ -181,7 +234,7 @@ class Context {
             if (navigator.scheduling.isInputPending()) {
                 await yieldToMain();
             }
-            effect.commit(this);
+            effect.commit();
         }
 
         if (this._pendingBlocks.isEmpty()) {
@@ -290,7 +343,7 @@ class AttributePart {
         }
     }
 
-    commit(_context) {
+    commit() {
         const {
             _element: element,
             _attribute: attribute,
@@ -334,7 +387,7 @@ class EventPart {
         }
     }
 
-    commit(_context) {
+    commit() {
         const {
             _element: element,
             _event: event,
@@ -378,7 +431,7 @@ class ChildPart {
         }
     }
 
-    commit(_context) {
+    commit() {
         const oldValue = this._commitedValue;
         const newValue = this._pendingValue;
 
@@ -425,7 +478,7 @@ class ItemPart {
         this._pendingReferencePart = newReferencePart;
     }
 
-    commit(_context) {
+    commit() {
         const oldValue = this._commitedValue;
         const newValue = this._pendingValue;
         const oldReferencePart = this._commitedReferencePart;
@@ -567,7 +620,8 @@ class Block extends Child {
 
     render(context) {
         if (this._status === BlockStatus.INITIALIZED) {
-            const { template, values } = this._type(this._pendingProps, context);
+            const render = this._type;
+            const { template, values } = render(this._pendingProps, context);
             const { element, parts } = template.mount(values, context);
             this._memoizedProps = this._pendingProps;
             this._nodes = Array.from(element.childNodes);
@@ -575,7 +629,8 @@ class Block extends Child {
             this._values = values;
             this._status = BlockStatus.MOUNTED;
         } else if (this._status === BlockStatus.DIRTY) {
-            const { template, values } = this._type(this._pendingProps, context);
+            const render = this._type;
+            const { template, values } = render(this._pendingProps, context);
             template.patch(this._parts, this._values, values, context)
             this._memoizedProps = this._pendingProps;
             this._values = values;
@@ -778,11 +833,11 @@ class HookEffect {
         this.clean = null;
     }
 
-    commit(context) {
+    commit() {
         if (this.clean) {
-            this.clean(context);
+            this.clean();
         }
-        this.clean = this.setup(context);
+        this.clean = this.setup();
     }
 }
 
@@ -791,7 +846,7 @@ class RemoveItemPart {
         this._part = part;
     }
 
-    commit(_context) {
+    commit() {
         this._part.remove();
     }
 }
@@ -802,9 +857,9 @@ class Directive {
 }
 
 class Component extends Directive {
-    constructor(render, props) {
+    constructor(type, props) {
         super();
-        this._render = render;
+        this._type = type;
         this._props = props;
     }
 
@@ -814,7 +869,7 @@ class Component extends Directive {
         let shouldMount;
 
         if (child instanceof Block) {
-            if (child.type === this._render) {
+            if (child.type === this._type) {
                 child.setProps(this._props);
                 child.markAsDirty();
                 shouldMount = false;
@@ -829,7 +884,7 @@ class Component extends Directive {
         }
 
         if (shouldMount) {
-            const newBlock = new Block(this._render, this._props);
+            const newBlock = new Block(this._type, this._props);
 
             part.setValue(newBlock, context);
 
@@ -857,6 +912,17 @@ class For extends Directive {
         }
 
         context.enqueueMutationEffect(part);
+    }
+}
+
+class Ref extends Directive {
+    constructor(initialValue) {
+        super();
+        this.current = initialValue;
+    }
+
+    handle(part) {
+        this.current = part.node;
     }
 }
 
@@ -1073,16 +1139,18 @@ function App(_props, context) {
             ${new Component(Counter, { count })}
             <div>
                 <button
-                    onclick="${(_e) => { setCount(count + 1); }}">+1</button>
+                    onclick="${context.useEvent((_e) => { setCount(count + 1); })}">+1</button>
             </div>
         </div>
     `;
 }
 
 function Counter(props, context) {
+    const countLabelRef = context.useRef(null);
+
     return context.html`
         <div>
-            <span class="count-label">COUNT: </span>
+            <span class="count-label" ref=${countLabelRef}>COUNT: </span>
             <span class="count-value" data-count=${props.count}>${props.count}</span>
         </div>
     `;
