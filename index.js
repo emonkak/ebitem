@@ -16,10 +16,10 @@ class Context {
         this._pendingLayoutEffects = [];
         this._pendingPassiveEffects = [];
         this._pendingBlocks = [];
-        this._envStack = new WeakMap();
         this._hookIndex = 0;
+        this._envStack = new WeakMap();
         this._templateCaches = new WeakMap();
-        this._isRendering = false;
+        this._isUpdating = false;
     }
 
     get currentBlock() {
@@ -125,6 +125,27 @@ class Context {
         return hook.value;
     }
 
+    useReducer(reducer, initialState) {
+        const block = this._currentBlock;
+        const hooks = block.hooks;
+        let hook = hooks[this._hookIndex];
+
+        if (!hook) {
+            hooks[this._hookIndex] = hook = {
+                state: initialState,
+                dispatch: (action) => {
+                    hook.state = reducer(hook.state, action);
+                    block.markAsDirty();
+                    this.requestUpdate(block);
+                },
+            };
+        }
+
+        this._hookIndex++;
+
+        return [hook.state, hook.dispatch];
+    }
+
     useRef(initialValue) {
         const hooks = this._currentBlock.hooks;
         let hook = hooks[this._hookIndex];
@@ -139,26 +160,11 @@ class Context {
     }
 
     useState(initialState) {
-        const block = this._currentBlock;
-        const hooks = block.hooks;
-        let hook = hooks[this._hookIndex];
-
-        if (!hook) {
-            hooks[this._hookIndex] = hook = {
-                state: initialState,
-                setState: (newState) => {
-                    if (!Object.is(hook.state, newState)) {
-                        hook.state = newState;
-                        block.markAsDirty();
-                        this.requestUpdate(block);
-                    }
-                },
-            };
-        }
-
-        this._hookIndex++;
-
-        return [hook.state, hook.setState];
+        return this.useReducer(
+            (state, action) =>
+                typeof action === 'function' ? action(state) : action,
+            initialState
+        );
     }
 
     setEnv(env) {
@@ -172,8 +178,8 @@ class Context {
             }
         } else {
             this._pendingBlocks.push(block);
-            if (!this._isRendering) {
-                this._isRendering = true;
+            if (!this._isUpdating) {
+                this._isUpdating = true;
                 scheduler.postTask(this._renderingPhase, {
                     'priority': 'background',
                 });
@@ -263,7 +269,7 @@ class Context {
                 'priority': 'background',
             });
         } else {
-            this._isRendering = false;
+            this._isUpdating = false;
         }
 
         console.timeEnd('Passive effect phase');
