@@ -12,10 +12,10 @@ const BlockStatus = {
 class Context {
     constructor() {
         this._currentBlock = null;
-        this._pendingMutationEffects = new RingBuffer(255);
-        this._pendingLayoutEffects = new RingBuffer(255);
-        this._pendingPassiveEffects = new RingBuffer(255);
-        this._pendingBlocks = new RingBuffer(255);
+        this._pendingMutationEffects = [];
+        this._pendingLayoutEffects = [];
+        this._pendingPassiveEffects = [];
+        this._pendingBlocks = [];
         this._hookIndex = 0;
         this._templateCaches = new WeakMap();
         this._isRendering = false;
@@ -148,46 +148,45 @@ class Context {
     requestUpdate(block) {
         if (this._currentBlock) {
             if (this._currentBlock !== block) {
-                this._pendingBlocks.enqueue(block);
+                this._pendingBlocks.push(block);
             }
         } else {
-            this._pendingBlocks.enqueue(block);
-            this._startRendering();
+            this._pendingBlocks.push(block);
+            if (!this._isRendering) {
+                this._isRendering = true;
+                scheduler.postTask(this._renderingPhase, {
+                    'priority': 'background',
+                });
+            }
         }
     }
 
     enqueueMutationEffect(effect) {
-        this._pendingMutationEffects.enqueue(effect);
+        this._pendingMutationEffects.push(effect);
     }
 
     enqueueLayoutEffect(effect) {
-        this._pendingLayoutEffects.enqueue(effect);
+        this._pendingLayoutEffects.push(effect);
     }
 
     enqueuePassiveEffect(effect) {
-        this._pendingPassiveEffects.enqueue(effect);
-    }
-
-    _startRendering() {
-        if (this._isRendering) {
-            return;
-        }
-        this._isRendering = true;
-        scheduler.postTask(this._renderingPhase, {
-            'priority': 'background',
-        });
+        this._pendingPassiveEffects.push(effect);
     }
 
     _renderingPhase = async () => {
         console.time('Rendering phase')
 
-        while (this._currentBlock = this._pendingBlocks.dequeue() ?? null) {
+        for (let i = 0; i < this._pendingBlocks.length; i++) {
             if (navigator.scheduling.isInputPending()) {
                 await yieldToMain();
             }
             this._hookIndex = 0;
+            this._currentBlock = this._pendingBlocks[i];
             this._currentBlock.render(this);
+            this._currentBlock = null;
         }
+
+        this._pendingBlocks.length = 0;
 
         scheduler.postTask(this._blockingPhase, {
             'priority': 'user-blocking',
@@ -199,21 +198,25 @@ class Context {
     _blockingPhase = async () => {
         console.time('Blocking phase');
 
-        let effect;
-
-        while (effect = this._pendingMutationEffects.dequeue()) {
+        for (let i = 0; i < this._pendingMutationEffects.length; i++) {
             if (navigator.scheduling.isInputPending()) {
                 await yieldToMain();
             }
+            const effect = this._pendingMutationEffects[i];
             effect.commit(this);
         }
 
-        while (effect = this._pendingLayoutEffects.dequeue()) {
+        this._pendingMutationEffects.length = 0;
+
+        for (let i = 0; i < this._pendingLayoutEffects.length; i++) {
             if (navigator.scheduling.isInputPending()) {
                 await yieldToMain();
             }
+            const effect = this._pendingLayoutEffects[i];
             effect.commit(this);
         }
+
+        this._pendingLayoutEffects.length = 0;
 
         scheduler.postTask(this._passiveEffectPhase, {
             'priority': 'background',
@@ -225,21 +228,22 @@ class Context {
     _passiveEffectPhase = async () => {
         console.time('Passive effect phase');
 
-        let effect;
-
-        while (effect = this._pendingPassiveEffects.dequeue()) {
+        for (let i = 0; i < this._pendingPassiveEffects.length; i++) {
             if (navigator.scheduling.isInputPending()) {
                 await yieldToMain();
             }
+            const effect = this._pendingPassiveEffects[i];
             effect.commit(this);
         }
 
-        if (this._pendingBlocks.isEmpty()) {
-            this._isRendering = false;
-        } else {
+        this._pendingPassiveEffects.length = 0;
+
+        if (this._pendingBlocks.length > 0) {
             scheduler.postTask(this._renderingPhase, {
                 'priority': 'background',
             });
+        } else {
+            this._isRendering = false;
         }
 
         console.timeEnd('Passive effect phase');
@@ -1118,68 +1122,6 @@ class RemoveItemPart {
 
     commit(context) {
         this._part.remove(context);
-    }
-}
-
-class RingBuffer {
-    constructor(size) {
-        this._buffer = new Array(size);
-        this._read_index = 0;
-        this._write_index = 0;
-    }
-
-    get length() {
-        return this._write_index - this._read_index;
-    }
-
-    isEmpty() {
-        return this._write_index === this._read_index;
-    }
-
-    enqueue(value) {
-        if (this._write_index - this._read_index === this._buffer.length) {
-            this.extend(this._buffer.length * 2);
-        }
-        this._buffer[this._write_index % this._buffer.length] = value;
-        this._write_index++;
-        return true;
-    }
-
-    dequeue() {
-        if (this._write_index == this._read_index) {
-            return;
-        }
-        const index = this._read_index % this._buffer.length;
-        const value = this._buffer[index];
-        delete this._buffer[index];
-        this._read_index++;
-        return value;
-    }
-
-    peek() {
-        if (this._write_index == this._read_index) {
-            return;
-        }
-        const index = this._read_index % this._buffer.length;
-        return this._buffer[index];
-    }
-
-    extend(newSize) {
-        if (newSize <= this._buffer.length) {
-            return;
-        }
-
-        const newBuffer = new Array(newSize);
-        let count = 0;
-
-        while (!this.isEmpty()) {
-            newBuffer[count] = this.dequeue();
-            count++;
-        }
-
-        this._buffer = newBuffer;
-        this._read_index = 0;
-        this._write_index = count;
     }
 }
 
