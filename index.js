@@ -16,9 +16,14 @@ class Context {
         this._pendingLayoutEffects = [];
         this._pendingPassiveEffects = [];
         this._pendingBlocks = [];
+        this._envStack = new WeakMap();
         this._hookIndex = 0;
         this._templateCaches = new WeakMap();
         this._isRendering = false;
+    }
+
+    get currentBlock() {
+        return this._currentBlock;
     }
 
     html(strings, ...values) {
@@ -53,6 +58,17 @@ class Context {
         }
 
         this._hookIndex++;
+    }
+
+    useEnv(name, defaultValue = null) {
+        let parentBlock;
+        while (parentBlock = this._currentBlock.parent) {
+            const env = this._envStack.get(parentBlock);
+            if (env && Object.hasOwnProperty.call(env, name)) {
+                return env[name];
+            }
+        }
+        return defaultValue;
     }
 
     useEvent(handler) {
@@ -143,6 +159,10 @@ class Context {
         this._hookIndex++;
 
         return [hook.state, hook.setState];
+    }
+
+    setEnv(env) {
+        this._envStack.set(this._currentBlock, env);
     }
 
     requestUpdate(block) {
@@ -252,7 +272,7 @@ class Context {
 
 class Template {
     static parse(strings) {
-        const html = strings.join(HOLE_MAKER);
+        const html = strings.join(HOLE_MAKER).trim();
         const template = document.createElement('template');
         template.innerHTML = html;
         const holes = [];
@@ -676,11 +696,12 @@ class Fragment extends Child {
 }
 
 class Block extends Child {
-    constructor(type, props) {
+    constructor(type, props, parent = null) {
         super();
         this._type = type;
         this._pendingProps = props;
         this._memoizedProps = props;
+        this._parent = parent;
         this._status = BlockStatus.INITIALIZED;
         this._nodes = [];
         this._parts = [];
@@ -702,6 +723,10 @@ class Block extends Child {
 
     get props() {
         return this._memoizedProps;
+    }
+
+    get parent() {
+        return this._parent;
     }
 
     get nodes() {
@@ -1000,7 +1025,11 @@ class BlockDirective extends Directive {
         }
 
         if (needsMount) {
-            const newBlock = new Block(this._type, this._props);
+            const newBlock = new Block(
+                this._type,
+                this._props,
+                context.currentBlock
+            );
 
             hasChanged = part.setValue(newBlock, context);
 
@@ -1288,6 +1317,8 @@ function App(_props, context) {
     const [count, setCount] = context.useState(0);
     const [items, setItems] = context.useState(['foo', 'bar', 'baz', 'qux', 'quux']);
 
+    context.setEnv({ 'state': 'My Env' });
+
     const itemsList = list(items.map((title, index, items) => block(Item, {
         title,
         onUp: context.useEvent(() => {
@@ -1335,9 +1366,11 @@ function App(_props, context) {
 }
 
 function Item(props, context) {
+    const state = context.useEnv('state');
+
     return context.html`
         <div>
-            <span>${props.title}</span>
+            <span>${props.title} (${state})</span>
             <button type="button" onclick=${props.onUp}>Up</button>
             <button type="button" onclick=${props.onDown}>Down</button>
             <button type="button" onclick=${props.onDelete}>Delete</button>
