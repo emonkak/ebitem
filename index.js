@@ -1,29 +1,31 @@
 const HOLE_UUID = getUUID();
 const HOLE_MAKER = '{{' + HOLE_UUID + '}}';
 
+const ITEM_PART_FLAG_DIRTY = 0b01;
+const ITEM_PART_FLAG_REORDERED = 0b10;
+
 const BlockStatus = {
     INITIALIZED: 1,
-    MOUNTED: 2,
+    UPDATED: 2,
     DIRTY: 3,
-    CLEANING: 4,
-    UNMOUNTED: 5,
+    UNMOUNTED: 4,
 };
 
 class Context {
     constructor() {
-        this._currentBlock = null;
+        this._currentRenderable = null;
         this._pendingMutationEffects = [];
         this._pendingLayoutEffects = [];
         this._pendingPassiveEffects = [];
-        this._pendingBlocks = [];
+        this._pendingRenderables = [];
         this._hookIndex = 0;
         this._envStack = new WeakMap();
         this._templateCaches = new WeakMap();
         this._isUpdating = false;
     }
 
-    get currentBlock() {
-        return this._currentBlock;
+    get currentRenderable() {
+        return this._currentRenderable;
     }
 
     html(strings, ...values) {
@@ -42,18 +44,17 @@ class Context {
     }
 
     useEffect(setup, dependencies) {
-        const hooks = this._currentBlock.hooks;
+        const { hooks } = this._currentRenderable;
         let hook = hooks[this._hookIndex];
 
         if (hook) {
-            if (dependencies === undefined ||
-                !shallowEqual(hook.dependencies, dependencies)) {
+            if (hook.shouldCommit(dependencies)) {
                 this.enqueuePassiveEffect(hook);
             }
             hook.setup = setup;
             hook.dependencies = dependencies;
         } else {
-            hooks[this._hookIndex] = hook = new HookEffect(setup, dependencies);
+            hook = hooks[this._hookIndex] = new HookEffect(setup, dependencies);
             this.enqueuePassiveEffect(hook);
         }
 
@@ -61,9 +62,9 @@ class Context {
     }
 
     useEnv(name, defaultValue = null) {
-        let parentBlock;
-        while (parentBlock = this._currentBlock.parent) {
-            const env = this._envStack.get(parentBlock);
+        let block = this._currentRenderable;
+        while (block = block.parent) {
+            const env = this._envStack.get(block);
             if (env && Object.hasOwnProperty.call(env, name)) {
                 return env[name];
             }
@@ -85,18 +86,17 @@ class Context {
     }
 
     useLayoutEffect(setup, dependencies) {
-        const hooks = this._currentBlock.hooks;
+        const { hooks } = this._currentRenderable;
         let hook = hooks[this._hookIndex];
 
         if (hook) {
-            if (dependencies === undefined ||
-                !shallowEqual(hook.dependencies, dependencies)) {
+            if (hook.shouldCommit(dependencies)) {
                 this.enqueueLayoutEffect(hook);
             }
             hook.setup = setup;
             hook.dependencies = dependencies;
         } else {
-            hooks[this._hookIndex] = hook = new HookEffect(setup, dependencies);
+            hook = hooks[this._hookIndex] = new HookEffect(setup, dependencies);
             this.enqueueLayoutEffect(hook);
         }
 
@@ -104,7 +104,7 @@ class Context {
     }
 
     useMemo(create, dependencies) {
-        const hooks = this._currentBlock.hooks;
+        const { hooks } = this._currentRenderable;
         let hook = hooks[this._hookIndex];
 
         if (hook) {
@@ -114,7 +114,7 @@ class Context {
             }
             hook.dependencies = dependencies;
         } else {
-            hooks[this._hookIndex] = hook = {
+            hook = hooks[this._hookIndex] = {
                 value: create(),
                 dependencies,
             };
@@ -126,17 +126,16 @@ class Context {
     }
 
     useReducer(reducer, initialState) {
-        const block = this._currentBlock;
-        const hooks = block.hooks;
+        const block = this._currentRenderable;
+        const { hooks } = block;
         let hook = hooks[this._hookIndex];
 
         if (!hook) {
-            hooks[this._hookIndex] = hook = {
+            hook = hooks[this._hookIndex] = {
                 state: initialState,
                 dispatch: (action) => {
                     hook.state = reducer(hook.state, action);
-                    block.markAsDirty();
-                    this.requestUpdate(block);
+                    block.forceUpdate(this);
                 },
             };
         }
@@ -147,11 +146,11 @@ class Context {
     }
 
     useRef(initialValue) {
-        const hooks = this._currentBlock.hooks;
+        const hooks = this._currentRenderable.hooks;
         let hook = hooks[this._hookIndex];
 
         if (!hook) {
-            hooks[this._hookIndex] = hook = new Ref(initialValue);
+            hook = hooks[this._hookIndex] = new Ref(initialValue);
         }
 
         this._hookIndex++;
@@ -168,16 +167,16 @@ class Context {
     }
 
     setEnv(env) {
-        this._envStack.set(this._currentBlock, env);
+        this._envStack.set(this._currentRenderable, env);
     }
 
-    requestUpdate(block) {
-        if (this._currentBlock) {
-            if (this._currentBlock !== block) {
-                this._pendingBlocks.push(block);
+    requestUpdate(renderable) {
+        if (this._currentRenderable) {
+            if (this._currentRenderable !== renderable) {
+                this._pendingRenderables.push(renderable);
             }
         } else {
-            this._pendingBlocks.push(block);
+            this._pendingRenderables.push(renderable);
             if (!this._isUpdating) {
                 this._isUpdating = true;
                 scheduler.postTask(this._renderingPhase, {
@@ -202,17 +201,17 @@ class Context {
     _renderingPhase = async () => {
         console.time('Rendering phase')
 
-        for (let i = 0; i < this._pendingBlocks.length; i++) {
+        for (let i = 0; i < this._pendingRenderables.length; i++) {
             if (navigator.scheduling.isInputPending()) {
                 await yieldToMain();
             }
             this._hookIndex = 0;
-            this._currentBlock = this._pendingBlocks[i];
-            this._currentBlock.render(this);
-            this._currentBlock = null;
+            this._currentRenderable = this._pendingRenderables[i];
+            this._currentRenderable.render(this);
+            this._currentRenderable = null;
         }
 
-        this._pendingBlocks.length = 0;
+        this._pendingRenderables.length = 0;
 
         scheduler.postTask(this._blockingPhase, {
             'priority': 'user-blocking',
@@ -264,7 +263,7 @@ class Context {
 
         this._pendingPassiveEffects.length = 0;
 
-        if (this._pendingBlocks.length > 0) {
+        if (this._pendingRenderables.length > 0) {
             scheduler.postTask(this._renderingPhase, {
                 'priority': 'background',
             });
@@ -319,7 +318,7 @@ class Template {
                 part = new ChildPart(child);
             }
 
-            updatePart(part, values[i], context);
+            mountPart(part, values[i], context);
 
             parts[i] = part;
         }
@@ -327,9 +326,9 @@ class Template {
         return { node, parts };
     }
 
-    patch(parts, values, context) {
+    patch(parts, oldValues, newValues, context) {
         for (let i = 0, l = this._holes.length; i < l; i++) {
-            updatePart(parts[i], values[i], context);
+            updatePart(parts[i], oldValues[i], newValues[i], context);
         }
     }
 }
@@ -350,15 +349,8 @@ class AttributePart {
         return this._committedValue;
     }
 
-    setValue(newValue, context) {
-        if (newValue === this._committedValue) {
-            return false;
-        }
-        if (newValue instanceof Directive) {
-            return newValue.handle(this, context);
-        }
+    setValue(newValue) {
         this._pendingValue = newValue;
-        return true;
     }
 
     commit(_context) {
@@ -396,15 +388,8 @@ class EventPart {
         return this._committedValue;
     }
 
-    setValue(newValue, context) {
-        if (newValue === this._committedValue) {
-            return false;
-        }
-        if (newValue instanceof Directive) {
-            return newValue.handle(this, context);
-        }
+    setValue(newValue) {
         this._pendingValue = newValue;
-        return true;
     }
 
     commit(_context) {
@@ -428,38 +413,36 @@ class EventPart {
 }
 
 class ChildPart {
-    constructor(endNode) {
-        this._endNode = endNode;
+    constructor(node) {
+        this._node = node;
         this._committedValue = null;
         this._pendingValue = null;
     }
 
     get startNode() {
         return this._committedValue ?
-            this._committedValue.startNode ?? this._endNode :
-            this._endNode;
+            this._committedValue.startNode ?? this._node :
+            this._node;
     }
 
     get endNode() {
-        return this._endNode;
+        return this._node;
     }
 
     get value() {
         return this._committedValue;
     }
 
-    setValue(newValue, context) {
-        if (newValue === this._committedValue) {
-            return false;
+    setValue(newValue) {
+        if (newValue instanceof Child) {
+            this._pendingValue = newValue;
+        } else if (newValue === null) {
+            this._pendingValue = Nothing.instance;
+        } else if (this._committedValue instanceof Text) {
+            this._committedValue.setValue(newValue);
+        } else {
+            this._pendingValue = new Text(newValue);
         }
-        if (newValue instanceof Directive) {
-            return newValue.handle(this, context);
-        }
-        if (this._committedValue) {
-            this._committedValue.clean(this, context);
-        }
-        this._pendingValue = Child.from(newValue);
-        return true;
     }
 
     commit(context) {
@@ -471,104 +454,83 @@ class ChildPart {
                 oldValue.unmount(this, context);
             }
             newValue.mount(this, context);
-        } else {
-            newValue.update(this, context);
         }
 
+        newValue.commit(context);
+
         this._committedValue = newValue;
+    }
+
+    dispose(context) {
+        if (this._node.isConnected) {
+            this._node.remove();
+        }
+
+        if (this._committedValue) {
+            this._committedValue.unmount(this, context);
+        }
     }
 }
 
-class ItemPart {
-    constructor(endNode, containerPart, referencePart) {
-        this._endNode = endNode;
+class ItemPart extends ChildPart {
+    constructor(node, containerPart) {
+        super(node);
         this._containerPart = containerPart;
+        this._referencePart = null;
+        this._flags = ITEM_PART_FLAG_REORDERED;
+    }
+
+    setValue(value) {
+        super.setValue(value);
+        this._flags |= ITEM_PART_FLAG_DIRTY;
+    }
+
+    setReferencePart(referencePart) {
         this._referencePart = referencePart;
-        this._committedValue = null;
-        this._pendingValue = null;
-        this._hasReordered = true;
-    }
-
-    get startNode() {
-        return this._committedValue ?
-            this._committedValue.startNode ?? this._endNode :
-            this._endNode;
-    }
-
-    get endNode() {
-        return this._endNode;
-    }
-
-    get value() {
-        return this._committedValue;
-    }
-
-    setValue(newValue, context) {
-        if (newValue === this._committedValue) {
-            return this._hasReordered;
-        }
-        if (newValue instanceof Directive) {
-            return newValue.handle(this, context) || this._hasReordered;
-        }
-        if (this._committedValue) {
-            this._committedValue.clean(this, context);
-        }
-        this._pendingValue = Child.from(newValue);
-        return true;
-    }
-
-    setReferencePart(newReferencePart) {
-        this._referencePart = newReferencePart;
-        this._hasReordered = true;
+        this._flags |= ITEM_PART_FLAG_REORDERED;
     }
 
     commit(context) {
-        const oldValue = this._committedValue;
-        const newValue = this._pendingValue;
+        const isReordered = (this._flags & ITEM_PART_FLAG_REORDERED) !== 0;
+        const isDirty = (this._flags & ITEM_PART_FLAG_DIRTY) !== 0;
 
-        if (this._hasReordered) {
+        if (isReordered) {
             const reference = this._referencePart ?
                 this._referencePart.startNode :
                 this._containerPart.endNode;
-            reference.parentNode.insertBefore(this._endNode, reference);
+            reference.parentNode.insertBefore(this._node, reference);
         }
 
-        if (oldValue !== newValue) {
-            if (oldValue) {
-                oldValue.unmount(this);
-            }
-            newValue.mount(this, context);
-        } else {
-            if (this._hasReordered) {
+        if (isDirty) {
+            const oldValue = this._committedValue;
+            const newValue = this._pendingValue;
+
+            if (oldValue !== newValue) {
+                if (oldValue) {
+                    oldValue.unmount(this, context);
+                }
                 newValue.mount(this, context);
             } else {
-                newValue.update(this, context);
+                if (isReordered) {
+                    newValue.mount(this, context);
+                }
+            }
+
+            newValue.commit(context);
+
+            this._committedValue = newValue;
+        } else {
+            if (isReordered) {
+                const value = this._committedValue;
+                value.mount(this, context);
             }
         }
 
-        this._committedValue = newValue;
-        this._hasReordered = false;
-    }
-
-    remove(context) {
-        if (this._committedValue) {
-            this._committedValue.unmount(this, context)
-        }
-        this._endNode.remove();
+        this._flags = 0;
     }
 }
 
 class Child {
-    static from(value) {
-        if (value instanceof Child) {
-            return value;
-        }
-        if (value == null) {
-            return Nothing.instance;
-        }
-        return new Text(value);
-    }
-
     get startNode() {
         return null;
     }
@@ -580,13 +542,10 @@ class Child {
     mount(_containerPart, _context) {
     }
 
-    update(_containerPart, _context) {
-    }
-
     unmount(_containerPart, _context) {
     }
 
-    clean(_containerPart, _context) {
+    commit(_context) {
     }
 }
 
@@ -594,7 +553,7 @@ class Text extends Child {
     constructor(value) {
         super();
         this._value = value;
-        this._node = document.createTextNode(value.toString());
+        this._node = document.createTextNode('');
     }
 
     get startNode() {
@@ -618,17 +577,219 @@ class Text extends Child {
         container.parentNode.insertBefore(this._node, container);
     }
 
-    update(_containerPart, _context) {
-        this._node.textContent = this._value.toString();
+    unmount(_containerPart, _context) {
+        if (this._node.isConnected) {
+            this._node.remove();
+        }
     }
 
-    unmount(_containerPart, _context) {
-        this._node.remove();
+    commit(_context) {
+        this._node.textContent = this._value.toString();
     }
 }
 
-class Nothing extends Child {
-    static instance = new Nothing();
+class List extends Child {
+    constructor(items, valueSelector, keySelector, containerPart, context) {
+        super();
+        const parts = new Array(items.length);
+        const values = new Array(items.length);
+        const keys = new Array(items.length);
+        for (let i = 0, l = items.length; i < l; i++) {
+            const item = items[i];
+            const part = new ItemPart(createMaker(), containerPart);
+            const value = valueSelector(item, i);
+            const key = keySelector(item, i);
+            mountPart(part, value, context);
+            parts[i] = part;
+            values[i] = value;
+            keys[i] = key;
+        }
+        this._containerPart = containerPart;
+        this._commitedParts = [];
+        this._commitedValues = [];
+        this._commitedKeys = [];
+        this._pendingParts = parts;
+        this._pendingValues = values;
+        this._pendingKeys = keys;
+    }
+
+    get startNode() {
+        const parts = this._commitedParts;
+        return parts.length > 0 ? parts[0].startNode : null;
+    }
+
+    get endNode() {
+        const parts = this._commitedParts;
+        return parts.length > 0 ? parts[parts.length - 1].endNode : null;
+    }
+
+    setItems(newItems, valueSelector, keySelector, context) {
+        const oldParts = this._commitedParts;
+        const oldValues = this._commitedValues;
+        const oldKeys = this._commitedKeys;
+        const newParts = new Array(newItems.length);
+        const newValues = newItems.map(valueSelector);
+        const newKeys = newItems.map(keySelector);
+
+        // Head and tail pointers to old parts and new values
+        let oldHead = 0;
+        let oldTail = oldParts.length - 1;
+        let newHead = 0;
+        let newTail = newValues.length - 1;
+
+        let newKeyToIndexMap;
+        let oldKeyToIndexMap;
+
+        while (oldHead <= oldTail && newHead <= newTail) {
+            if (oldParts[oldHead] === null) {
+                // `null` means old part at head has already been used
+                // below; skip
+                oldHead++;
+            } else if (oldParts[oldTail] === null) {
+                // `null` means old part at tail has already been used
+                // below; skip
+                oldTail--;
+            } else if (oldKeys[oldHead] === newKeys[newHead]) {
+                // Old head matches new head; update in place
+                const part = oldParts[oldHead];
+                updatePart(
+                    part,
+                    oldValues[oldHead],
+                    newValues[newHead],
+                    context
+                );
+                newParts[newHead] = part;
+                oldHead++;
+                newHead++;
+            } else if (oldKeys[oldTail] === newKeys[newTail]) {
+                // Old tail matches new tail; update in place
+                const part = oldParts[oldTail];
+                updatePart(
+                    part,
+                    oldValues[oldTail],
+                    newValues[newTail],
+                    context
+                );
+                newParts[newTail] = part;
+                oldTail--;
+                newTail--;
+            } else if (oldKeys[oldHead] === newKeys[newTail]) {
+                // Old tail matches new head; update and move to new head
+                const part = oldParts[oldHead];
+                updateAndReorderPart(
+                    part,
+                    newParts[newTail + 1] ?? null,
+                    oldValues[oldHead],
+                    newValues[newTail],
+                    context
+                );
+                newParts[newTail] = part;
+                oldHead++;
+                newTail--;
+            } else if (oldKeys[oldTail] === newKeys[newHead]) {
+                // Old tail matches new head; update and move to new head
+                const part = oldParts[oldTail];
+                updateAndReorderPart(
+                    part,
+                    oldParts[oldHead],
+                    oldValues[oldTail],
+                    newValues[newHead],
+                    context
+                );
+                newParts[newHead] = part;
+                oldTail--;
+                newHead++;
+            } else {
+                if (newKeyToIndexMap === undefined) {
+                    // Lazily generate key-to-index maps, used for removals &
+                    // moves below
+                    newKeyToIndexMap = generateMap(newKeys, newHead, newTail);
+                    oldKeyToIndexMap = generateMap(oldKeys, oldHead, oldTail);
+                }
+                if (!newKeyToIndexMap.has(oldKeys[oldHead])) {
+                    // Old head is no longer in new list; remove
+                    const part = oldParts[oldHead];
+                    context.enqueueMutationEffect(new Dispose(part));
+                    oldHead++;
+                } else if (!newKeyToIndexMap.has(oldKeys[oldTail])) {
+                    // Old tail is no longer in new list; remove
+                    const part = oldParts[oldTail];
+                    context.enqueueMutationEffect(new Dispose(part));
+                    oldTail--;
+                } else {
+                    // Any mismatches at this point are due to additions or
+                    // moves; see if we have an old part we can reuse and move
+                    // into place
+                    const oldIndex = oldKeyToIndexMap.get(newKeys[newHead]);
+                    const oldPart = oldIndex !== undefined ? oldParts[oldIndex] : null;
+                    if (oldPart === null) {
+                        // No old part for this value; create a new one and
+                        // insert it
+                        const part = new ItemPart(
+                            createMaker(),
+                            this._containerPart
+                        );
+                        mountPart(
+                            part,
+                            newValues[newHead],
+                            context
+                        );
+                        newParts[newHead] = part;
+                    } else {
+                        // Reuse old part
+                        newParts[newHead] = oldPart;
+                        updateAndReorderPart(
+                            oldPart,
+                            oldParts[oldHead],
+                            oldValues[oldHead],
+                            newValues[newHead],
+                            context
+                        );
+                        // This marks the old part as having been used, so that
+                        // it will be skipped in the first two checks above
+                        oldParts[oldIndex] = null;
+                    }
+                    newHead++;
+                }
+            }
+        }
+
+        // Add parts for any remaining new values
+        while (newHead <= newTail) {
+            // For all remaining additions, we insert before last new
+            // tail, since old pointers are no longer valid
+            const newPart = new ItemPart(createMaker(), this._containerPart);
+            mountPart(newPart, newValues[newHead], context);
+            newParts[newHead++] = newPart;
+        }
+
+        // Remove any remaining unused old parts
+        while (oldHead <= oldTail) {
+            const oldPart = oldParts[oldHead++];
+            if (oldPart !== null) {
+                context.enqueueMutationEffect(new Dispose(oldPart));
+            }
+        }
+
+        this._pendingParts = newParts;
+        this._pendingValues = newValues;
+        this._pendingKeys = newKeys;
+    }
+
+    mount(_containerPart, _context) {
+    }
+
+    unmount(_containerPart, context) {
+        for (const part of this._commitedParts) {
+            part.dispose(context);
+        }
+    }
+
+    commit(_context) {
+        this._commitedParts = this._pendingParts;
+        this._commitedValues = this._pendingValues;
+        this._commitedKeys = this._pendingKeys;
+    }
 }
 
 class Fragment extends Child {
@@ -636,9 +797,10 @@ class Fragment extends Child {
         super();
         this._template = template;
         this._pendingValues = values;
-        this._memoizedValues = values;
+        this._memoizedValues = null;
         this._nodes = [];
         this._parts = [];
+        this._isMounted = false;
     }
 
     get startNode() {
@@ -669,17 +831,21 @@ class Fragment extends Child {
         }
     }
 
-    update(_containerPart, _context) {
-    }
-
-    unmount(_containerPart, _context) {
+    unmount(_containerPart, context) {
         for (const node of this._nodes) {
-            node.remove();
+            if (node.isConnected) {
+                node.remove();
+            }
+        }
+        for (const part of this._parts) {
+            if (part instanceof ChildPart) {
+                part.dispose(context);
+            }
         }
     }
 
     render(context) {
-        if (this._memoizedValues === this._pendingValues) {
+        if (!this._memoizedValues) {
             const { node, parts } = this._template.mount(
                 this._pendingValues,
                 context
@@ -687,17 +853,14 @@ class Fragment extends Child {
             this._nodes = [...node.childNodes];
             this._parts = parts;
         } else {
-            this._template.patch(this._parts, this._pendingValues, context);
-            this._memoizedValues = this._pendingValues;
+            this._template.patch(
+                this._parts,
+                this._memoizedValues,
+                this._pendingValues,
+                context
+            );
         }
-    }
-
-    clean(_containerPart, context) {
-        for (const part of this._parts) {
-            if (part instanceof ChildPart) {
-                cleanPart(part, context);
-            }
-        }
+        this._memoizedValues = this._pendingValues;
     }
 }
 
@@ -747,8 +910,11 @@ class Block extends Child {
         this._pendingProps = newProps;
     }
 
-    markAsDirty() {
-        this._status = BlockStatus.DIRTY;
+    forceUpdate(context) {
+        if (this._status === BlockStatus.UPDATED) {
+            this._status = BlockStatus.DIRTY;
+            context.requestUpdate(this);
+        }
     }
 
     render(context) {
@@ -759,30 +925,15 @@ class Block extends Child {
             this._memoizedProps = this._pendingProps;
             this._nodes = [...node.childNodes];
             this._parts = parts;
+            this._status = BlockStatus.UPDATED;
             this._values = values;
-            this._status = BlockStatus.MOUNTED;
         } else if (this._status === BlockStatus.DIRTY) {
             const render = this._type;
             const { template, values } = render(this._pendingProps, context);
-            template.patch(this._parts, values, context)
+            template.patch(this._parts, this._values, values, context)
             this._memoizedProps = this._pendingProps;
+            this._status = BlockStatus.UPDATED;
             this._values = values;
-            this._status = BlockStatus.MOUNTED;
-        } else if (this._status === BlockStatus.CLEANING) {
-            for (let i = 0, l = this._hooks.length; i < l; i++) {
-                const hook = this._hooks[i];
-                if (hook instanceof HookEffect && hook.clean) {
-                    hook.clean(context);
-                    hook.clean = null;
-                }
-            }
-            for (let i = 0, l = this._parts.length; i < l; i++) {
-                const part = this._parts[i];
-                if (part instanceof ChildPart) {
-                    cleanPart(part, context);
-                }
-            }
-            this._status = BlockStatus.UNMOUNTED;
         }
     }
 
@@ -795,203 +946,46 @@ class Block extends Child {
         }
     }
 
-    update(_containerPart, _context) {
-    }
-
-    unmount(_containerPart, _context) {
+    unmount(_containerPart, context) {
         for (const node of this._nodes) {
-            node.remove();
+            if (node.isConnected) {
+                node.remove();
+            }
         }
-    }
-
-    clean(_containerPart, context) {
-        this._status = BlockStatus.CLEANING;
-        context.requestUpdate(this);
+        for (let i = 0, l = this._hooks.length; i < l; i++) {
+            const hook = this._hooks[i];
+            if (hook instanceof HookEffect) {
+                hook.dispose(context);
+            }
+        }
+        for (let i = 0, l = this._parts.length; i < l; i++) {
+            const part = this._parts[i];
+            if (part instanceof ChildPart) {
+                part.dispose(context);
+            }
+        }
+        this._status = BlockStatus.UNMOUNTED;
     }
 }
 
-class List extends Child {
-    constructor(values, keySelector, containerPart, context) {
-        super();
-        const parts = new Array(values.length);
-        const keys = new Array(values.length);
-        for (let i = 0, l = values.length; i < l; i++) {
-            const value = values[i];
-            const key = keySelector(value, i);
-            const part = new ItemPart(createMaker(), containerPart, null);
-            updatePart(part, value, context);
-            parts[i] = part;
-            keys[i] = key;
-        }
-        this._containerPart = containerPart;
-        this._commitedParts = parts;
-        this._commitedKeys = keys;
-        this._pendingParts = parts;
-        this._pendingKeys = keys;
-    }
-
-    get startNode() {
-        const parts = this._commitedParts;
-        return parts.length > 0 ? parts[0].startNode : null;
-    }
-
-    get endNode() {
-        const parts = this._commitedParts;
-        return parts.length > 0 ? parts[parts.length - 1].endNode : null;
-    }
-
-    setValues(newValues, keySelector, context) {
-        const oldParts = this._commitedParts;
-        const oldKeys = this._commitedKeys;
-        const newParts = new Array(newValues.length);
-        const newKeys = newValues.map(keySelector);
-
-        // Head and tail pointers to old parts and new values
-        let oldHead = 0;
-        let oldTail = oldParts.length - 1;
-        let newHead = 0;
-        let newTail = newValues.length - 1;
-
-        let newKeyToIndexMap;
-        let oldKeyToIndexMap;
-
-        while (oldHead <= oldTail && newHead <= newTail) {
-            if (oldParts[oldHead] === null) {
-                // `null` means old part at head has already been used
-                // below; skip
-                oldHead++;
-            } else if (oldParts[oldTail] === null) {
-                // `null` means old part at tail has already been used
-                // below; skip
-                oldTail--;
-            } else if (oldKeys[oldHead] === newKeys[newHead]) {
-                // Old head matches new head; update in place
-                const part = oldParts[oldHead];
-                updatePart(part, newValues[newHead], context);
-                newParts[newHead] = part;
-                oldHead++;
-                newHead++;
-            } else if (oldKeys[oldTail] === newKeys[newTail]) {
-                // Old tail matches new tail; update in place
-                const part = oldParts[oldTail];
-                updatePart(part, newValues[newTail], context);
-                newParts[newTail] = part;
-                oldTail--;
-                newTail--;
-            } else if (oldKeys[oldHead] === newKeys[newTail]) {
-                // Old tail matches new head; update and move to new head
-                const part = oldParts[oldHead];
-                part.setReferencePart(newParts[newTail + 1] ?? null);
-                updatePart(part, newValues[newTail], context);
-                newParts[newTail] = part;
-                oldHead++;
-                newTail--;
-            } else if (oldKeys[oldTail] === newKeys[newHead]) {
-                // Old tail matches new head; update and move to new head
-                const part = oldParts[oldTail];
-                part.setReferencePart(oldParts[oldHead]);
-                updatePart(part, newValues[newHead], context);
-                newParts[newHead] = part;
-                oldTail--;
-                newHead++;
-            } else {
-                if (newKeyToIndexMap === undefined) {
-                    // Lazily generate key-to-index maps, used for removals &
-                    // moves below
-                    newKeyToIndexMap = generateMap(newKeys, newHead, newTail);
-                    oldKeyToIndexMap = generateMap(oldKeys, oldHead, oldTail);
-                }
-                if (!newKeyToIndexMap.has(oldKeys[oldHead])) {
-                    // Old head is no longer in new list; remove
-                    const part = oldParts[oldHead];
-                    cleanPart(part, context);
-                    context.enqueueMutationEffect(new RemoveItemPart(part));
-                    oldHead++;
-                } else if (!newKeyToIndexMap.has(oldKeys[oldTail])) {
-                    // Old tail is no longer in new list; remove
-                    const part = oldParts[oldTail];
-                    cleanPart(part, context);
-                    context.enqueueMutationEffect(new RemoveItemPart(part));
-                    oldTail--;
-                } else {
-                    // Any mismatches at this point are due to additions or
-                    // moves; see if we have an old part we can reuse and move
-                    // into place
-                    const oldIndex = oldKeyToIndexMap.get(newKeys[newHead]);
-                    const oldPart = oldIndex !== undefined ? oldParts[oldIndex] : null;
-                    if (oldPart === null) {
-                        // No old part for this value; create a new one and
-                        // insert it
-                        const part = new ItemPart(
-                            createMaker(),
-                            this._containerPart,
-                            oldParts[oldHead]
-                        );
-                        updatePart(part, newValues[newHead], context);
-                        newParts[newHead] = part;
-                    } else {
-                        // Reuse old part
-                        newParts[newHead] = oldPart;
-                        oldPart.setReferencePart(oldParts[oldHead]);
-                        updatePart(oldPart, newValues[newHead], context);
-                        // This marks the old part as having been used, so that
-                        // it will be skipped in the first two checks above
-                        oldParts[oldIndex] = null;
-                    }
-                    newHead++;
-                }
-            }
-        }
-
-        // Add parts for any remaining new values
-        while (newHead <= newTail) {
-            // For all remaining additions, we insert before last new
-            // tail, since old pointers are no longer valid
-            const newPart = new ItemPart(
-                createMaker(),
-                this._containerPart,
-                null
-            );
-            updatePart(newPart, newValues[newHead], context);
-            newParts[newHead++] = newPart;
-        }
-
-        // Remove any remaining unused old parts
-        while (oldHead <= oldTail) {
-            const oldPart = oldParts[oldHead++];
-            if (oldPart !== null) {
-                cleanPart(oldPart, context);
-                context.enqueueMutationEffect(new RemoveItemPart(oldPart));
-            }
-        }
-
-        this._pendingParts = newParts;
-        this._pendingKeys = newKeys;
-    }
-
-    mount(_containerPart) {
-    }
-
-    update(_containerPart) {
-        this._commitedParts = this._pendingParts;
-        this._commitedKeys = this._pendingKeys;
-    }
-
-    unmount(_containerPart) {
-        for (const part of this._commitedParts) {
-            part.unmount();
-        }
-    }
-
-    clean(_containerPart, context) {
-        for (const part of this._commitedParts) {
-            cleanPart(part.value.clean(part, context));
-        }
-    }
+class Nothing extends Child {
+    static instance = new Nothing();
 }
 
 class Directive {
     handle(_part, _context) {
+        return false;
+    }
+}
+
+class Ref extends Directive {
+    constructor(initialValue) {
+        super();
+        this.current = initialValue;
+    }
+
+    handle(part) {
+        this.current = part.value;
         return false;
     }
 }
@@ -1015,15 +1009,13 @@ class BlockDirective extends Directive {
         const value = part.value;
 
         let needsMount = false;
-        let hasChanged = false;
 
         if (value instanceof Block) {
             if (value.type === this._type) {
                 value.setProps(this._props);
-                value.markAsDirty();
-                context.requestUpdate(value);
+                value.forceUpdate(context);
             } else {
-                value.clean(part, context);
+                context.enqueuePassiveEffect(new Dispose(value))
                 needsMount = true;
             }
         } else {
@@ -1034,22 +1026,21 @@ class BlockDirective extends Directive {
             const newBlock = new Block(
                 this._type,
                 this._props,
-                context.currentBlock
+                context.currentRenderable
             );
-
-            hasChanged = part.setValue(newBlock, context);
-
+            part.setValue(newBlock);
             context.requestUpdate(newBlock);
         }
 
-        return hasChanged;
+        return needsMount;
     }
 }
 
 class ListDirective extends Directive {
-    constructor(values, keySelector) {
+    constructor(items, valueSelector, keySelector) {
         super();
-        this._values = values;
+        this._items = items;
+        this._valueSelector = valueSelector;
         this._keySelector = keySelector;
     }
 
@@ -1057,17 +1048,24 @@ class ListDirective extends Directive {
         const value = part.value;
 
         if (value instanceof List) {
-            value.setValues(this._values, this._keySelector, context);
-            return true;
+            value.setItems(
+                this._items,
+                this._valueSelector,
+                this._keySelector,
+                context
+            );
         } else {
             const list = new List(
-                this._values,
+                this._items,
+                this._valueSelector,
                 this._keySelector,
                 part,
                 context
             );
-            return part.setValue(list, context);
+            part.setValue(list, context);
         }
+
+        return true;
     }
 }
 
@@ -1090,29 +1088,26 @@ class TemplateResult extends Directive {
         const value = part.value;
 
         let needsMount = false;
-        let hasChanged = false;
 
         if (value instanceof Fragment) {
             if (value.type === this._type) {
                 value.setValues(this._values);
+                context.requestUpdate(value);
             } else {
+                context.enqueuePassiveEffect(new Dispose(value))
                 needsMount = true;
             }
-
-            context.requestUpdate(value);
         } else {
             needsMount = true;
         }
 
         if (needsMount) {
             const newFragment = new Fragment(this._template, this._values);
-
-            hasChanged = part.setValue(newFragment, context);
-
+            part.setValue(newFragment, context);
             context.requestUpdate(newFragment);
         }
 
-        return hasChanged;
+        return needsMount;
     }
 }
 
@@ -1120,43 +1115,44 @@ function block(type, props = {}) {
     return new BlockDirective(type, props);
 }
 
-function list(values, keySelector = (_value, index) => index) {
-    return new ListDirective(values, keySelector);
-}
-
-class Ref extends Directive {
-    constructor(initialValue) {
-        super();
-        this.current = initialValue;
-    }
-
-    handle(part) {
-        this.current = part.value;
-    }
+function list(items, valueSelector = defaultValueSelector, keySelector = defaultKeySelector) {
+    return new ListDirective(items, valueSelector, keySelector);
 }
 
 class HookEffect {
     constructor(setup, dependencies) {
         this.setup = setup;
         this.dependencies = dependencies;
-        this.clean = null;
+        this._clean = null;
+    }
+
+    shouldCommit(dependencies) {
+        return dependencies === undefined ||
+            !shallowEqual(this.dependencies, dependencies);
     }
 
     commit(context) {
-        if (this.clean) {
-            this.clean(context);
+        if (this._clean) {
+            this._clean(context);
         }
-        this.clean = this.setup(context);
+        this._clean = this.setup(context);
+    }
+
+    dispose(context) {
+        if (this._clean) {
+            this._clean(context);
+            this._clean = null;
+        }
     }
 }
 
-class RemoveItemPart {
-    constructor(part) {
-        this._part = part;
+class Dispose {
+    constructor(disposable) {
+        this._disposable = disposable;
     }
 
     commit(context) {
-        this._part.remove(context);
+        this._disposable.dispose(context);
     }
 }
 
@@ -1295,16 +1291,48 @@ function yieldToMain() {
     });
 }
 
-function updatePart(part, newValue, context) {
-    if (part.setValue(newValue, context)) {
+function mountPart(part, value, context) {
+    if (value instanceof Directive) {
+        if (value.handle(part, context)) {
+            context.enqueueMutationEffect(part);
+        }
+    } else {
+        part.setValue(value);
         context.enqueueMutationEffect(part);
     }
 }
 
-function cleanPart(part, context) {
-    if (part.value) {
-        part.value.clean(part, context);
+function updatePart(part, oldValue, newValue, context) {
+    if (!Object.is(oldValue, newValue)) {
+        if (newValue instanceof Directive) {
+            if (newValue.handle(part, context)) {
+                context.enqueueMutationEffect(part);
+            }
+        } else {
+            part.setValue(newValue);
+            context.enqueueMutationEffect(part);
+        }
     }
+}
+
+function updateAndReorderPart(part, referencePart, oldValue, newValue, context) {
+    if (!Object.is(oldValue, newValue)) {
+        if (newValue instanceof Directive) {
+            newValue.handle(part, context);
+        } else {
+            part.setValue(newValue);
+        }
+    }
+    part.setReferencePart(referencePart);
+    context.enqueueMutationEffect(part);
+}
+
+function defaultValueSelector(value, _index) {
+    return value;
+}
+
+function defaultKeySelector(_value, index) {
+    return index;
 }
 
 function boot(container, block, context = new Context()) {
@@ -1325,32 +1353,36 @@ function App(_props, context) {
 
     context.setEnv({ 'state': 'My Env' });
 
-    const itemsList = list(items.map((title, index, items) => block(Item, {
-        title,
-        onUp: context.useEvent(() => {
-            if (index > 0) {
+    const itemsList = list(
+        items,
+        (item, index) => block(Item, {
+            title: item,
+            onUp: () => {
+                if (index > 0) {
+                    const newItems = items.slice();
+                    const tmp = newItems[index];
+                    newItems[index] = newItems[index - 1];
+                    newItems[index - 1] = tmp;
+                    setItems(newItems);
+                }
+            },
+            onDown: () => {
+                if (index + 1 < items.length) {
+                    const newItems = items.slice();
+                    const tmp = newItems[index];
+                    newItems[index] = newItems[index + 1];
+                    newItems[index + 1] = tmp;
+                    setItems(newItems);
+                }
+            },
+            onDelete: () => {
                 const newItems = items.slice();
-                const tmp = newItems[index];
-                newItems[index] = newItems[index - 1];
-                newItems[index - 1] = tmp;
+                newItems.splice(index, 1);
                 setItems(newItems);
-            }
+            },
         }),
-        onDown: context.useEvent(() => {
-            if (index + 1 < items.length) {
-                const newItems = items.slice();
-                const tmp = newItems[index];
-                newItems[index] = newItems[index + 1];
-                newItems[index + 1] = tmp;
-                setItems(newItems);
-            }
-        }),
-        onDelete: context.useEvent(() => {
-            const newItems = items.slice();
-            newItems.splice(index, 1);
-            setItems(newItems);
-        }),
-    })), (item) => item.props.title);
+        (item) => item,
+    );
 
     const onIncrement = context.useEvent((_e) => { setCount(count + 1); });
 
@@ -1377,9 +1409,9 @@ function Item(props, context) {
     return context.html`
         <div>
             <span>${props.title} (${state})</span>
-            <button type="button" onclick=${props.onUp}>Up</button>
-            <button type="button" onclick=${props.onDown}>Down</button>
-            <button type="button" onclick=${props.onDelete}>Delete</button>
+            <button type="button" onclick=${context.useEvent(props.onUp)}>Up</button>
+            <button type="button" onclick=${context.useEvent(props.onDown)}>Down</button>
+            <button type="button" onclick=${context.useEvent(props.onDelete)}>Delete</button>
         </div>
     `;
 }
