@@ -564,7 +564,7 @@ class Child {
             return value;
         }
         if (value == null) {
-            return None.instance;
+            return Nothing.instance;
         }
         return new Text(value);
     }
@@ -627,8 +627,8 @@ class Text extends Child {
     }
 }
 
-class None extends Child {
-    static instance = new None();
+class Nothing extends Child {
+    static instance = new Nothing();
 }
 
 class Fragment extends Child {
