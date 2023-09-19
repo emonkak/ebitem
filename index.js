@@ -45,17 +45,19 @@ class Context {
 
     useEffect(setup, dependencies) {
         const { hooks } = this._currentRenderable;
-        let hook = hooks[this._hookIndex];
+        const oldHook = hooks[this._hookIndex];
+        const newHook = hooks[this._hookIndex] = new HookEffect(
+            setup,
+            dependencies
+        );
 
-        if (hook) {
-            if (hook.shouldCommit(dependencies)) {
-                this.enqueuePassiveEffect(hook);
+        if (oldHook) {
+            if (oldHook.shouldDispose(dependencies)) {
+                this.enqueuePassiveEffect(new Dispose(oldHook));
+                this.enqueuePassiveEffect(newHook);
             }
-            hook.setup = setup;
-            hook.dependencies = dependencies;
         } else {
-            hook = hooks[this._hookIndex] = new HookEffect(setup, dependencies);
-            this.enqueuePassiveEffect(hook);
+            this.enqueuePassiveEffect(newHook);
         }
 
         this._hookIndex++;
@@ -87,17 +89,19 @@ class Context {
 
     useLayoutEffect(setup, dependencies) {
         const { hooks } = this._currentRenderable;
-        let hook = hooks[this._hookIndex];
+        const oldHook = hooks[this._hookIndex];
+        const newHook = hooks[this._hookIndex] = new HookEffect(
+            setup,
+            dependencies
+        );
 
-        if (hook) {
-            if (hook.shouldCommit(dependencies)) {
-                this.enqueueLayoutEffect(hook);
+        if (oldHook) {
+            if (oldHook.shouldDispose(dependencies)) {
+                this.enqueuePassiveEffect(new Dispose(oldHook));
+                this.enqueueLayoutEffect(newHook);
             }
-            hook.setup = setup;
-            hook.dependencies = dependencies;
         } else {
-            hook = hooks[this._hookIndex] = new HookEffect(setup, dependencies);
-            this.enqueueLayoutEffect(hook);
+            this.enqueueLayoutEffect(newHook);
         }
 
         this._hookIndex++;
@@ -109,7 +113,7 @@ class Context {
 
         if (hook) {
             if (dependencies === undefined ||
-                !shallowEqual(hook.dependencies, dependencies)) {
+                !shallowEqual(dependencies, hook.dependencies)) {
                 hook.value = create();
             }
             hook.dependencies = dependencies;
@@ -1121,21 +1125,18 @@ function list(items, valueSelector = defaultValueSelector, keySelector = default
 
 class HookEffect {
     constructor(setup, dependencies) {
-        this.setup = setup;
-        this.dependencies = dependencies;
+        this._setup = setup;
+        this._dependencies = dependencies;
         this._clean = null;
     }
 
-    shouldCommit(dependencies) {
+    shouldDispose(dependencies) {
         return dependencies === undefined ||
-            !shallowEqual(this.dependencies, dependencies);
+            !shallowEqual(dependencies, this._dependencies);
     }
 
     commit(context) {
-        if (this._clean) {
-            this._clean(context);
-        }
-        this._clean = this.setup(context);
+        this._clean = this._setup(context);
     }
 
     dispose(context) {
@@ -1396,8 +1397,8 @@ function App(_props, context) {
             ${block(Counter, { count })}
             ${itemsList}
             <div>
-                <button type="button" onclick="${onIncrement}">+1</button>
-                <button type="button" onclick="${onShuffle}">Shuffle</button>
+                <button type="button" onclick=${onIncrement}>+1</button>
+                <button type="button" onclick=${onShuffle}>Shuffle</button>
             </div>
         </div>
     `;
