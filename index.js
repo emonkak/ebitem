@@ -543,10 +543,10 @@ class Child {
         return null;
     }
 
-    mount(_containerPart, _context) {
+    mount(_part, _context) {
     }
 
-    unmount(_containerPart, _context) {
+    unmount(_part, _context) {
     }
 
     commit(_context) {
@@ -576,12 +576,12 @@ class Text extends Child {
         this._value = newValue;
     }
 
-    mount(containerPart, _context) {
-        const container = containerPart.endNode;
+    mount(part, _context) {
+        const container = part.endNode;
         container.parentNode.insertBefore(this._node, container);
     }
 
-    unmount(_containerPart, _context) {
+    unmount(_part, _context) {
         if (this._node.isConnected) {
             this._node.remove();
         }
@@ -780,10 +780,10 @@ class List extends Child {
         this._pendingKeys = newKeys;
     }
 
-    mount(_containerPart, _context) {
+    mount(_part, _context) {
     }
 
-    unmount(_containerPart, context) {
+    unmount(_part, context) {
         for (const part of this._commitedParts) {
             part.dispose(context);
         }
@@ -827,15 +827,15 @@ class Fragment extends Child {
         this._pendingValues = values;
     }
 
-    mount(containerPart, _context) {
-        const container = containerPart.endNode;
-        const parent = container.parentNode;
+    mount(part, _context) {
+        const reference = part.endNode;
+        const parent = reference.parentNode;
         for (const node of this._nodes) {
-            parent.insertBefore(node, container);
+            parent.insertBefore(node, reference);
         }
     }
 
-    unmount(_containerPart, context) {
+    unmount(_part, context) {
         for (const node of this._nodes) {
             if (node.isConnected) {
                 node.remove();
@@ -941,16 +941,16 @@ class Block extends Child {
         }
     }
 
-    mount(containerPart, _context) {
-        const container = containerPart.endNode;
-        const parent = container.parentNode;
+    mount(part, _context) {
+        const reference = part.endNode;
+        const parent = reference.parentNode;
 
         for (const node of this._nodes) {
-            parent.insertBefore(node, container);
+            parent.insertBefore(node, reference);
         }
     }
 
-    unmount(_containerPart, context) {
+    unmount(_part, context) {
         for (const node of this._nodes) {
             if (node.isConnected) {
                 node.remove();
@@ -1119,7 +1119,7 @@ function block(type, props = {}) {
     return new BlockDirective(type, props);
 }
 
-function list(items, valueSelector = defaultValueSelector, keySelector = defaultKeySelector) {
+function list(items, valueSelector = defaultItemValueSelector, keySelector = defaultItemKeySelector) {
     return new ListDirective(items, valueSelector, keySelector);
 }
 
@@ -1328,11 +1328,11 @@ function updateAndReorderPart(part, referencePart, oldValue, newValue, context) 
     context.enqueueMutationEffect(part);
 }
 
-function defaultValueSelector(value, _index) {
+function defaultItemValueSelector(value, _index) {
     return value;
 }
 
-function defaultKeySelector(_value, index) {
+function defaultItemKeySelector(_value, index) {
     return index;
 }
 
