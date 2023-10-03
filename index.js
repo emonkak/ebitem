@@ -1,27 +1,30 @@
-const HOLE_UUID = getUUID();
-const HOLE_MAKER = '{{' + HOLE_UUID + '}}';
-
-const ITEM_PART_FLAG_DIRTY = 0b01;
-const ITEM_PART_FLAG_REORDERED = 0b10;
-
-const BlockStatus = {
-    INITIALIZED: 1,
-    UPDATED: 2,
-    DIRTY: 3,
-    UNMOUNTED: 4,
+const HoleType = {
+    ATTRIBUTE: 1,
+    EVENT: 2,
+    CHILD: 3,
 };
 
+const BlockFlag = {
+    MOUNTED: 0b001,
+    UNMOUNTED: 0b010,
+    DIRTY: 0b100,
+};
+
+const directiveSymbol = Symbol();
+
 class Context {
-    constructor() {
+    constructor(globalEnv = {}) {
+        this._globalEnv = globalEnv;
         this._currentRenderable = null;
         this._pendingMutationEffects = [];
         this._pendingLayoutEffects = [];
         this._pendingPassiveEffects = [];
         this._pendingRenderables = [];
+        this._isUpdating = false;
         this._hookIndex = 0;
         this._envStack = new WeakMap();
         this._templateCaches = new WeakMap();
-        this._isUpdating = false;
+        this._marker = '{{' + getUUID() + '}}';
     }
 
     get currentRenderable() {
@@ -32,7 +35,7 @@ class Context {
         let template = this._templateCaches.get(strings);
 
         if (!template) {
-            template = Template.parse(strings);
+            template = Template.parse(strings, this._marker);
             this._templateCaches.set(strings, template);
         }
 
@@ -46,32 +49,32 @@ class Context {
     useEffect(setup, dependencies) {
         const { hooks } = this._currentRenderable;
         const oldHook = hooks[this._hookIndex];
-        const newHook = hooks[this._hookIndex] = new HookEffect(
+        const newHook = hooks[this._hookIndex] = new EffectHook(
             setup,
             dependencies
         );
 
         if (oldHook) {
-            if (oldHook.shouldDispose(dependencies)) {
-                this.enqueuePassiveEffect(new Dispose(oldHook));
-                this.enqueuePassiveEffect(newHook);
+            if (dependenciesAreChanged(oldHook.dependencies, dependencies)) {
+                this.pushPassiveEffect(new Dispose(oldHook));
+                this.pushPassiveEffect(newHook);
             }
         } else {
-            this.enqueuePassiveEffect(newHook);
+            this.pushPassiveEffect(newHook);
         }
 
         this._hookIndex++;
     }
 
-    useEnv(name, defaultValue = null) {
-        let block = this._currentRenderable;
-        while (block = block.parent) {
-            const env = this._envStack.get(block);
-            if (env && Object.hasOwnProperty.call(env, name)) {
+    useEnv(name, defaultValue) {
+        let renderable = this._currentRenderable;
+        do {
+            const env = this._envStack.get(renderable);
+            if (env && Object.prototype.hasOwnProperty.call(env, name)) {
                 return env[name];
             }
-        }
-        return defaultValue;
+        } while (renderable = renderable.parent);
+        return this._globalEnv[name] ?? defaultValue;
     }
 
     useEvent(handler) {
@@ -90,36 +93,41 @@ class Context {
     useLayoutEffect(setup, dependencies) {
         const { hooks } = this._currentRenderable;
         const oldHook = hooks[this._hookIndex];
-        const newHook = hooks[this._hookIndex] = new HookEffect(
+        const newHook = hooks[this._hookIndex] = new EffectHook(
             setup,
             dependencies
         );
 
         if (oldHook) {
-            if (oldHook.shouldDispose(dependencies)) {
-                this.enqueuePassiveEffect(new Dispose(oldHook));
-                this.enqueueLayoutEffect(newHook);
+            if (dependenciesAreChanged(oldHook.dependencies, dependencies)) {
+                this.pushPassiveEffect(new Dispose(oldHook));
+                this.pushLayoutEffect(newHook);
             }
         } else {
-            this.enqueueLayoutEffect(newHook);
+            this.pushLayoutEffect(newHook);
         }
 
         this._hookIndex++;
     }
 
     useMemo(create, dependencies) {
-        const { hooks } = this._currentRenderable;
+        const block = this._currentRenderable;
+        const { hooks } = block;
         let hook = hooks[this._hookIndex];
 
         if (hook) {
-            if (dependencies === undefined ||
-                !shallowEqual(dependencies, hook.dependencies)) {
-                hook.value = create();
+            if (dependenciesAreChanged(hook.dependencies, dependencies)) {
+                hook.value = Array.isArray(dependencies) ?
+                    create(...dependencies) :
+                    create();
             }
             hook.dependencies = dependencies;
         } else {
+            const value = Array.isArray(dependencies) ?
+                create(...dependencies) :
+                create();
             hook = hooks[this._hookIndex] = {
-                value: create(),
+                value,
                 dependencies,
             };
         }
@@ -150,7 +158,7 @@ class Context {
     }
 
     useRef(initialValue) {
-        const hooks = this._currentRenderable.hooks;
+        const { hooks } = this._currentRenderable;
         let hook = hooks[this._hookIndex];
 
         if (!hook) {
@@ -162,12 +170,32 @@ class Context {
         return hook;
     }
 
+    useSignal(signal) {
+        const block = this._currentRenderable;
+        this.useEffect(() => {
+            return signal.subscribe(() => {
+                block.forceUpdate(this);
+            });
+        }, [signal]);
+        return signal;
+    }
+
     useState(initialState) {
         return this.useReducer(
             (state, action) =>
                 typeof action === 'function' ? action(state) : action,
             initialState
         );
+    }
+
+    useSyncEnternalStore(subscribe, getSnapshot) {
+        const block = this._currentRenderable;
+        this.useEffect(() => {
+            return subscribe(() => {
+                block.forceUpdate(this);
+            });
+        }, [subscribe]);
+        return getSnapshot();
     }
 
     setEnv(env) {
@@ -183,23 +211,46 @@ class Context {
             this._pendingRenderables.push(renderable);
             if (!this._isUpdating) {
                 this._isUpdating = true;
-                scheduler.postTask(this._renderingPhase, {
-                    'priority': 'background',
-                });
+                this._startRenderingPhase();
             }
         }
     }
 
-    enqueueMutationEffect(effect) {
+    requestMutations() {
+        if (!this._isUpdating && this._pendingMutationEffects.length > 0) {
+            this._isUpdating = true;
+            this._startBlockingPhase();
+        }
+    }
+
+    pushMutationEffect(effect) {
         this._pendingMutationEffects.push(effect);
     }
 
-    enqueueLayoutEffect(effect) {
+    pushLayoutEffect(effect) {
         this._pendingLayoutEffects.push(effect);
     }
 
-    enqueuePassiveEffect(effect) {
+    pushPassiveEffect(effect) {
         this._pendingPassiveEffects.push(effect);
+    }
+
+    _startRenderingPhase() {
+        scheduler.postTask(this._renderingPhase, {
+            'priority': 'background',
+        });
+    }
+
+    _startBlockingPhase() {
+        scheduler.postTask(this._blockingPhase, {
+            'priority': 'user-blocking',
+        });
+    }
+
+    _startPassiveEffectPhase() {
+        scheduler.postTask(this._passiveEffectPhase, {
+            'priority': 'background',
+        });
     }
 
     _renderingPhase = async () => {
@@ -217,9 +268,14 @@ class Context {
 
         this._pendingRenderables.length = 0;
 
-        scheduler.postTask(this._blockingPhase, {
-            'priority': 'user-blocking',
-        });
+        if (this._pendingMutationEffects.length > 0 ||
+            this._pendingLayoutEffects.length > 0) {
+            this._startBlockingPhase();
+        } else if (this._pendingPassiveEffects.length > 0) {
+            this._startPassiveEffectPhase();
+        } else {
+            this._isUpdating = false;
+        }
 
         console.timeEnd('Rendering phase');
     };
@@ -231,8 +287,7 @@ class Context {
             if (navigator.scheduling.isInputPending()) {
                 await yieldToMain();
             }
-            const effect = this._pendingMutationEffects[i];
-            effect.commit(this);
+            this._pendingMutationEffects[i].commit(this);
         }
 
         this._pendingMutationEffects.length = 0;
@@ -241,15 +296,18 @@ class Context {
             if (navigator.scheduling.isInputPending()) {
                 await yieldToMain();
             }
-            const effect = this._pendingLayoutEffects[i];
-            effect.commit(this);
+            this._pendingLayoutEffects[i].commit(this);
         }
 
         this._pendingLayoutEffects.length = 0;
 
-        scheduler.postTask(this._passiveEffectPhase, {
-            'priority': 'background',
-        });
+        if (this._pendingPassiveEffects.length > 0) {
+            this._startPassiveEffectPhase();
+        } else if (this._pendingRenderables.length > 0) {
+            this._startRenderingPhase();
+        } else {
+            this._isUpdating = false;
+        }
 
         console.timeEnd('Blocking phase');
     };
@@ -261,16 +319,16 @@ class Context {
             if (navigator.scheduling.isInputPending()) {
                 await yieldToMain();
             }
-            const effect = this._pendingPassiveEffects[i];
-            effect.commit(this);
+            this._pendingPassiveEffects[i].commit(this);
         }
 
         this._pendingPassiveEffects.length = 0;
 
         if (this._pendingRenderables.length > 0) {
-            scheduler.postTask(this._renderingPhase, {
-                'priority': 'background',
-            });
+            this._startRenderingPhase();
+        } else if (this._pendingMutationEffects.length > 0 ||
+            this._pendingLayoutEffects.length > 0) {
+            this._startBlockingPhase();
         } else {
             this._isUpdating = false;
         }
@@ -280,12 +338,12 @@ class Context {
 }
 
 class Template {
-    static parse(strings) {
-        const html = strings.join(HOLE_MAKER).trim();
+    static parse(strings, marker) {
+        const html = strings.join(marker).trim();
         const template = document.createElement('template');
         template.innerHTML = html;
         const holes = [];
-        parseChildren(template.content, holes, []);
+        parseChildren(template.content, marker, holes, []);
         return new Template(template, holes);
     }
 
@@ -297,6 +355,7 @@ class Template {
     mount(values, context) {
         const node = this._template.content.cloneNode(true);
         const parts = new Array(this._holes.length);
+        const cleanups = new Array(this._holes.length);
 
         for (let i = 0, l = this._holes.length; i < l; i++) {
             const hole = this._holes[i];
@@ -311,36 +370,38 @@ class Template {
 
             let part;
 
-            if (hole.type === 'attribute') {
-                if (hole.attribute.startsWith('on')) {
-                    const event = hole.attribute.slice(2);
-                    part = new EventPart(child, event);
-                } else {
-                    part = new AttributePart(child, hole.attribute);
-                }
-            } else {  //  hole.type === 'child'
+            if (hole.type === HoleType.ATTRIBUTE) {
+                part = new AttributePart(child, hole.name);
+            } else if (hole.type === HoleType.EVENT) {
+                part = new EventPart(child, hole.name);
+            } else {  //  hole.type === HoleType.CHILD
                 part = new ChildPart(child);
             }
 
-            mountPart(part, values[i], context);
-
+            cleanups[i] = mountPart(part, values[i], context);
             parts[i] = part;
         }
 
-        return { node, parts };
+        return { node, parts, cleanups };
     }
 
-    patch(parts, oldValues, newValues, context) {
+    patch(parts, oldValues, newValues, cleanups, context) {
         for (let i = 0, l = this._holes.length; i < l; i++) {
-            updatePart(parts[i], oldValues[i], newValues[i], context);
+            cleanups[i] = updatePart(
+                parts[i],
+                oldValues[i],
+                newValues[i],
+                cleanups[i],
+                context
+            );
         }
     }
 }
 
 class AttributePart {
-    constructor(element, attribute) {
+    constructor(element, name) {
         this._element = element;
-        this._attribute = attribute;
+        this._name = name;
         this._committedValue = null;
         this._pendingValue = null;
     }
@@ -360,16 +421,16 @@ class AttributePart {
     commit(_context) {
         const {
             _element: element,
-            _attribute: attribute,
+            _name: name,
             _pendingValue: newValue,
         } = this;
 
         if (newValue === true) {
-            element.setAttribute(attribute, '');
+            element.setAttribute(name, '');
         } else if (newValue === false || newValue == null) {
-            element.removeAttribute(attribute);
+            element.removeAttribute(name);
         } else {
-            element.setAttribute(attribute, newValue.toString());
+            element.setAttribute(name, newValue.toString());
         }
 
         this._committedValue = newValue;
@@ -377,9 +438,9 @@ class AttributePart {
 }
 
 class EventPart {
-    constructor(element, event) {
+    constructor(element, eventName) {
         this._element = element;
-        this._event = event;
+        this._eventName = eventName;
         this._committedValue = null;
         this._pendingValue = null;
     }
@@ -399,17 +460,17 @@ class EventPart {
     commit(_context) {
         const {
             _element: element,
-            _event: event,
+            _eventName: eventName,
             _committedValue: oldValue,
             _pendingValue: newValue
         } = this;
 
         if (oldValue != null) {
-            element.removeEventListener(event, oldValue);
+            element.removeEventListener(eventName, oldValue);
         }
 
         if (newValue != null) {
-            element.addEventListener(event, newValue);
+            element.addEventListener(eventName, newValue);
         }
 
         this._committedValue = newValue;
@@ -438,15 +499,7 @@ class ChildPart {
     }
 
     setValue(newValue) {
-        if (newValue instanceof Child) {
-            this._pendingValue = newValue;
-        } else if (newValue === null) {
-            this._pendingValue = Nothing.instance;
-        } else if (this._committedValue instanceof Text) {
-            this._committedValue.setValue(newValue);
-        } else {
-            this._pendingValue = new Text(newValue);
-        }
+        this._pendingValue = Child.fromValue(newValue, this._committedValue);
     }
 
     commit(context) {
@@ -469,7 +522,6 @@ class ChildPart {
         if (this._node.isConnected) {
             this._node.remove();
         }
-
         if (this._committedValue) {
             this._committedValue.unmount(this, context);
         }
@@ -480,61 +532,42 @@ class ItemPart extends ChildPart {
     constructor(node, containerPart) {
         super(node);
         this._containerPart = containerPart;
-        this._referencePart = null;
-        this._flags = ITEM_PART_FLAG_REORDERED;
-    }
-
-    setValue(value) {
-        super.setValue(value);
-        this._flags |= ITEM_PART_FLAG_DIRTY;
-    }
-
-    setReferencePart(referencePart) {
-        this._referencePart = referencePart;
-        this._flags |= ITEM_PART_FLAG_REORDERED;
     }
 
     commit(context) {
-        const isReordered = (this._flags & ITEM_PART_FLAG_REORDERED) !== 0;
-        const isDirty = (this._flags & ITEM_PART_FLAG_DIRTY) !== 0;
-
-        if (isReordered) {
-            const reference = this._referencePart ?
-                this._referencePart.startNode :
-                this._containerPart.endNode;
+        if (!this._node.isConnected) {
+            const reference = this._containerPart.endNode;
             reference.parentNode.insertBefore(this._node, reference);
         }
 
-        if (isDirty) {
-            const oldValue = this._committedValue;
-            const newValue = this._pendingValue;
+        super.commit(context);
+    }
 
-            if (oldValue !== newValue) {
-                if (oldValue) {
-                    oldValue.unmount(this, context);
-                }
-                newValue.mount(this, context);
-            } else {
-                if (isReordered) {
-                    newValue.mount(this, context);
-                }
-            }
+    reorder(referencePart, context) {
+        const reference = referencePart ?
+            referencePart.startNode :
+            this._containerPart.endNode;
 
-            newValue.commit(context);
+        reference.parentNode.insertBefore(this._node, reference);
 
-            this._committedValue = newValue;
-        } else {
-            if (isReordered) {
-                const value = this._committedValue;
-                value.mount(this, context);
-            }
-        }
-
-        this._flags = 0;
+        this._committedValue.mount(this, context);
     }
 }
 
 class Child {
+    static fromValue(value, oldChild) {
+        if (value instanceof Child) {
+            return value;
+        } else if (value === null) {
+            return Empty.instance;
+        } else if (oldChild instanceof Text) {
+            oldChild.setValue(value);
+            return oldChild;
+        } else {
+            return new Text(value);
+        }
+    }
+
     get startNode() {
         return null;
     }
@@ -577,8 +610,8 @@ class Text extends Child {
     }
 
     mount(part, _context) {
-        const container = part.endNode;
-        container.parentNode.insertBefore(this._node, container);
+        const reference = part.endNode;
+        reference.parentNode.insertBefore(this._node, reference);
     }
 
     unmount(_part, _context) {
@@ -598,12 +631,13 @@ class List extends Child {
         const parts = new Array(items.length);
         const values = new Array(items.length);
         const keys = new Array(items.length);
+        const cleanups = new Array(items.length);
         for (let i = 0, l = items.length; i < l; i++) {
             const item = items[i];
-            const part = new ItemPart(createMaker(), containerPart);
+            const part = new ItemPart(createMarkerNode(), containerPart);
             const value = valueSelector(item, i);
             const key = keySelector(item, i);
-            mountPart(part, value, context);
+            cleanups[i] = mountPart(part, value, context);
             parts[i] = part;
             values[i] = value;
             keys[i] = key;
@@ -615,6 +649,7 @@ class List extends Child {
         this._pendingParts = parts;
         this._pendingValues = values;
         this._pendingKeys = keys;
+        this._cleanups = cleanups;
     }
 
     get startNode() {
@@ -627,13 +662,15 @@ class List extends Child {
         return parts.length > 0 ? parts[parts.length - 1].endNode : null;
     }
 
-    setItems(newItems, valueSelector, keySelector, context) {
+    updateItems(newItems, valueSelector, keySelector, context) {
         const oldParts = this._commitedParts;
         const oldValues = this._commitedValues;
         const oldKeys = this._commitedKeys;
+        const oldCleanups = this._cleanups;
         const newParts = new Array(newItems.length);
         const newValues = newItems.map(valueSelector);
         const newKeys = newItems.map(keySelector);
+        const newCleanups = new Array(newItems.length);
 
         // Head and tail pointers to old parts and new values
         let oldHead = 0;
@@ -656,10 +693,11 @@ class List extends Child {
             } else if (oldKeys[oldHead] === newKeys[newHead]) {
                 // Old head matches new head; update in place
                 const part = oldParts[oldHead];
-                updatePart(
+                newCleanups[newHead] = updatePart(
                     part,
                     oldValues[oldHead],
                     newValues[newHead],
+                    oldCleanups[oldHead],
                     context
                 );
                 newParts[newHead] = part;
@@ -668,10 +706,11 @@ class List extends Child {
             } else if (oldKeys[oldTail] === newKeys[newTail]) {
                 // Old tail matches new tail; update in place
                 const part = oldParts[oldTail];
-                updatePart(
+                newCleanups[newTail] = updatePart(
                     part,
                     oldValues[oldTail],
                     newValues[newTail],
+                    oldCleanups[oldTail],
                     context
                 );
                 newParts[newTail] = part;
@@ -680,11 +719,15 @@ class List extends Child {
             } else if (oldKeys[oldHead] === newKeys[newTail]) {
                 // Old tail matches new head; update and move to new head
                 const part = oldParts[oldHead];
-                updateAndReorderPart(
+                context.pushMutationEffect(new ReorderItemPart(
                     part,
-                    newParts[newTail + 1] ?? null,
+                    newParts[newTail + 1] ?? null)
+                );
+                newCleanups[newTail] = updatePart(
+                    part,
                     oldValues[oldHead],
                     newValues[newTail],
+                    oldCleanups[oldHead],
                     context
                 );
                 newParts[newTail] = part;
@@ -693,11 +736,15 @@ class List extends Child {
             } else if (oldKeys[oldTail] === newKeys[newHead]) {
                 // Old tail matches new head; update and move to new head
                 const part = oldParts[oldTail];
-                updateAndReorderPart(
+                context.pushMutationEffect(new ReorderItemPart(
                     part,
-                    oldParts[oldHead],
+                    oldParts[oldHead]
+                ));
+                newCleanups[newHead] = updatePart(
+                    part,
                     oldValues[oldTail],
                     newValues[newHead],
+                    oldCleanups[oldTail],
                     context
                 );
                 newParts[newHead] = part;
@@ -713,45 +760,51 @@ class List extends Child {
                 if (!newKeyToIndexMap.has(oldKeys[oldHead])) {
                     // Old head is no longer in new list; remove
                     const part = oldParts[oldHead];
-                    context.enqueueMutationEffect(new Dispose(part));
+                    context.pushMutationEffect(new Dispose(part));
+                    oldCleanups[oldHead]?.call();
                     oldHead++;
                 } else if (!newKeyToIndexMap.has(oldKeys[oldTail])) {
                     // Old tail is no longer in new list; remove
                     const part = oldParts[oldTail];
-                    context.enqueueMutationEffect(new Dispose(part));
+                    context.pushMutationEffect(new Dispose(part));
+                    oldCleanups[oldTail]?.call();
                     oldTail--;
                 } else {
                     // Any mismatches at this point are due to additions or
                     // moves; see if we have an old part we can reuse and move
                     // into place
                     const oldIndex = oldKeyToIndexMap.get(newKeys[newHead]);
-                    const oldPart = oldIndex !== undefined ? oldParts[oldIndex] : null;
-                    if (oldPart === null) {
+                    if (oldIndex !== undefined) {
+                        // Reuse old part
+                        const oldPart = oldParts[oldIndex];
+                        context.pushMutationEffect(new ReorderItemPart(
+                            oldPart,
+                            oldParts[oldHead]
+                        ));
+                        newCleanups[newHead] = updatePart(
+                            oldPart,
+                            oldValues[oldHead],
+                            newValues[newHead],
+                            oldCleanups[oldHead],
+                            context
+                        );
+                        newParts[newHead] = oldPart;
+                        // This marks the old part as having been used, so that
+                        // it will be skipped in the first two checks above
+                        oldParts[oldIndex] = null;
+                    } else {
                         // No old part for this value; create a new one and
                         // insert it
                         const part = new ItemPart(
-                            createMaker(),
+                            createMarkerNode(),
                             this._containerPart
                         );
-                        mountPart(
+                        newCleanups[newHead] = mountPart(
                             part,
                             newValues[newHead],
                             context
                         );
                         newParts[newHead] = part;
-                    } else {
-                        // Reuse old part
-                        newParts[newHead] = oldPart;
-                        updateAndReorderPart(
-                            oldPart,
-                            oldParts[oldHead],
-                            oldValues[oldHead],
-                            newValues[newHead],
-                            context
-                        );
-                        // This marks the old part as having been used, so that
-                        // it will be skipped in the first two checks above
-                        oldParts[oldIndex] = null;
                     }
                     newHead++;
                 }
@@ -762,30 +815,37 @@ class List extends Child {
         while (newHead <= newTail) {
             // For all remaining additions, we insert before last new
             // tail, since old pointers are no longer valid
-            const newPart = new ItemPart(createMaker(), this._containerPart);
-            mountPart(newPart, newValues[newHead], context);
-            newParts[newHead++] = newPart;
+            const newPart = new ItemPart(createMarkerNode(), this._containerPart);
+            newCleanups[newHead] = mountPart(newPart, newValues[newHead], context);
+            newParts[newHead] = newPart;
+            newHead++;
         }
 
         // Remove any remaining unused old parts
         while (oldHead <= oldTail) {
-            const oldPart = oldParts[oldHead++];
+            const oldPart = oldParts[oldHead];
             if (oldPart !== null) {
-                context.enqueueMutationEffect(new Dispose(oldPart));
+                context.pushMutationEffect(new Dispose(oldPart));
             }
+            oldCleanups[oldHead]?.call();
+            oldHead++;
         }
 
         this._pendingParts = newParts;
         this._pendingValues = newValues;
         this._pendingKeys = newKeys;
+        this._cleanups = newCleanups;
     }
 
     mount(_part, _context) {
     }
 
     unmount(_part, context) {
-        for (const part of this._commitedParts) {
-            part.dispose(context);
+        for (let i = 0, l = this._commitedParts.length; i < l; i++) {
+            this._commitedParts[i].dispose(context);
+        }
+        for (let i = 0, l = this._cleanups.length; i < l; i++) {
+            this._cleanups[i]?.call();
         }
     }
 
@@ -797,14 +857,23 @@ class List extends Child {
 }
 
 class Fragment extends Child {
-    constructor(template, values) {
+    static fromTemplateResult(templateResult) {
+        return new Fragment(
+            templateResult.template,
+            templateResult.values,
+            null
+        );
+    }
+
+    constructor(template, values, parent) {
         super();
         this._template = template;
         this._pendingValues = values;
         this._memoizedValues = null;
+        this._parent = parent;
         this._nodes = [];
         this._parts = [];
-        this._isMounted = false;
+        this._cleanups = [];
     }
 
     get startNode() {
@@ -815,12 +884,12 @@ class Fragment extends Child {
         return this._nodes[this._nodes.length - 1] ?? null;
     }
 
-    get template() {
-        return this._template;
+    get parent() {
+        return this._parent;
     }
 
-    get values() {
-        return this._memoizedValues;
+    get template() {
+        return this._template;
     }
 
     setValues(values) {
@@ -830,40 +899,51 @@ class Fragment extends Child {
     mount(part, _context) {
         const reference = part.endNode;
         const parent = reference.parentNode;
-        for (const node of this._nodes) {
-            parent.insertBefore(node, reference);
+
+        for (let i = 0, l = this._nodes.length; i < l; i++) {
+            parent.insertBefore(this._nodes[i], reference);
         }
     }
 
     unmount(_part, context) {
-        for (const node of this._nodes) {
+        for (let i = 0, l = this._nodes.length; i < l; i++) {
+            const node = this._nodes[i];
             if (node.isConnected) {
                 node.remove();
             }
         }
-        for (const part of this._parts) {
+
+        for (let i = 0, l = this._parts.length; i < l; i++) {
+            const part = this._parts[i];
             if (part instanceof ChildPart) {
                 part.dispose(context);
             }
         }
+
+        for (let i = 0, l = this._cleanups.length; i < l; i++) {
+            this._cleanups[i]?.call();
+        }
     }
 
     render(context) {
-        if (!this._memoizedValues) {
-            const { node, parts } = this._template.mount(
+        if (this._memoizedValues === null) {
+            const { node, parts, cleanups } = this._template.mount(
                 this._pendingValues,
                 context
             );
-            this._nodes = [...node.childNodes];
+            this._nodes = Array.from(node.childNodes);
             this._parts = parts;
+            this._cleanups = cleanups;
         } else {
             this._template.patch(
                 this._parts,
                 this._memoizedValues,
                 this._pendingValues,
+                this._cleanups,
                 context
             );
         }
+
         this._memoizedValues = this._pendingValues;
     }
 }
@@ -874,12 +954,13 @@ class Block extends Child {
         this._type = type;
         this._pendingProps = props;
         this._memoizedProps = props;
+        this._memoizedValues = null;
         this._parent = parent;
-        this._status = BlockStatus.INITIALIZED;
+        this._flags = BlockFlag.DIRTY;
         this._nodes = [];
         this._parts = [];
-        this._values = [];
         this._hooks = [];
+        this._cleanups = [];
     }
 
     get startNode() {
@@ -902,10 +983,6 @@ class Block extends Child {
         return this._parent;
     }
 
-    get nodes() {
-        return this._nodes;
-    }
-
     get hooks() {
         return this._hooks;
     }
@@ -915,88 +992,101 @@ class Block extends Child {
     }
 
     forceUpdate(context) {
-        if (this._status === BlockStatus.UPDATED) {
-            this._status = BlockStatus.DIRTY;
+        if ((this._flags & BlockFlag.MOUNTED) !== 0 &&
+            (this._flags & BlockFlag.UNMOUNTED) === 0) {
+            this._flags |= BlockFlag.DIRTY;
             context.requestUpdate(this);
         }
     }
 
     render(context) {
-        if (this._status === BlockStatus.INITIALIZED) {
-            const render = this._type;
-            const { template, values } = render(this._pendingProps, context);
-            const { node, parts } = template.mount(values, context);
-            this._memoizedProps = this._pendingProps;
-            this._nodes = [...node.childNodes];
-            this._parts = parts;
-            this._status = BlockStatus.UPDATED;
-            this._values = values;
-        } else if (this._status === BlockStatus.DIRTY) {
-            const render = this._type;
-            const { template, values } = render(this._pendingProps, context);
-            template.patch(this._parts, this._values, values, context)
-            this._memoizedProps = this._pendingProps;
-            this._status = BlockStatus.UPDATED;
-            this._values = values;
+        if ((this._flags & BlockFlag.DIRTY) === 0 ||
+            (this._flags & BlockFlag.UNMOUNTED) !== 0) {
+            return;
         }
+
+        if (this._memoizedValues === null) {
+            const render = this._type;
+            const { template, values } = render(this._pendingProps, context);
+            const { node, parts, cleanups } = template.mount(values, context);
+            this._nodes = Array.from(node.childNodes);
+            this._parts = parts;
+            this._cleanups = cleanups;
+            this._memoizedValues = values;
+        } else {
+            const render = this._type;
+            const { template, values } = render(this._pendingProps, context);
+            template.patch(
+                this._parts,
+                this._memoizedValues,
+                values,
+                this._cleanups,
+                context
+            );
+            this._memoizedValues = values;
+        }
+
+        this._flags ^= BlockFlag.DIRTY;
+        this._memoizedProps = this._pendingProps;
     }
 
     mount(part, _context) {
         const reference = part.endNode;
         const parent = reference.parentNode;
 
-        for (const node of this._nodes) {
-            parent.insertBefore(node, reference);
+        for (let i = 0, l = this._nodes.length; i < l; i++) {
+            parent.insertBefore(this._nodes[i], reference);
         }
+
+        this._flags |= BlockFlag.MOUNTED;
     }
 
     unmount(_part, context) {
-        for (const node of this._nodes) {
+        for (let i = 0, l = this._nodes.length; i < l; i++) {
+            const node = this._nodes[i];
             if (node.isConnected) {
                 node.remove();
             }
         }
+
         for (let i = 0, l = this._hooks.length; i < l; i++) {
             const hook = this._hooks[i];
-            if (hook instanceof HookEffect) {
+            if (hook instanceof EffectHook || hook instanceof SignalHook) {
                 hook.dispose(context);
             }
         }
+
         for (let i = 0, l = this._parts.length; i < l; i++) {
             const part = this._parts[i];
             if (part instanceof ChildPart) {
                 part.dispose(context);
             }
         }
-        this._status = BlockStatus.UNMOUNTED;
+
+        for (let i = 0, l = this._cleanups.length; i < l; i++) {
+            this._cleanups[i]?.call();
+        }
+
+        this._flags |= BlockFlag.UNMOUNTED;
     }
 }
 
-class Nothing extends Child {
-    static instance = new Nothing();
+class Empty extends Child {
+    static instance = new Empty();
 }
 
-class Directive {
-    handle(_part, _context) {
-        return false;
-    }
-}
-
-class Ref extends Directive {
+class Ref {
     constructor(initialValue) {
-        super();
         this.current = initialValue;
     }
 
-    handle(part) {
-        this.current = part.value;
-        return false;
+    [directiveSymbol](part, _context) {
+        this.current = part.node;
     }
 }
 
-class BlockDirective extends Directive {
+class BlockDirective {
     constructor(type, props) {
-        super();
         this._type = type;
         this._props = props;
     }
@@ -1009,7 +1099,7 @@ class BlockDirective extends Directive {
         return this._props;
     }
 
-    handle(part, context) {
+    [directiveSymbol](part, context) {
         const value = part.value;
 
         let needsMount = false;
@@ -1019,7 +1109,7 @@ class BlockDirective extends Directive {
                 value.setProps(this._props);
                 value.forceUpdate(context);
             } else {
-                context.enqueuePassiveEffect(new Dispose(value))
+                context.pushPassiveEffect(new Dispose(value))
                 needsMount = true;
             }
         } else {
@@ -1034,25 +1124,23 @@ class BlockDirective extends Directive {
             );
             part.setValue(newBlock);
             context.requestUpdate(newBlock);
+            context.pushMutationEffect(part);
         }
-
-        return needsMount;
     }
 }
 
-class ListDirective extends Directive {
+class ListDirective {
     constructor(items, valueSelector, keySelector) {
-        super();
         this._items = items;
         this._valueSelector = valueSelector;
         this._keySelector = keySelector;
     }
 
-    handle(part, context) {
+    [directiveSymbol](part, context) {
         const value = part.value;
 
         if (value instanceof List) {
-            value.setItems(
+            value.updateItems(
                 this._items,
                 this._valueSelector,
                 this._keySelector,
@@ -1069,13 +1157,12 @@ class ListDirective extends Directive {
             part.setValue(list, context);
         }
 
-        return true;
+        context.pushMutationEffect(part);
     }
 }
 
-class TemplateResult extends Directive {
+class TemplateResult {
     constructor(template, values) {
-        super();
         this._template = template;
         this._values = values;
     }
@@ -1088,17 +1175,17 @@ class TemplateResult extends Directive {
         return this._values;
     }
 
-    handle(part, context) {
+    [directiveSymbol](part, context) {
         const value = part.value;
 
         let needsMount = false;
 
         if (value instanceof Fragment) {
-            if (value.type === this._type) {
+            if (value.template === this._template) {
                 value.setValues(this._values);
                 context.requestUpdate(value);
             } else {
-                context.enqueuePassiveEffect(new Dispose(value))
+                context.pushPassiveEffect(new Dispose(value))
                 needsMount = true;
             }
         } else {
@@ -1106,43 +1193,185 @@ class TemplateResult extends Directive {
         }
 
         if (needsMount) {
-            const newFragment = new Fragment(this._template, this._values);
+            const newFragment = new Fragment(
+                this._template,
+                this._values,
+                context.currentRenderable
+            );
             part.setValue(newFragment, context);
             context.requestUpdate(newFragment);
+            context.pushMutationEffect(part);
         }
-
-        return needsMount;
     }
 }
 
-function block(type, props = {}) {
-    return new BlockDirective(type, props);
+class Signal {
+    get value() {
+        return null;
+    }
+
+    subscribe(_subscriber) {
+        return () => { };
+    }
+
+    [directiveSymbol](part, context) {
+        const value = this.value;
+
+        let cleanup;
+
+        if (isDirective(value)) {
+            cleanup = value[directiveSymbol](part, context);
+        } else {
+            part.setValue(value);
+            context.pushMutationEffect(part);
+        }
+
+        const subscription = this.subscribe(() => {
+            const value = this.value;
+
+            if (cleanup) {
+                cleanup();
+                cleanup = undefined;
+            }
+
+            if (isDirective(value)) {
+                cleanup = value[directiveSymbol](part, context);
+            } else {
+                part.setValue(value);
+                context.pushMutationEffect(part);
+            }
+
+            context.requestMutations();
+        });
+
+        return () => {
+            cleanup?.call();
+            subscription();
+        };
+    }
+
+    map(selector) {
+        return new ProjectedSignal(this, selector);
+    }
 }
 
-function list(items, valueSelector = defaultItemValueSelector, keySelector = defaultItemKeySelector) {
-    return new ListDirective(items, valueSelector, keySelector);
+class AtomSignal extends Signal {
+    constructor(initialValue) {
+        super();
+        this._value = initialValue;
+        this._subscribers = [];
+    }
+
+    get value() {
+        return this._value;
+    }
+
+    set value(newValue) {
+        this._value = newValue;
+        for (let i = 0, l = this._subscribers.length; i < l; i++) {
+            this._subscribers[i]();
+        }
+    }
+
+    subscribe(subscriber) {
+        this._subscribers.push(subscriber);
+        return () => {
+            const i = this._subscribers.indexOf(subscriber);
+            if (i >= 0) {
+                this._subscribers.splice(i, 1);
+            }
+        };
+    }
 }
 
-class HookEffect {
+class ProjectedSignal extends Signal {
+    constructor(signal, selectorFn) {
+        super();
+        this._signal = signal;
+        this._selectorFn = selectorFn;
+    }
+
+    get value() {
+        const selectorFn = this._selectorFn;
+        return selectorFn(this._signal.value);
+    }
+
+    subscribe(subscriber) {
+        return this._signal.subscribe(subscriber);
+    }
+}
+
+class ComputedSignal extends Signal {
+    constructor(computeFn, signals) {
+        super();
+        this._computeFn = computeFn;
+        this._signals = signals;
+        this._memoizedDependencies = null;
+        this._computedValue = null;
+    }
+
+    get value() {
+        const newDependencies = this._signals.map((signal) => signal.value);
+        if (!shallowEqual(this._memoizedDependencies, newDependencies)) {
+            const computeFn = this._computeFn;
+            this._memoizedDependencies = newDependencies;
+            this._computedValue = computeFn(...newDependencies);
+        }
+        return this._computedValue;
+    }
+
+    subscribe(subscriber) {
+        const subscriptions = this._signals
+            .map((signal) => signal.subscribe(subscriber));
+        return () => {
+            for (let i = 0, l = subscriptions.length; i < l; i++) {
+                subscriptions[i]();
+            }
+        };
+    }
+}
+
+class EffectHook {
     constructor(setup, dependencies) {
         this._setup = setup;
         this._dependencies = dependencies;
-        this._clean = null;
+        this._destroy = null;
     }
 
-    shouldDispose(dependencies) {
-        return dependencies === undefined ||
-            !shallowEqual(dependencies, this._dependencies);
+    get dependencies() {
+        return this._dependencies;
     }
 
-    commit(context) {
-        this._clean = this._setup(context);
+    commit(_context) {
+        const setup = this._setup;
+        const dependencies = this._dependencies;
+        this._destroy = Array.isArray(dependencies) ?
+            setup(...dependencies) :
+            setup();
     }
 
     dispose(context) {
-        if (this._clean) {
-            this._clean(context);
-            this._clean = null;
+        if (this._destroy) {
+            this._destroy(context);
+            this._destroy = null;
+        }
+    }
+}
+
+class SignalHook {
+    constructor(signal, subscription) {
+        this._signal = signal;
+        this._subscription = subscription;
+    }
+
+    get signal() {
+        return this._signal;
+    }
+
+    dispose(_context) {
+        if (this._subscription) {
+            this._subscription();
+            this._subscription = null;
         }
     }
 }
@@ -1157,6 +1386,62 @@ class Dispose {
     }
 }
 
+class ReorderItemPart {
+    constructor(part, referencePart) {
+        this._part = part;
+        this._referencePart = referencePart;
+    }
+
+    commit(context) {
+        this._part.reorder(this._referencePart, context);
+    }
+}
+
+function block(type, props = {}) {
+    return new BlockDirective(type, props);
+}
+
+function list(items, valueSelector = defaultItemValueSelector, keySelector = defaultItemKeySelector) {
+    return new ListDirective(items, valueSelector, keySelector);
+}
+
+function boot(container, renderable, context) {
+    context.pushLayoutEffect({
+        commit(context) {
+            const node = createMarkerNode();
+            container.appendChild(node);
+            renderable.mount(new ChildPart(node), context);
+        }
+    });
+    context.requestUpdate(renderable);
+}
+
+function createMarkerNode(name = '') {
+    return document.createComment(name);
+}
+
+function defaultItemKeySelector(_value, index) {
+    return index;
+}
+
+function defaultItemValueSelector(value, _index) {
+    return value;
+}
+
+function dependenciesAreChanged(oldDependencies, newDependencies) {
+    return oldDependencies === undefined ||
+        newDependencies === undefined ||
+        !shallowEqual(oldDependencies, newDependencies);
+}
+
+function generateMap(list, start, end) {
+    const map = new Map();
+    for (let i = start; i <= end; i++) {
+        map.set(list[i], i);
+    }
+    return map;
+}
+
 function getUUID() {
     if (crypto.randomUUID) {
         return crypto.randomUUID();
@@ -1168,20 +1453,65 @@ function getUUID() {
         s.slice(16, 20) + '-' + s.slice(20, 32);
 }
 
-function parseChildren(node, holes, path) {
+function isDirective(value) {
+    return typeof value === 'object' && directiveSymbol in value;
+}
+
+function mountPart(part, value, context) {
+    let cleanup;
+
+    if (isDirective(value)) {
+        cleanup = value[directiveSymbol](part, context);
+    } else {
+        part.setValue(value);
+        context.pushMutationEffect(part);
+    }
+
+    return cleanup;
+}
+
+function parseAttribtues(node, marker, holes, path, index) {
+    const { attributes } = node;
+    for (let i = 0, l = attributes.length; i < l; i++) {
+        const attribute = attributes[i];
+        if (attribute.value === marker) {
+            const name = attribute.name;
+            if (name.length > 2 &&
+                (name[0] === 'o' || name[0] === 'O') &&
+                (name[1] === 'n' || name[1] === 'N')) {
+                holes.push({
+                    type: HoleType.EVENT,
+                    path,
+                    index,
+                    name: attribute.name.slice(2),
+                });
+            } else {
+                holes.push({
+                    type: HoleType.ATTRIBUTE,
+                    path,
+                    index,
+                    name,
+                });
+            }
+            node.removeAttribute(attribute.name);
+        }
+    }
+}
+
+function parseChildren(node, marker, holes, path) {
     const { childNodes } = node;
 
     for (let i = 0, l = childNodes.length; i < l; i++) {
         const child = childNodes[i];
         switch (child.nodeType) {
             case Node.ELEMENT_NODE:
-                parseAttribtues(child, holes, path, i);
+                parseAttribtues(child, marker, holes, path, i);
                 if (child.childNodes.length > 0) {
-                    parseChildren(child, holes, [...path, i]);
+                    parseChildren(child, marker, holes, [...path, i]);
                 }
                 break;
             case Node.TEXT_NODE: {
-                const components = child.textContent.split(HOLE_MAKER);
+                const components = child.textContent.split(marker);
                 if (components.length <= 1) {
                     continue;
                 }
@@ -1196,12 +1526,12 @@ function parseChildren(node, holes, path) {
                     }
 
                     holes.push({
-                        type: 'child',
+                        type: HoleType.CHILD,
                         path,
                         index: i,
                     });
 
-                    node.insertBefore(createMaker(), child);
+                    node.insertBefore(createMarkerNode(), child);
                     i++;
                     l++;
                 }
@@ -1217,26 +1547,6 @@ function parseChildren(node, holes, path) {
             }
         }
     }
-}
-
-function parseAttribtues(node, holes, path, index) {
-    const { attributes } = node;
-    for (let i = 0, l = attributes.length; i < l; i++) {
-        const attribute = attributes[i];
-        if (attribute.value === HOLE_MAKER) {
-            holes.push({
-                type: 'attribute',
-                path,
-                index,
-                attribute: attribute.name,
-            });
-            node.removeAttribute(attribute.name);
-        }
-    }
-}
-
-function createMaker(name = '') {
-    return document.createComment(name);
 }
 
 function shallowEqual(first, second) {
@@ -1274,12 +1584,23 @@ function shallowEqual(first, second) {
     return true;
 }
 
-function generateMap(list, start, end) {
-    const map = new Map();
-    for (let i = start; i <= end; i++) {
-        map.set(list[i], i);
+function updatePart(part, oldValue, newValue, oldCleanup, context) {
+    let newCleanup;
+
+    if (Object.is(oldValue, newValue)) {
+        newCleanup = oldCleanup;
+    } else {
+        oldCleanup?.call();
+
+        if (isDirective(newValue)) {
+            newCleanup = newValue[directiveSymbol](part, context);
+        } else {
+            part.setValue(newValue);
+            context.pushMutationEffect(part);
+        }
     }
-    return map;
+
+    return newCleanup;
 }
 
 function yieldToMain() {
@@ -1292,69 +1613,14 @@ function yieldToMain() {
     });
 }
 
-function mountPart(part, value, context) {
-    if (value instanceof Directive) {
-        if (value.handle(part, context)) {
-            context.enqueueMutationEffect(part);
-        }
-    } else {
-        part.setValue(value);
-        context.enqueueMutationEffect(part);
-    }
-}
-
-function updatePart(part, oldValue, newValue, context) {
-    if (!Object.is(oldValue, newValue)) {
-        if (newValue instanceof Directive) {
-            if (newValue.handle(part, context)) {
-                context.enqueueMutationEffect(part);
-            }
-        } else {
-            part.setValue(newValue);
-            context.enqueueMutationEffect(part);
-        }
-    }
-}
-
-function updateAndReorderPart(part, referencePart, oldValue, newValue, context) {
-    if (!Object.is(oldValue, newValue)) {
-        if (newValue instanceof Directive) {
-            newValue.handle(part, context);
-        } else {
-            part.setValue(newValue);
-        }
-    }
-    part.setReferencePart(referencePart);
-    context.enqueueMutationEffect(part);
-}
-
-function defaultItemValueSelector(value, _index) {
-    return value;
-}
-
-function defaultItemKeySelector(_value, index) {
-    return index;
-}
-
-function boot(container, block, context = new Context()) {
-    context.enqueueLayoutEffect({
-        commit(_context) {
-            for (const node of block.nodes) {
-                container.appendChild(node);
-            }
-        }
-    });
-
-    context.requestUpdate(block);
-}
+const counterSignal = new AtomSignal(0);
 
 function App(_props, context) {
-    const [count, setCount] = context.useState(0);
     const [items, setItems] = context.useState(['foo', 'bar', 'baz', 'qux', 'quux']);
 
     context.setEnv({ 'state': 'My Env' });
 
-    const itemsList = list(
+    const itemsList = context.useMemo((items) => list(
         items,
         (item, index) => block(Item, {
             title: item,
@@ -1383,23 +1649,24 @@ function App(_props, context) {
             },
         }),
         (item) => item,
-    );
+    ), [items]);
 
-    const onIncrement = context.useEvent((_e) => { setCount(count + 1); });
-
-    const onShuffle = context.useEvent((_e) => {
+    const onIncrement = context.useEvent((_event) => { counterSignal.value += 1; });
+    const onDecrement = context.useEvent((_event) => { counterSignal.value -= 1; });
+    const onShuffle = context.useEvent((_event) => {
         const newItems = shuffle(items.slice());
         setItems(newItems);
     });
 
     return context.html`
         <div>
-            ${block(Counter, { count })}
-            ${itemsList}
-            <div>
+            ${block(Counter, { count: counterSignal.map((count) => count * 2) })}
+            <ul>${itemsList}</ul>
+            <p>
                 <button type="button" onclick=${onIncrement}>+1</button>
+                <button type="button" onclick=${onDecrement}>-1</button>
                 <button type="button" onclick=${onShuffle}>Shuffle</button>
-            </div>
+            </p>
         </div>
     `;
 }
@@ -1408,12 +1675,12 @@ function Item(props, context) {
     const state = context.useEnv('state');
 
     return context.html`
-        <div>
+        <li>
             <span>${props.title} (${state})</span>
             <button type="button" onclick=${context.useEvent(props.onUp)}>Up</button>
             <button type="button" onclick=${context.useEvent(props.onDown)}>Down</button>
             <button type="button" onclick=${context.useEvent(props.onDelete)}>Delete</button>
-        </div>
+        </li>
     `;
 }
 
@@ -1421,10 +1688,10 @@ function Counter(props, context) {
     const countLabelRef = context.useRef(null);
 
     return context.html`
-        <div>
+        <h1>
             <span class="count-label" ref=${countLabelRef}>COUNT: </span>
             <span class="count-value" data-count=${props.count}>${props.count}</span>
-        </div>
+        </h1>
     `;
 }
 
@@ -1443,5 +1710,5 @@ function shuffle(array) {
 }
 
 if (typeof document === 'object') {
-    boot(document.body, new Block(App, {}));
+    boot(document.body, new Block(App, {}), new Context());
 }
