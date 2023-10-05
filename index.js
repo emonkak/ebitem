@@ -260,10 +260,13 @@ class Context {
             if (navigator.scheduling.isInputPending()) {
                 await yieldToMain();
             }
-            this._hookIndex = 0;
-            this._currentRenderable = this._pendingRenderables[i];
-            this._currentRenderable.render(this);
-            this._currentRenderable = null;
+            const renderable = this._pendingRenderables[i];
+            if (!ancestorIsDirty(renderable)) {
+                this._hookIndex = 0;
+                this._currentRenderable = renderable;
+                this._currentRenderable.render(this);
+                this._currentRenderable = null;
+            }
         }
 
         this._pendingRenderables.length = 0;
@@ -892,6 +895,10 @@ class Fragment extends Child {
         return this._template;
     }
 
+    get isDirty() {
+        return this._memoizedValues !== this._pendingValues;
+    }
+
     setValues(values) {
         this._pendingValues = values;
     }
@@ -934,7 +941,7 @@ class Fragment extends Child {
             this._nodes = Array.from(node.childNodes);
             this._parts = parts;
             this._cleanups = cleanups;
-        } else {
+        } else if (this._memoizedValues !== this._pendingValues) {
             this._template.patch(
                 this._parts,
                 this._memoizedValues,
@@ -985,6 +992,10 @@ class Block extends Child {
 
     get hooks() {
         return this._hooks;
+    }
+
+    get isDirty() {
+        return (this._flags & BlockFlag.DIRTY) !== 0;
     }
 
     setProps(newProps) {
@@ -1403,6 +1414,15 @@ function block(type, props = {}) {
 
 function list(items, valueSelector = defaultItemValueSelector, keySelector = defaultItemKeySelector) {
     return new ListDirective(items, valueSelector, keySelector);
+}
+
+function ancestorIsDirty(renderable) {
+    while (renderable = renderable.parent) {
+        if (renderable.isDirty) {
+            return true;
+        }
+    }
+    return false;
 }
 
 function boot(container, renderable, context) {
