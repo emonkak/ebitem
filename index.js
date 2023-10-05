@@ -261,7 +261,7 @@ class Context {
                 await yieldToMain();
             }
             const renderable = this._pendingRenderables[i];
-            if (!ancestorIsDirty(renderable)) {
+            if (renderable.isDirty && !ancestorIsDirty(renderable)) {
                 this._hookIndex = 0;
                 this._currentRenderable = renderable;
                 this._currentRenderable.render(this);
@@ -941,7 +941,7 @@ class Fragment extends Child {
             this._nodes = Array.from(node.childNodes);
             this._parts = parts;
             this._cleanups = cleanups;
-        } else if (this._memoizedValues !== this._pendingValues) {
+        } else {
             this._template.patch(
                 this._parts,
                 this._memoizedValues,
@@ -1004,18 +1004,14 @@ class Block extends Child {
 
     forceUpdate(context) {
         if ((this._flags & BlockFlag.MOUNTED) !== 0 &&
-            (this._flags & BlockFlag.UNMOUNTED) === 0) {
+            (this._flags & BlockFlag.UNMOUNTED) === 0 &&
+            (this._flags & BlockFlag.DIRTY) === 0) {
             this._flags |= BlockFlag.DIRTY;
             context.requestUpdate(this);
         }
     }
 
     render(context) {
-        if ((this._flags & BlockFlag.DIRTY) === 0 ||
-            (this._flags & BlockFlag.UNMOUNTED) !== 0) {
-            return;
-        }
-
         if (this._memoizedValues === null) {
             const render = this._type;
             const { template, values } = render(this._pendingProps, context);
@@ -1079,6 +1075,7 @@ class Block extends Child {
         }
 
         this._flags |= BlockFlag.UNMOUNTED;
+        this._flags ^= BlockFlag.DIRTY;
     }
 }
 
@@ -1120,7 +1117,6 @@ class BlockDirective {
                 value.setProps(this._props);
                 value.forceUpdate(context);
             } else {
-                context.pushPassiveEffect(new Dispose(value))
                 needsMount = true;
             }
         } else {
@@ -1193,10 +1189,12 @@ class TemplateResult {
 
         if (value instanceof Fragment) {
             if (value.template === this._template) {
+                const needsRequestUpdate = !value.isDirty;
                 value.setValues(this._values);
-                context.requestUpdate(value);
+                if (needsRequestUpdate) {
+                    context.requestUpdate(value);
+                }
             } else {
-                context.pushPassiveEffect(new Dispose(value))
                 needsMount = true;
             }
         } else {
