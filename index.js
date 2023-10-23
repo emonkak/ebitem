@@ -147,7 +147,7 @@ class Context {
                 state: initialState,
                 dispatch: (action) => {
                     hook.state = reducer(hook.state, action);
-                    block.forceUpdate(this);
+                    block.scheduleUpdate(this);
                 },
             };
         }
@@ -174,7 +174,7 @@ class Context {
         const block = this._currentRenderable;
         this.useEffect(() => {
             return signal.subscribe(() => {
-                block.forceUpdate(this);
+                block.scheduleUpdate(this);
             });
         }, [signal]);
         return signal;
@@ -192,7 +192,7 @@ class Context {
         const block = this._currentRenderable;
         this.useEffect(() => {
             return subscribe(() => {
-                block.forceUpdate(this);
+                block.scheduleUpdate(this);
             });
         }, [subscribe]);
         return getSnapshot();
@@ -1002,7 +1002,7 @@ class Block extends Child {
         this._pendingProps = newProps;
     }
 
-    forceUpdate(context) {
+    scheduleUpdate(context) {
         if ((this._flags & BlockFlag.MOUNTED) !== 0 &&
             (this._flags & BlockFlag.UNMOUNTED) === 0 &&
             (this._flags & BlockFlag.DIRTY) === 0) {
@@ -1115,7 +1115,7 @@ class BlockDirective {
         if (value instanceof Block) {
             if (value.type === this._type) {
                 value.setProps(this._props);
-                value.forceUpdate(context);
+                value.scheduleUpdate(context);
             } else {
                 needsMount = true;
             }
