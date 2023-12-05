@@ -1003,9 +1003,11 @@ class Block extends Child {
     }
 
     scheduleUpdate(context) {
-        if ((this._flags & BlockFlag.MOUNTED) !== 0 &&
+        const needsUpdate = (this._flags & BlockFlag.MOUNTED) !== 0 &&
             (this._flags & BlockFlag.UNMOUNTED) === 0 &&
-            (this._flags & BlockFlag.DIRTY) === 0) {
+            (this._flags & BlockFlag.DIRTY) === 0;
+
+        if (needsUpdate) {
             this._flags |= BlockFlag.DIRTY;
             context.requestUpdate(this);
         }
