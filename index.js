@@ -42,6 +42,16 @@ class Context {
     return new TemplateResult(template, values);
   }
 
+  useAtomSignal(initialValue) {
+    const signalRef = this.useRef(null);
+    if (signalRef.current === null) {
+      signalRef.current = new AtomSignal(
+        typeof initialValue === 'function' ? initialValue() : initialValue,
+      );
+    }
+    return this.useSignal(signalRef.current);
+  }
+
   useCallback(callback, dependencies) {
     return this.useMemo(() => callback, dependencies);
   }
