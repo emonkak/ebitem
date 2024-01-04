@@ -502,6 +502,10 @@ class ChildPart {
     this._pendingValue = null;
   }
 
+  get node() {
+    return this._node;
+  }
+
   get startNode() {
     return this._committedValue
       ? this._committedValue.startNode ?? this._node
@@ -1214,6 +1218,31 @@ class TemplateResult {
   }
 }
 
+class ClassList {
+  constructor(classSpecifiers) {
+    this._classSpecifiers = classSpecifiers;
+  }
+
+  [directiveSymbol](part, _context) {
+    const { classList } = part.node;
+
+    for (let i = 0, l = this._classSpecifiers.length; i < l; i++) {
+      const classSpecifier = this._classSpecifiers[i];
+      if (typeof classSpecifier === 'string') {
+        classList.add(classSpecifier);
+      } else {
+        for (const className in classSpecifier) {
+          if (classSpecifier[className]) {
+            classList.add(className);
+          } else {
+            classList.remove(className);
+          }
+        }
+      }
+    }
+  }
+}
+
 class Signal {
   get value() {
     return null;
@@ -1411,6 +1440,10 @@ function block(type, props = {}) {
   return new BlockDirective(type, props);
 }
 
+function classList(...classSpecifiers) {
+  return new ClassList(classSpecifiers);
+}
+
 function list(
   items,
   valueSelector = defaultItemValueSelector,
@@ -1505,32 +1538,36 @@ function mountPart(part, value, context) {
 }
 
 function parseAttribtues(node, marker, holes, path, index) {
-  const { attributes } = node;
+  // Persist node attributes since ones may be removed.
+  const attributes = [...node.attributes];
   for (let i = 0, l = attributes.length; i < l; i++) {
     const attribute = attributes[i];
-    if (attribute.value === marker) {
-      const name = attribute.name;
-      if (
-        name.length > 2 &&
-        (name[0] === 'o' || name[0] === 'O') &&
-        (name[1] === 'n' || name[1] === 'N')
-      ) {
-        holes.push({
-          type: HoleType.EVENT,
-          path,
-          index,
-          name: attribute.name.slice(2),
-        });
-      } else {
-        holes.push({
-          type: HoleType.ATTRIBUTE,
-          path,
-          index,
-          name,
-        });
-      }
-      node.removeAttribute(attribute.name);
+    if (attribute.value !== marker) {
+      continue;
     }
+
+    const name = attribute.name;
+    if (
+      name.length > 2 &&
+      (name[0] === 'o' || name[0] === 'O') &&
+      (name[1] === 'n' || name[1] === 'N')
+    ) {
+      holes.push({
+        type: HoleType.EVENT,
+        path,
+        index,
+        name: name.slice(2),
+      });
+    } else {
+      holes.push({
+        type: HoleType.ATTRIBUTE,
+        path,
+        index,
+        name,
+      });
+    }
+
+    node.removeAttribute(name);
   }
 }
 
@@ -1714,7 +1751,7 @@ function App(_props, context) {
   return context.html`
     <div>
       ${block(Counter, {
-        count: counterSignal.map((count) => count * 2),
+        count: counterSignal,
       })}
       <ul>${itemsList}</ul>
       <p>
@@ -1740,12 +1777,20 @@ function Item(props, context) {
 }
 
 function Counter(props, context) {
+  const { count } = props;
   const countLabelRef = context.useRef(null);
+
+  context.useSignal(count);
 
   return context.html`
     <h1>
       <span class="count-label" ref=${countLabelRef}>COUNT: </span>
-      <span class="count-value" data-count=${props.count}>${props.count}</span>
+      <span
+        class=${classList('count-value', {
+          'is-odd': count.value % 2 !== 0,
+          'is-even': count.value % 2 === 0,
+        })}
+        data-count=${count}>${count}</span>
     </h1>
   `;
 }
