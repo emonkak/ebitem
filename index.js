@@ -1243,9 +1243,16 @@ class ClassList {
   }
 }
 
+// 0 is reserved to indicate an uninitialized signal.
+const globalVersionCounter = 1;
+
 class Signal {
   get value() {
-    return null;
+    return undefined;
+  }
+
+  get version() {
+    return 0;
   }
 
   subscribe(_subscriber) {
@@ -1291,12 +1298,17 @@ class Signal {
   map(selector) {
     return new ProjectedSignal(this, selector);
   }
+
+  memoized() {
+    return new MemoizedSignal((value) => value, [this]);
+  }
 }
 
 class AtomSignal extends Signal {
   constructor(initialValue) {
     super();
     this._value = initialValue;
+    this._version = globalVersionCounter;
     this._subscribers = [];
   }
 
@@ -1308,7 +1320,12 @@ class AtomSignal extends Signal {
     this._value = newValue;
     for (let i = 0, l = this._subscribers.length; i < l; i++) {
       this._subscribers[i]();
+      this._version = ++globalVersionCounter;
     }
+  }
+
+  get version() {
+    return this._version;
   }
 
   subscribe(subscriber) {
@@ -1334,33 +1351,47 @@ class ProjectedSignal extends Signal {
     return selectorFn(this._signal.value);
   }
 
+  get version() {
+    return this._signal.version;
+  }
+
   subscribe(subscriber) {
     return this._signal.subscribe(subscriber);
   }
 }
 
-class ComputedSignal extends Signal {
-  constructor(computeFn, signals) {
+class MemoizedSignal extends Signal {
+  constructor(computeFn, dependencies) {
     super();
     this._computeFn = computeFn;
-    this._signals = signals;
-    this._memoizedDependencies = null;
-    this._computedValue = null;
+    this._dependencies = dependencies;
+    this._memoizedVersion = 0;
+    this._memoizedResult = null;
   }
 
   get value() {
-    const newDependencies = this._signals.map((signal) => signal.value);
-    if (!shallowEqual(this._memoizedDependencies, newDependencies)) {
+    const newVersion = this.version;
+    if (this._memoizedVersion < newVersion) {
       const computeFn = this._computeFn;
-      this._memoizedDependencies = newDependencies;
-      this._computedValue = computeFn(...newDependencies);
+      const newValues = this._dependencies.map(
+        (dependency) => dependency.value,
+      );
+      this._memoizedVersion = newVersion;
+      this._memoizedResult = computeFn(...newValues);
     }
-    return this._computedValue;
+    return this._memoizedResult;
+  }
+
+  get version() {
+    return this._dependencies.reduce(
+      (version, dependency) => Math.max([version, dependency.version]),
+      0,
+    );
   }
 
   subscribe(subscriber) {
-    const subscriptions = this._signals.map((signal) =>
-      signal.subscribe(subscriber),
+    const subscriptions = this._dependencies.map((dependency) =>
+      dependency.subscribe(subscriber),
     );
     return () => {
       for (let i = 0, l = subscriptions.length; i < l; i++) {
