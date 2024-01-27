@@ -1,7 +1,6 @@
 {
-  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
   "files": {
-    "ignore": [".wireit", "dist", "node_modules"]
+    "ignore": [".wireit", "node_modules"]
   },
   "javascript": {
     "formatter": {

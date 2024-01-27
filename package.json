@@ -4,7 +4,35 @@
   "main": "index.js",
   "author": "Shota Nozaki",
   "license": "MIT",
+  "scripts": {
+    "build": "wireit",
+    "clean": "rm index.js"
+  },
   "devDependencies": {
-    "@biomejs/biome": "^1.4.1"
+    "@biomejs/biome": "^1.5.3",
+    "esbuild": "^0.20.0",
+    "typescript": "^5.3.3",
+    "wireit": "^0.14.4"
+  },
+  "wireit": {
+    "build": {
+      "command": "esbuild --bundle src/index.ts --outfile=index.js",
+      "files": [
+        "src/**/*.ts"
+      ],
+      "output": [
+        "index.js"
+      ],
+      "dependencies": [
+        "tsc"
+      ]
+    },
+    "tsc": {
+      "command": "tsc --build",
+      "files": [
+        "src/**/*.ts"
+      ],
+      "output": []
+    }
   }
 }
