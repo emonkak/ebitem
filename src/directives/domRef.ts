@@ -1,7 +1,7 @@
 import type { Context } from '../context';
 import { Directive, directiveSymbol } from '../directive';
 import { AttributePart } from '../part';
-import type { Cleanup, Part, Ref, RefCallback } from '../types';
+import type { Part, Ref, RefCallback } from '../types';
 
 export class DOMRef implements Directive {
   private readonly _ref: Ref<Element | null> | RefCallback<Node>;
@@ -10,7 +10,7 @@ export class DOMRef implements Directive {
     this._ref = ref;
   }
 
-  [directiveSymbol](part: Part, _context: Context): Cleanup | void {
+  [directiveSymbol](part: Part, _context: Context): void {
     if (!(part instanceof AttributePart) || part.attributeName !== 'ref') {
       throw new Error(
         '"DOMRef" directive must be used in the "ref" attribute.',

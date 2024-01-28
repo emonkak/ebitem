@@ -11,7 +11,6 @@ export type EffectCallback = () => void | Cleanup;
 export interface MountPoint {
   node: Node;
   parts: Part[];
-  cleanups: (Cleanup | void)[];
 }
 
 export interface Part<T = unknown> extends Effect {
@@ -39,7 +38,6 @@ export interface TemplateInterface {
     parts: Part[],
     oldValues: unknown[],
     newValues: unknown[],
-    cleanups: (Cleanup | void)[],
     context: Context,
   ): void;
 }

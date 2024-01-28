@@ -3,7 +3,7 @@ import type { Context } from '../context';
 import { Directive, directiveSymbol } from '../directive';
 import { ChildPart } from '../part';
 import type { TemplateResult } from '../templateResult';
-import type { Cleanup, Part } from '../types';
+import type { Part } from '../types';
 
 export class Block<TProps> implements Directive {
   private readonly _type: (props: TProps, context: Context) => TemplateResult;
@@ -18,7 +18,7 @@ export class Block<TProps> implements Directive {
     this._props = props;
   }
 
-  [directiveSymbol](part: Part, context: Context): Cleanup | void {
+  [directiveSymbol](part: Part, context: Context): void {
     if (!(part instanceof ChildPart)) {
       throw new Error('"List" directive must be used in an arbitrary child.');
     }

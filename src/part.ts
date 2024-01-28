@@ -1,6 +1,6 @@
 import type { Context } from './context';
 import { directiveSymbol, isDirective } from './directive';
-import type { Cleanup, Part } from './types';
+import type { Part } from './types';
 
 export class AttributePart implements Part<AttributeValue> {
   private readonly _element: Element;
@@ -366,44 +366,28 @@ class NullChild extends ChildValue {
   update(_part: ChildPart, _context: Context): void {}
 }
 
-export function mountPart(
-  part: Part,
-  value: unknown,
-  context: Context,
-): Cleanup | void {
-  let cleanup;
-
+export function mountPart(part: Part, value: unknown, context: Context): void {
   if (isDirective(value)) {
-    cleanup = value[directiveSymbol](part, context);
+    value[directiveSymbol](part, context);
   } else {
     part.setValue(value);
     context.pushMutationEffect(part);
   }
-
-  return cleanup;
 }
 
 export function updatePart(
   part: Part,
   oldValue: unknown,
   newValue: unknown,
-  oldCleanup: Cleanup | void,
   context: Context,
-): Cleanup | void {
-  let newCleanup;
-
+): void {
   if (Object.is(oldValue, newValue)) {
-    newCleanup = oldCleanup;
-  } else {
-    oldCleanup?.(context);
-
-    if (isDirective(newValue)) {
-      newCleanup = newValue[directiveSymbol](part, context);
-    } else {
-      part.setValue(newValue);
-      context.pushMutationEffect(part);
-    }
+    return;
   }
-
-  return newCleanup;
+  if (isDirective(newValue)) {
+    newValue[directiveSymbol](part, context);
+  } else {
+    part.setValue(newValue);
+    context.pushMutationEffect(part);
+  }
 }

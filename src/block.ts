@@ -2,7 +2,7 @@ import type { Context } from './context';
 import { Hook, HookType } from './hook';
 import { ChildPart, ChildValue } from './part';
 import { TemplateResult } from './templateResult';
-import type { Cleanup, Part, Renderable, TemplateInterface } from './types';
+import type { Part, Renderable, TemplateInterface } from './types';
 
 const BlockFlag = {
   MOUNTED: 0b001,
@@ -30,8 +30,6 @@ export class Block<TProps = unknown> extends ChildValue implements Renderable {
   private _parts: Part[] = [];
 
   private _hooks: Hook[] = [];
-
-  private _cleanups: (Cleanup | void)[] = [];
 
   constructor(
     type: (props: TProps, context: Context) => TemplateResult,
@@ -102,19 +100,12 @@ export class Block<TProps = unknown> extends ChildValue implements Renderable {
     }
 
     if (this._memoizedValues === null) {
-      const { node, parts, cleanups } = template.mount(values, context);
+      const { node, parts } = template.mount(values, context);
       this._nodes = Array.from(node.childNodes);
       this._parts = parts;
-      this._cleanups = cleanups;
       this._memoizedValues = values;
     } else {
-      template.patch(
-        this._parts,
-        this._memoizedValues,
-        values,
-        this._cleanups,
-        context,
-      );
+      template.patch(this._parts, this._memoizedValues, values, context);
       this._memoizedValues = values;
     }
 
@@ -166,10 +157,6 @@ export class Block<TProps = unknown> extends ChildValue implements Renderable {
     for (let i = 0, l = this._parts.length; i < l; i++) {
       const part = this._parts[i]!;
       part.disconnect(context);
-    }
-
-    for (let i = 0, l = this._cleanups.length; i < l; i++) {
-      this._cleanups[i]?.(context);
     }
   }
 }

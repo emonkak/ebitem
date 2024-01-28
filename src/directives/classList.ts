@@ -1,7 +1,7 @@
 import type { Context } from '../context';
 import { Directive, directiveSymbol } from '../directive';
 import { AttributePart } from '../part';
-import type { Cleanup, Part } from '../types';
+import type { Part } from '../types';
 
 export type ClassSpecifier = string | { [key: string]: boolean };
 
@@ -12,7 +12,7 @@ export class ClassList implements Directive {
     this._classSpecifiers = classSpecifiers;
   }
 
-  [directiveSymbol](part: Part, _context: Context): Cleanup | void {
+  [directiveSymbol](part: Part, _context: Context): void {
     if (!(part instanceof AttributePart) || part.attributeName !== 'class') {
       throw new Error(
         '"ClassList" directive must be used in the "class" attribute.',

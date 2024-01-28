@@ -1,7 +1,7 @@
 import type { Context } from '../context';
 import { Directive, directiveSymbol } from '../directive';
 import { ChildPart, ChildValue, mountPart, updatePart } from '../part';
-import type { Cleanup, Effect, Part } from '../types';
+import type { Effect, Part } from '../types';
 
 export class List<TItem, TValue, TKey> implements Directive {
   private readonly _items: TItem[];
@@ -20,7 +20,7 @@ export class List<TItem, TValue, TKey> implements Directive {
     this._keySelector = keySelector;
   }
 
-  [directiveSymbol](part: Part, context: Context): Cleanup | void {
+  [directiveSymbol](part: Part, context: Context): void {
     if (!(part instanceof ChildPart)) {
       throw new Error('"List" directive must be used in an arbitrary child.');
     }
@@ -40,7 +40,6 @@ export class List<TItem, TValue, TKey> implements Directive {
         this._valueSelector,
         this._keySelector,
         part,
-        context,
       );
       part.setValue(list);
     }
@@ -74,8 +73,6 @@ export function list<TItem, TValue, TKey>(
 }
 
 export class ListChild<TItem, TValue, TKey> extends ChildValue {
-  private _cleanups: (Cleanup | void)[];
-
   private _commitedParts: ItemPart[] = [];
 
   private _commitedValues: TValue[] = [];
@@ -95,21 +92,18 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
     valueSelector: (item: TItem, index: number) => TValue,
     keySelector: (item: TItem, index: number) => TKey,
     containerPart: ChildPart,
-    context: Context,
   ) {
     super();
 
     const parts = new Array(items.length);
     const values = new Array(items.length);
     const keys = new Array(items.length);
-    const cleanups = new Array(items.length);
 
     for (let i = 0, l = items.length; i < l; i++) {
       const item = items[i]!;
       const part = new ItemPart(document.createComment(''), containerPart);
       const value = valueSelector(item, i);
       const key = keySelector(item, i);
-      cleanups[i] = mountPart(part, value, context);
       parts[i] = part;
       values[i] = value;
       keys[i] = key;
@@ -119,7 +113,6 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
     this._pendingParts = parts;
     this._pendingValues = values;
     this._pendingKeys = keys;
-    this._cleanups = cleanups;
   }
 
   get startNode(): ChildNode | null {
@@ -138,9 +131,6 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
     for (let i = 0, l = this._commitedParts.length; i < l; i++) {
       this._commitedParts[i]!.disconnect(context);
     }
-    for (let i = 0, l = this._cleanups.length; i < l; i++) {
-      this._cleanups[i]?.(context);
-    }
   }
 
   update(_part: ChildPart, _context: Context): void {
@@ -158,11 +148,9 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
     const oldParts: (ItemPart | undefined)[] = this._commitedParts;
     const oldValues = this._commitedValues;
     const oldKeys = this._commitedKeys;
-    const oldCleanups = this._cleanups;
     const newParts = new Array(newItems.length);
     const newValues = newItems.map(valueSelector);
     const newKeys = newItems.map(keySelector);
-    const newCleanups = new Array(newItems.length);
 
     // Head and tail pointers to old parts and new values
     let oldHead = 0;
@@ -185,26 +173,14 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
       } else if (oldKeys[oldHead] === newKeys[newHead]) {
         // Old head matches new head; update in place
         const part = oldParts[oldHead]!;
-        newCleanups[newHead] = updatePart(
-          part,
-          oldValues[oldHead],
-          newValues[newHead],
-          oldCleanups[oldHead],
-          context,
-        );
+        updatePart(part, oldValues[oldHead], newValues[newHead], context);
         newParts[newHead] = part;
         oldHead++;
         newHead++;
       } else if (oldKeys[oldTail] === newKeys[newTail]) {
         // Old tail matches new tail; update in place
         const part = oldParts[oldTail]!;
-        newCleanups[newTail] = updatePart(
-          part,
-          oldValues[oldTail],
-          newValues[newTail],
-          oldCleanups[oldTail],
-          context,
-        );
+        updatePart(part, oldValues[oldTail], newValues[newTail], context);
         newParts[newTail] = part;
         oldTail--;
         newTail--;
@@ -214,13 +190,7 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
         context.pushMutationEffect(
           new ReorderItemPart(part, newParts[newTail + 1] ?? null),
         );
-        newCleanups[newTail] = updatePart(
-          part,
-          oldValues[oldHead],
-          newValues[newTail],
-          oldCleanups[oldHead],
-          context,
-        );
+        updatePart(part, oldValues[oldHead], newValues[newTail], context);
         newParts[newTail] = part;
         oldHead++;
         newTail--;
@@ -230,13 +200,7 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
         context.pushMutationEffect(
           new ReorderItemPart(part, oldParts[oldHead] ?? null),
         );
-        newCleanups[newHead] = updatePart(
-          part,
-          oldValues[oldTail],
-          newValues[newHead],
-          oldCleanups[oldTail],
-          context,
-        );
+        updatePart(part, oldValues[oldTail], newValues[newHead], context);
         newParts[newHead] = part;
         oldTail--;
         newHead++;
@@ -251,13 +215,11 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
           // Old head is no longer in new list; remove
           const part = oldParts[oldHead]!;
           context.pushMutationEffect(new DisconnectChildPart(part));
-          oldCleanups[oldHead]?.(context);
           oldHead++;
         } else if (!newKeyToIndexMap.has(oldKeys[oldTail]!)) {
           // Old tail is no longer in new list; remove
           const part = oldParts[oldTail]!;
           context.pushMutationEffect(new DisconnectChildPart(part));
-          oldCleanups[oldTail]?.(context);
           oldTail--;
         } else {
           // Any mismatches at this point are due to additions or
@@ -270,11 +232,10 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
             context.pushMutationEffect(
               new ReorderItemPart(oldPart, oldParts[oldHead] ?? null),
             );
-            newCleanups[newHead] = updatePart(
+            updatePart(
               oldPart,
               oldValues[oldHead],
               newValues[newHead],
-              oldCleanups[oldHead],
               context,
             );
             newParts[newHead] = oldPart;
@@ -288,7 +249,7 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
               document.createComment(''),
               this._containerPart,
             );
-            newCleanups[newHead] = mountPart(part, newValues[newHead], context);
+            mountPart(part, newValues[newHead], context);
             newParts[newHead] = part;
           }
           newHead++;
@@ -304,7 +265,7 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
         document.createComment(''),
         this._containerPart,
       );
-      newCleanups[newHead] = mountPart(newPart, newValues[newHead], context);
+      mountPart(newPart, newValues[newHead], context);
       newParts[newHead] = newPart;
       newHead++;
     }
@@ -315,14 +276,12 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
       if (oldPart) {
         context.pushMutationEffect(new DisconnectChildPart(oldPart));
       }
-      oldCleanups[oldHead]?.(context);
       oldHead++;
     }
 
     this._pendingParts = newParts;
     this._pendingValues = newValues;
     this._pendingKeys = newKeys;
-    this._cleanups = newCleanups;
   }
 }
 

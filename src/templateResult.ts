@@ -1,7 +1,7 @@
 import type { Context } from './context';
 import { directiveSymbol } from './directive';
 import { Fragment } from './fragment';
-import type { Cleanup, Part, TemplateInterface } from './types';
+import type { Part, TemplateInterface } from './types';
 
 export class TemplateResult {
   private readonly _template: TemplateInterface;
@@ -21,7 +21,7 @@ export class TemplateResult {
     return this._values;
   }
 
-  [directiveSymbol](part: Part, context: Context): Cleanup | void {
+  [directiveSymbol](part: Part, context: Context): void {
     const value = part.value;
 
     let needsMount = false;

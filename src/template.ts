@@ -6,7 +6,6 @@ import {
   mountPart,
   updatePart,
 } from './part';
-import type { Cleanup } from './types';
 import { MountPoint, Part, TemplateInterface } from './types';
 
 type Hole = AttributeHole | EventHole | ChildHole;
@@ -59,7 +58,6 @@ export class Template implements TemplateInterface {
   mount(values: unknown[], context: Context): MountPoint {
     const node = this._templateElement.content.cloneNode(true);
     const parts = new Array(this._holes.length);
-    const cleanups = new Array(this._holes.length);
 
     for (let i = 0, l = this._holes.length; i < l; i++) {
       const hole = this._holes[i]!;
@@ -82,28 +80,21 @@ export class Template implements TemplateInterface {
         part = new ChildPart(child as ChildNode);
       }
 
-      cleanups[i] = mountPart(part, values[i], context);
+      mountPart(part, values[i], context);
       parts[i] = part;
     }
 
-    return { node, parts, cleanups };
+    return { node, parts };
   }
 
   patch(
     parts: Part[],
     oldValues: unknown[],
     newValues: unknown[],
-    cleanups: (Cleanup | void)[],
     context: Context,
   ): void {
     for (let i = 0, l = this._holes.length; i < l; i++) {
-      cleanups[i] = updatePart(
-        parts[i]!,
-        oldValues[i],
-        newValues[i],
-        cleanups[i],
-        context,
-      );
+      updatePart(parts[i]!, oldValues[i], newValues[i], context);
     }
   }
 }

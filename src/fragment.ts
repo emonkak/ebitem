@@ -1,6 +1,6 @@
 import type { Context } from './context';
 import { ChildPart, ChildValue } from './part';
-import type { Cleanup, Part, Renderable, TemplateInterface } from './types';
+import type { Part, Renderable, TemplateInterface } from './types';
 
 export class Fragment extends ChildValue implements Renderable {
   private readonly _template: TemplateInterface;
@@ -14,8 +14,6 @@ export class Fragment extends ChildValue implements Renderable {
   private _nodes: ChildNode[] = [];
 
   private _parts: Part[] = [];
-
-  private _cleanups: (Cleanup | void)[] = [];
 
   constructor(
     template: TemplateInterface,
@@ -75,29 +73,23 @@ export class Fragment extends ChildValue implements Renderable {
       const part = this._parts[i]!;
       part.disconnect(context);
     }
-
-    for (let i = 0, l = this._cleanups.length; i < l; i++) {
-      this._cleanups[i]?.(context);
-    }
   }
 
   update(_part: ChildPart, _context: Context): void {}
 
   render(context: Context): void {
     if (this._memoizedValues === null) {
-      const { node, parts, cleanups } = this._template.mount(
+      const { node, parts } = this._template.mount(
         this._pendingValues,
         context,
       );
       this._nodes = Array.from(node.childNodes);
       this._parts = parts;
-      this._cleanups = cleanups;
     } else {
       this._template.patch(
         this._parts,
         this._memoizedValues,
         this._pendingValues,
-        this._cleanups,
         context,
       );
     }
