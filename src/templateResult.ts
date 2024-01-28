@@ -36,10 +36,13 @@ export class TemplateResult {
 
     if (value instanceof Fragment) {
       if (value.template === this._template) {
-        const needsRequestUpdate = !value.isDirty;
-        value.setValues(this._values);
-        if (needsRequestUpdate) {
-          updater.requestUpdate(value);
+        // Update will be skipped if the same directive is called twice.
+        if (value.values !== this._values) {
+          const isAlreadyDirty = value.isDirty;
+          value.setValues(this._values);
+          if (!isAlreadyDirty) {
+            updater.requestUpdate(value);
+          }
         }
       } else {
         needsMount = true;

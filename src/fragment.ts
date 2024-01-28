@@ -51,6 +51,10 @@ export class Fragment<TContext>
     return this._template;
   }
 
+  get values(): unknown[] {
+    return this._memoizedValues;
+  }
+
   scheduleUpdate(updater: Updater<TContext>): void {
     updater.requestUpdate(this);
   }
