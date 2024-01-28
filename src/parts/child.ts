@@ -35,7 +35,7 @@ export class ChildPart implements Part {
     this._pendingValue = ChildValue.upgrade(newValue, this._committedValue);
   }
 
-  commit(updater: Updater<unknown>): void {
+  commit(updater: Updater): void {
     const oldValue = this._committedValue;
     const newValue = this._pendingValue!;
 
@@ -51,7 +51,7 @@ export class ChildPart implements Part {
     this._committedValue = newValue;
   }
 
-  disconnect(updater: Updater<unknown>): void {
+  disconnect(updater: Updater): void {
     if (this._node.isConnected) {
       this._node.remove();
     }
@@ -89,11 +89,11 @@ export abstract class ChildValue {
 
   abstract get endNode(): ChildNode | null;
 
-  abstract mount(_part: ChildPart, _updater: Updater<unknown>): void;
+  abstract mount(_part: ChildPart, _updater: Updater): void;
 
-  abstract unmount(_part: ChildPart, _updater: Updater<unknown>): void;
+  abstract unmount(_part: ChildPart, _updater: Updater): void;
 
-  abstract update(_part: ChildPart, _updater: Updater<unknown>): void;
+  abstract update(_part: ChildPart, _updater: Updater): void;
 }
 
 export class NullChild extends ChildValue {
@@ -112,18 +112,18 @@ export class NullChild extends ChildValue {
     return this._node;
   }
 
-  mount(part: ChildPart, _updater: Updater<unknown>): void {
+  mount(part: ChildPart, _updater: Updater): void {
     const reference = part.endNode;
     reference.parentNode!.insertBefore(this._node, reference);
   }
 
-  unmount(_part: ChildPart, _updater: Updater<unknown>): void {
+  unmount(_part: ChildPart, _updater: Updater): void {
     if (this._node.isConnected) {
       this._node.remove();
     }
   }
 
-  update(_part: ChildPart, _updater: Updater<unknown>): void {}
+  update(_part: ChildPart, _updater: Updater): void {}
 }
 
 export class SignalChild<T> extends ChildValue {
@@ -152,22 +152,22 @@ export class SignalChild<T> extends ChildValue {
     return this._memoizedValue?.endNode ?? null;
   }
 
-  mount(part: ChildPart, updater: Updater<unknown>): void {
+  mount(part: ChildPart, updater: Updater): void {
     this._subscription = this._signal.subscribe(() => {
       updater.pushMutationEffect(part);
       updater.requestMutations();
     });
   }
 
-  unmount(_part: ChildPart, _updater: Updater<unknown>): void {
+  unmount(_part: ChildPart, _updater: Updater): void {
     if (this._subscription !== null) {
       this._subscription();
       this._subscription = null;
     }
   }
 
-  update(part: ChildPart, updater: Updater<unknown>): void {
-    const version = this._signal.version;
+  update(part: ChildPart, updater: Updater): void {
+    const { version } = this._signal;
 
     if (this._memoizedVersion < version) {
       this._memoizedValue = ChildValue.upgrade(
@@ -208,18 +208,18 @@ export class TextChild extends ChildValue {
     this._value = newValue;
   }
 
-  mount(part: ChildPart, _updater: Updater<unknown>): void {
+  mount(part: ChildPart, _updater: Updater): void {
     const reference = part.endNode;
     reference.parentNode!.insertBefore(this._node, reference);
   }
 
-  unmount(_part: ChildPart, _updater: Updater<unknown>): void {
+  unmount(_part: ChildPart, _updater: Updater): void {
     if (this._node.isConnected) {
       this._node.remove();
     }
   }
 
-  update(_part: ChildPart, _updater: Updater<unknown>): void {
+  update(_part: ChildPart, _updater: Updater): void {
     this._node.textContent = this._value;
   }
 }

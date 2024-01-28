@@ -4,7 +4,7 @@ import type { Updater } from './updater';
 export const directiveSymbol = Symbol();
 
 export interface Directive {
-  [directiveSymbol](part: Part, updater: Updater<unknown>): void;
+  [directiveSymbol](part: Part, updater: Updater): void;
 }
 
 export function isDirective(value: unknown): value is Directive {

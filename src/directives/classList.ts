@@ -12,7 +12,7 @@ export class ClassList implements Directive {
     this._classSpecifiers = classSpecifiers;
   }
 
-  [directiveSymbol](part: Part, _updater: Updater<unknown>): void {
+  [directiveSymbol](part: Part, _updater: Updater): void {
     if (!(part instanceof AttributePart) || part.name !== 'class') {
       throw new Error(
         '"ClassList" directive must be used in the "class" attribute.',

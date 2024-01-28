@@ -1,5 +1,5 @@
-import { Part } from '../part';
-import { Updater } from '../updater';
+import type { Part } from '../part';
+import type { Updater } from '../updater';
 
 export class EventPart implements Part {
   private readonly _element: Element;
@@ -28,14 +28,14 @@ export class EventPart implements Part {
   }
 
   setValue(newValue: unknown): void {
-    if (typeof newValue !== 'function') {
-      throw new Error('The value of "EventPart" must be a function.');
+    if (newValue !== null && typeof newValue !== 'function') {
+      throw new Error('The value of "EventPart" must be a function or null.');
     }
 
-    this._pendingValue = newValue as EventListener;
+    this._pendingValue = newValue as EventListener | null;
   }
 
-  commit(_updater: Updater<unknown>): void {
+  commit(_updater: Updater): void {
     const {
       _element: element,
       _name: name,
@@ -54,5 +54,5 @@ export class EventPart implements Part {
     this._committedValue = newValue;
   }
 
-  disconnect(_updater: Updater<unknown>): void {}
+  disconnect(_updater: Updater): void {}
 }

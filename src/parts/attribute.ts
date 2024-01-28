@@ -32,27 +32,27 @@ export class AttributePart implements Part {
     this._pendingValue = AttributeValue.upgrade(newValue, this._committedValue);
   }
 
-  commit(updater: Updater<unknown>): void {
+  commit(updater: Updater): void {
     const { _committedValue: oldValue, _pendingValue: newValue } = this;
 
     if (oldValue !== newValue) {
-      if (oldValue) {
+      if (oldValue !== null) {
         oldValue.unmount(this, updater);
       }
 
-      if (newValue) {
+      if (newValue !== null) {
         newValue.mount(this, updater);
       }
     }
 
-    if (newValue) {
+    if (newValue !== null) {
       newValue.update(this, updater);
     }
 
     this._committedValue = newValue;
   }
 
-  disconnect(updater: Updater<unknown>): void {
+  disconnect(updater: Updater): void {
     if (this._committedValue) {
       this._committedValue.unmount(this, updater);
     }
@@ -91,11 +91,11 @@ export abstract class AttributeValue {
     }
   }
 
-  abstract mount(_part: AttributePart, _updater: Updater<unknown>): void;
+  abstract mount(_part: AttributePart, _updater: Updater): void;
 
-  abstract unmount(_part: AttributePart, _updater: Updater<unknown>): void;
+  abstract unmount(_part: AttributePart, _updater: Updater): void;
 
-  abstract update(_part: AttributePart, _updater: Updater<unknown>): void;
+  abstract update(_part: AttributePart, _updater: Updater): void;
 }
 
 export class BooleanAttribute extends AttributeValue {
@@ -114,11 +114,11 @@ export class BooleanAttribute extends AttributeValue {
     this._value = newValue;
   }
 
-  mount(_part: AttributePart, _updater: Updater<unknown>): void {}
+  mount(_part: AttributePart, _updater: Updater): void {}
 
-  unmount(_part: AttributePart, _updater: Updater<unknown>): void {}
+  unmount(_part: AttributePart, _updater: Updater): void {}
 
-  update(part: AttributePart, _updater: Updater<unknown>): void {
+  update(part: AttributePart, _updater: Updater): void {
     const element = part.node;
     if (this._value) {
       element.setAttribute(part.name, '');
@@ -146,21 +146,21 @@ export class SignalAttribute<T> extends AttributeValue {
     return this._signal;
   }
 
-  mount(part: AttributePart, updater: Updater<unknown>): void {
+  mount(part: AttributePart, updater: Updater): void {
     this._subscription = this._signal.subscribe(() => {
       updater.pushMutationEffect(part);
       updater.requestMutations();
     });
   }
 
-  unmount(_part: AttributePart, _updater: Updater<unknown>): void {
+  unmount(_part: AttributePart, _updater: Updater): void {
     if (this._subscription !== null) {
       this._subscription();
       this._subscription = null;
     }
   }
 
-  update(part: AttributePart, updater: Updater<unknown>): void {
+  update(part: AttributePart, updater: Updater): void {
     const version = this._signal.version;
 
     if (this._memoizedVersion < version) {
@@ -191,11 +191,11 @@ export class StringAttribute extends AttributeValue {
     this._value = newValue;
   }
 
-  mount(_part: AttributePart, _updater: Updater<unknown>): void {}
+  mount(_part: AttributePart, _updater: Updater): void {}
 
-  unmount(_part: AttributePart, _updater: Updater<unknown>): void {}
+  unmount(_part: AttributePart, _updater: Updater): void {}
 
-  update(part: AttributePart, _updater: Updater<unknown>): void {
+  update(part: AttributePart, _updater: Updater): void {
     const element = part.node;
     element.setAttribute(part.name, this._value);
   }

@@ -11,7 +11,7 @@ export class DOMRef implements Directive {
     this._ref = ref;
   }
 
-  [directiveSymbol](part: Part, _updater: Updater<unknown>): void {
+  [directiveSymbol](part: Part, _updater: Updater): void {
     if (!(part instanceof AttributePart) || part.name !== 'ref') {
       throw new Error(
         '"DOMRef" directive must be used in the "ref" attribute.',

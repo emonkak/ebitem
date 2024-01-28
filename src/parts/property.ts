@@ -1,6 +1,6 @@
-import { Part } from '../part';
+import type { Part } from '../part';
 import { Signal, Subscription } from '../signal';
-import { Updater } from '../updater';
+import type { Updater } from '../updater';
 
 export class PropertyPart implements Part {
   private readonly _element: Element;
@@ -32,27 +32,27 @@ export class PropertyPart implements Part {
     this._pendingValue = PropertyValue.upgrade(newValue, this._committedValue);
   }
 
-  commit(updater: Updater<unknown>): void {
+  commit(updater: Updater): void {
     const { _committedValue: oldValue, _pendingValue: newValue } = this;
 
     if (oldValue !== newValue) {
-      if (oldValue) {
+      if (oldValue !== null) {
         oldValue.unmount(this, updater);
       }
 
-      if (newValue) {
+      if (newValue !== null) {
         newValue.mount(this, updater);
       }
     }
 
-    if (newValue) {
+    if (newValue !== null) {
       newValue.update(this, updater);
     }
 
     this._committedValue = newValue;
   }
 
-  disconnect(updater: Updater<unknown>): void {
+  disconnect(updater: Updater): void {
     if (this._committedValue) {
       this._committedValue.unmount(this, updater);
     }
@@ -77,11 +77,11 @@ export abstract class PropertyValue {
     }
   }
 
-  abstract mount(_part: PropertyPart, _updater: Updater<unknown>): void;
+  abstract mount(_part: PropertyPart, _updater: Updater): void;
 
-  abstract unmount(_part: PropertyPart, _updater: Updater<unknown>): void;
+  abstract unmount(_part: PropertyPart, _updater: Updater): void;
 
-  abstract update(_part: PropertyPart, _updater: Updater<unknown>): void;
+  abstract update(_part: PropertyPart, _updater: Updater): void;
 }
 
 export class ValueProperty<T> extends PropertyValue {
@@ -100,11 +100,11 @@ export class ValueProperty<T> extends PropertyValue {
     this._value = newValue;
   }
 
-  mount(_part: PropertyPart, _updater: Updater<unknown>): void {}
+  mount(_part: PropertyPart, _updater: Updater): void {}
 
-  unmount(_part: PropertyPart, _updater: Updater<unknown>): void {}
+  unmount(_part: PropertyPart, _updater: Updater): void {}
 
-  update(part: PropertyPart, _updater: Updater<unknown>): void {
+  update(part: PropertyPart, _updater: Updater): void {
     (part.node as any)[part.name] = this._value;
   }
 }
@@ -127,22 +127,22 @@ export class SignalProperty<T> extends PropertyValue {
     return this._signal;
   }
 
-  mount(part: PropertyPart, updater: Updater<unknown>): void {
+  mount(part: PropertyPart, updater: Updater): void {
     this._subscription = this._signal.subscribe(() => {
       updater.pushMutationEffect(part);
       updater.requestMutations();
     });
   }
 
-  unmount(_part: PropertyPart, _updater: Updater<unknown>): void {
+  unmount(_part: PropertyPart, _updater: Updater): void {
     if (this._subscription !== null) {
       this._subscription();
       this._subscription = null;
     }
   }
 
-  update(part: PropertyPart, updater: Updater<unknown>): void {
-    const version = this._signal.version;
+  update(part: PropertyPart, updater: Updater): void {
+    const { version } = this._signal;
 
     if (this._memoizedVersion < version) {
       this._memoizedValue = PropertyValue.upgrade(

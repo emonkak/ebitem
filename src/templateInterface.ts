@@ -7,11 +7,11 @@ export interface MountPoint {
 }
 
 export interface TemplateInterface {
-  mount(values: unknown[], updater: Updater<unknown>): MountPoint;
+  mount(values: unknown[], updater: Updater): MountPoint;
   patch(
     parts: Part[],
     oldValues: unknown[],
     newValues: unknown[],
-    updater: Updater<unknown>,
+    updater: Updater,
   ): void;
 }

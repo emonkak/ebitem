@@ -79,7 +79,7 @@ export class Fragment<TContext>
     this._memoizedValues = this._pendingValues;
   }
 
-  mount(part: ChildPart, _updater: Updater<unknown>): void {
+  mount(part: ChildPart, _updater: Updater): void {
     const reference = part.endNode;
     const parent = reference.parentNode;
 
@@ -90,7 +90,7 @@ export class Fragment<TContext>
     }
   }
 
-  unmount(_part: ChildPart, updater: Updater<unknown>): void {
+  unmount(_part: ChildPart, updater: Updater): void {
     for (let i = 0, l = this._nodes.length; i < l; i++) {
       const node = this._nodes[i]!;
       if (node.isConnected) {
@@ -104,5 +104,5 @@ export class Fragment<TContext>
     }
   }
 
-  update(_part: ChildPart, _updater: Updater<unknown>): void {}
+  update(_part: ChildPart, _updater: Updater): void {}
 }

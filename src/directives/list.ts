@@ -20,7 +20,7 @@ export class List<TItem, TValue, TKey> implements Directive {
     this._keySelector = keySelector;
   }
 
-  [directiveSymbol](part: Part, updater: Updater<unknown>): void {
+  [directiveSymbol](part: Part, updater: Updater): void {
     if (!(part instanceof ChildPart)) {
       throw new Error('"List" directive must be used in an arbitrary child.');
     }
@@ -101,15 +101,15 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
     return parts.length > 0 ? parts[parts.length - 1]!.endNode : null;
   }
 
-  mount(_part: Part, _updater: Updater<unknown>): void {}
+  mount(_part: Part, _updater: Updater): void {}
 
-  unmount(_part: Part, updater: Updater<unknown>): void {
+  unmount(_part: Part, updater: Updater): void {
     for (let i = 0, l = this._commitedParts.length; i < l; i++) {
       this._commitedParts[i]!.disconnect(updater);
     }
   }
 
-  update(_part: ChildPart, _updater: Updater<unknown>): void {
+  update(_part: ChildPart, _updater: Updater): void {
     this._commitedParts = this._pendingParts;
     this._commitedValues = this._pendingValues;
     this._commitedKeys = this._pendingKeys;
@@ -119,7 +119,7 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
     newItems: TItem[],
     valueSelector: (item: TItem, index: number) => TValue,
     keySelector: (item: TItem, index: number) => TKey,
-    updater: Updater<unknown>,
+    updater: Updater,
   ): void {
     const oldParts: (ItemPart | undefined)[] = this._commitedParts;
     const oldValues = this._commitedValues;
@@ -269,7 +269,7 @@ export class ItemPart extends ChildPart implements Part {
     this._containerPart = containerPart;
   }
 
-  override commit(updater: Updater<unknown>): void {
+  override commit(updater: Updater): void {
     if (!this.node.isConnected) {
       const reference = this._containerPart.endNode;
       reference.parentNode!.insertBefore(this._node, reference);
@@ -278,7 +278,7 @@ export class ItemPart extends ChildPart implements Part {
     super.commit(updater);
   }
 
-  reorder(referencePart: ChildPart | null, updater: Updater<unknown>): void {
+  reorder(referencePart: ChildPart | null, updater: Updater): void {
     const reference = referencePart
       ? referencePart.startNode
       : this._containerPart.endNode;
@@ -296,7 +296,7 @@ class DisconnectChildPart implements Effect {
     this._part = part;
   }
 
-  commit(updater: Updater<unknown>): void {
+  commit(updater: Updater): void {
     this._part.disconnect(updater);
   }
 }
@@ -311,7 +311,7 @@ class ReorderItemPart implements Effect {
     this._referencePart = referencePart;
   }
 
-  commit(updater: Updater<unknown>): void {
+  commit(updater: Updater): void {
     this._part.reorder(this._referencePart, updater);
   }
 }

@@ -23,7 +23,7 @@ export class TemplateResult {
     return this._values;
   }
 
-  [directiveSymbol](part: Part, updater: Updater<unknown>): void {
+  [directiveSymbol](part: Part, updater: Updater): void {
     if (!(part instanceof ChildPart)) {
       throw new Error(
         '"TemplateResult" directive must be used in an arbitrary child.',

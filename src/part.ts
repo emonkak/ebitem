@@ -4,14 +4,10 @@ import type { Effect, Updater } from './updater';
 export interface Part extends Effect {
   get node(): ChildNode;
   setValue(newValue: unknown): void;
-  disconnect(updater: Updater<unknown>): void;
+  disconnect(updater: Updater): void;
 }
 
-export function mountPart(
-  part: Part,
-  value: unknown,
-  updater: Updater<unknown>,
-): void {
+export function mountPart(part: Part, value: unknown, updater: Updater): void {
   if (isDirective(value)) {
     value[directiveSymbol](part, updater);
   } else {
@@ -24,7 +20,7 @@ export function updatePart(
   part: Part,
   oldValue: unknown,
   newValue: unknown,
-  updater: Updater<unknown>,
+  updater: Updater,
 ): void {
   if (Object.is(oldValue, newValue)) {
     return;

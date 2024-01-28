@@ -61,7 +61,7 @@ export class Template implements TemplateInterface {
     this._holes = holes;
   }
 
-  mount(values: unknown[], updater: Updater<unknown>): MountPoint {
+  mount(values: unknown[], updater: Updater): MountPoint {
     const node = this._templateElement.content.cloneNode(true);
     const parts = new Array(this._holes.length);
 
@@ -105,7 +105,7 @@ export class Template implements TemplateInterface {
     parts: Part[],
     oldValues: unknown[],
     newValues: unknown[],
-    updater: Updater<unknown>,
+    updater: Updater,
   ): void {
     for (let i = 0, l = this._holes.length; i < l; i++) {
       updatePart(parts[i]!, oldValues[i], newValues[i], updater);

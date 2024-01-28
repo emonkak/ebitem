@@ -3,7 +3,7 @@ import { ChildPart } from './parts/child';
 import type { ScopeInterface } from './scopeInterface';
 
 export interface Effect {
-  commit(updater: Updater<unknown>): void;
+  commit(updater: Updater): void;
 }
 
 export interface Renderable<TContext> {
@@ -17,7 +17,7 @@ export interface RenderableWithHooks<TContext> extends Renderable<TContext> {
   get hooks(): Hook[];
 }
 
-export class Updater<TContext> {
+export class Updater<TContext = unknown> {
   private readonly _scope: ScopeInterface<TContext>;
 
   private _currentRenderable: Renderable<TContext> | null = null;

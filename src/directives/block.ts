@@ -18,7 +18,7 @@ export class Block<TProps, TContext> implements Directive {
     this._props = props;
   }
 
-  [directiveSymbol](part: Part, updater: Updater<unknown>): void {
+  [directiveSymbol](part: Part, updater: Updater): void {
     if (!(part instanceof ChildPart)) {
       throw new Error('"List" directive must be used in an arbitrary child.');
     }

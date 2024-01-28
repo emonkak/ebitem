@@ -115,7 +115,7 @@ export class Block<TProps, TContext>
     this._memoizedProps = this._pendingProps;
   }
 
-  mount(part: ChildPart, _updater: Updater<unknown>): void {
+  mount(part: ChildPart, _updater: Updater): void {
     const reference = part.endNode;
     const parent = reference.parentNode;
 
@@ -128,7 +128,7 @@ export class Block<TProps, TContext>
     this._flags |= BlockFlag.MOUNTED;
   }
 
-  unmount(_part: ChildPart, updater: Updater<unknown>): void {
+  unmount(_part: ChildPart, updater: Updater): void {
     for (let i = 0, l = this._hooks.length; i < l; i++) {
       const hook = this._hooks[i]!;
       if (
@@ -145,9 +145,9 @@ export class Block<TProps, TContext>
     this._flags ^= BlockFlag.DIRTY;
   }
 
-  update(_part: ChildPart, _updater: Updater<unknown>): void {}
+  update(_part: ChildPart, _updater: Updater): void {}
 
-  _disconnectNodesAndParts(updater: Updater<unknown>): void {
+  _disconnectNodesAndParts(updater: Updater): void {
     for (let i = 0, l = this._nodes.length; i < l; i++) {
       const node = this._nodes[i]!;
       if (node.isConnected) {

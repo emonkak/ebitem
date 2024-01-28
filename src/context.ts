@@ -264,7 +264,7 @@ class InvokeEffectHook implements Effect {
     this._hook = hook;
   }
 
-  commit(_updater: Updater<unknown>): void {
+  commit(_updater: Updater): void {
     if (this._hook.cleanup) {
       this._hook.cleanup();
       this._hook.cleanup = undefined;
