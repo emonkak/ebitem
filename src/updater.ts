@@ -13,7 +13,7 @@ export interface Renderable<TContext> {
   render(scope: ScopeInterface<TContext>, updater: Updater<TContext>): void;
 }
 
-export interface RenderableWithHooks<TContext> extends Renderable<TContext> {
+export interface RenderableBlock<TContext> extends Renderable<TContext> {
   get hooks(): Hook[];
 }
 

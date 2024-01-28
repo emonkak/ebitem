@@ -2,7 +2,7 @@ import { Context } from './context';
 import type { ScopeInterface } from './scopeInterface';
 import { Template } from './template';
 import { TemplateResult } from './templateResult';
-import type { Renderable, RenderableWithHooks, Updater } from './updater';
+import type { Renderable, RenderableBlock, Updater } from './updater';
 
 type Varibales = { [key: PropertyKey]: unknown };
 
@@ -42,7 +42,7 @@ export class Scope implements ScopeInterface<Context> {
   }
 
   createContext(
-    renderable: RenderableWithHooks<Context>,
+    renderable: RenderableBlock<Context>,
     updater: Updater<Context>,
   ): Context {
     return new Context(renderable, updater, this);

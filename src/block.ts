@@ -4,7 +4,7 @@ import { ChildPart, ChildValue } from './parts';
 import type { ScopeInterface } from './scopeInterface';
 import type { TemplateInterface } from './templateInterface';
 import type { TemplateResult } from './templateResult';
-import type { Renderable, Updater } from './updater';
+import type { Renderable, RenderableBlock, Updater } from './updater';
 
 const BlockFlag = {
   MOUNTED: 0b001,
@@ -14,7 +14,7 @@ const BlockFlag = {
 
 export class Block<TProps, TContext>
   extends ChildValue
-  implements Renderable<TContext>
+  implements RenderableBlock<TContext>
 {
   private readonly _type: (props: TProps, context: TContext) => TemplateResult;
 
