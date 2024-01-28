@@ -103,17 +103,17 @@ export class AtomSignal<T> extends Signal<T> {
 export class ProjectedSignal<TValue, TResult> extends Signal<TResult> {
   private readonly _signal: Signal<TValue>;
 
-  private readonly _selectorFn: (value: TValue) => TResult;
+  private readonly _selector: (value: TValue) => TResult;
 
-  constructor(signal: Signal<TValue>, selectorFn: (value: TValue) => TResult) {
+  constructor(signal: Signal<TValue>, selector: (value: TValue) => TResult) {
     super();
     this._signal = signal;
-    this._selectorFn = selectorFn;
+    this._selector = selector;
   }
 
   get value(): TResult {
-    const selectorFn = this._selectorFn;
-    return selectorFn(this._signal.value);
+    const selector = this._selector;
+    return selector(this._signal.value);
   }
 
   get version(): number {
