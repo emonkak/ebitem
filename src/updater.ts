@@ -1,5 +1,5 @@
 import type { Hook } from './hook';
-import { ChildPart } from './part';
+import { ChildPart } from './parts/child';
 import type { ScopeInterface } from './scopeInterface';
 
 export interface Effect {

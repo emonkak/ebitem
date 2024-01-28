@@ -1,12 +1,6 @@
-import {
-  ChildPart,
-  ChildValue,
-  Directive,
-  Part,
-  directiveSymbol,
-  mountPart,
-  updatePart,
-} from '../part';
+import { Directive, directiveSymbol } from '../directive';
+import { Part, mountPart, updatePart } from '../part';
+import { ChildPart, ChildValue } from '../parts';
 import type { Effect, Updater } from '../updater';
 
 export class List<TItem, TValue, TKey> implements Directive {

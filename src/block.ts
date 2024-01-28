@@ -1,5 +1,6 @@
 import { Hook, HookType } from './hook';
-import { ChildPart, ChildValue, Part } from './part';
+import { Part } from './part';
+import { ChildPart, ChildValue } from './parts';
 import type { ScopeInterface } from './scopeInterface';
 import type { TemplateInterface } from './templateInterface';
 import type { TemplateResult } from './templateResult';

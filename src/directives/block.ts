@@ -1,5 +1,7 @@
 import { Block as BlockChild } from '../block';
-import { ChildPart, Directive, Part, directiveSymbol } from '../part';
+import { Directive, directiveSymbol } from '../directive';
+import { Part } from '../part';
+import { ChildPart } from '../parts';
 import type { TemplateResult } from '../templateResult';
 import type { Updater } from '../updater';
 

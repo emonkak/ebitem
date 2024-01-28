@@ -1,5 +1,7 @@
+import { directiveSymbol } from './directive';
 import { Fragment } from './fragment';
-import { Part, directiveSymbol } from './part';
+import { Part } from './part';
+import { ChildPart } from './parts';
 import type { TemplateInterface } from './templateInterface';
 import type { Updater } from './updater';
 
@@ -22,6 +24,12 @@ export class TemplateResult {
   }
 
   [directiveSymbol](part: Part, updater: Updater<unknown>): void {
+    if (!(part instanceof ChildPart)) {
+      throw new Error(
+        '"TemplateResult" directive must be used in an arbitrary child.',
+      );
+    }
+
     const value = part.value;
 
     let needsMount = false;

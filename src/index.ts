@@ -5,14 +5,12 @@ export {
   EffectCallback,
   Cleanup,
 } from './hook';
+export { Part } from './part';
 export {
-  AttributePart,
-  EventPart,
-  Part,
-  ChildPart,
   Directive,
   directiveSymbol,
-} from './part';
+  isDirective,
+} from './directive';
 export { Signal, AtomSignal, ProjectedSignal, MemoizedSignal } from './signal';
 export { Renderable, RenderableWithHooks, Updater } from './updater';
 export { Scope } from './scope';

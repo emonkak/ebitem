@@ -1,4 +1,6 @@
-import { AttributePart, Directive, Part, directiveSymbol } from '../part';
+import { Directive, directiveSymbol } from '../directive';
+import { Part } from '../part';
+import { AttributePart } from '../parts';
 import type { Updater } from '../updater';
 
 export type ClassSpecifier = string | { [key: string]: boolean };
@@ -11,7 +13,7 @@ export class ClassList implements Directive {
   }
 
   [directiveSymbol](part: Part, _updater: Updater<unknown>): void {
-    if (!(part instanceof AttributePart) || part.attributeName !== 'class') {
+    if (!(part instanceof AttributePart) || part.name !== 'class') {
       throw new Error(
         '"ClassList" directive must be used in the "class" attribute.',
       );

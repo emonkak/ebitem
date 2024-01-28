@@ -1,5 +1,7 @@
+import { Directive, directiveSymbol } from '../directive';
 import type { RefCallback, RefObject } from '../hook';
-import { AttributePart, Directive, Part, directiveSymbol } from '../part';
+import { Part } from '../part';
+import { AttributePart } from '../parts';
 import type { Updater } from '../updater';
 
 export class DOMRef implements Directive {
@@ -10,7 +12,7 @@ export class DOMRef implements Directive {
   }
 
   [directiveSymbol](part: Part, _updater: Updater<unknown>): void {
-    if (!(part instanceof AttributePart) || part.attributeName !== 'ref') {
+    if (!(part instanceof AttributePart) || part.name !== 'ref') {
       throw new Error(
         '"DOMRef" directive must be used in the "ref" attribute.',
       );

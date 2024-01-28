@@ -1,20 +1,18 @@
-import {
-  AttributePart,
-  ChildPart,
-  EventPart,
-  Part,
-  mountPart,
-  updatePart,
-} from './part';
+import { Part, mountPart, updatePart } from './part';
+import { AttributePart } from './parts';
+import { ChildPart } from './parts/child';
+import { EventPart } from './parts/event';
+import { PropertyPart } from './parts/property';
 import type { MountPoint, TemplateInterface } from './templateInterface';
 import type { Updater } from './updater';
 
-type Hole = AttributeHole | EventHole | ChildHole;
+type Hole = AttributeHole | EventHole | ChildHole | PropertyHole;
 
 enum HoleType {
   ATTRIBUTE = 'ATTRIBUTE',
-  EVENT = 'EVENT',
   CHILD = 'CHILD',
+  EVENT = 'EVENT',
+  PROPERTY = 'PROPERTY',
 }
 
 interface AttributeHole {
@@ -24,6 +22,12 @@ interface AttributeHole {
   name: string;
 }
 
+interface ChildHole {
+  type: HoleType.CHILD;
+  path: number[];
+  index: number;
+}
+
 interface EventHole {
   type: HoleType.EVENT;
   path: number[];
@@ -31,10 +35,11 @@ interface EventHole {
   name: string;
 }
 
-interface ChildHole {
-  type: HoleType.CHILD;
+interface PropertyHole {
+  type: HoleType.PROPERTY;
   path: number[];
   index: number;
+  name: string;
 }
 
 export class Template implements TemplateInterface {
@@ -73,15 +78,23 @@ export class Template implements TemplateInterface {
 
       let part;
 
-      if (hole.type === HoleType.ATTRIBUTE) {
-        part = new AttributePart(child as Element, hole.name);
-      } else if (hole.type === HoleType.EVENT) {
-        part = new EventPart(child as Element, hole.name);
-      } else {
-        part = new ChildPart(child as ChildNode);
+      switch (hole.type) {
+        case HoleType.ATTRIBUTE:
+          part = new AttributePart(child as Element, hole.name);
+          break;
+        case HoleType.EVENT:
+          part = new EventPart(child as Element, hole.name);
+          break;
+        case HoleType.CHILD:
+          part = new ChildPart(child as ChildNode);
+          break;
+        case HoleType.PROPERTY:
+          part = new PropertyPart(child as Element, hole.name);
+          break;
       }
 
       mountPart(part, values[i], updater);
+
       parts[i] = part;
     }
 
@@ -118,16 +131,19 @@ function parseAttribtues(
 
     const name = attribute.name;
 
-    if (
-      name.length > 2 &&
-      (name[0] === 'o' || name[0] === 'O') &&
-      (name[1] === 'n' || name[1] === 'N')
-    ) {
+    if (name.length > 1 && name[0] === '@') {
       holes.push({
         type: HoleType.EVENT,
         path,
         index,
-        name: name.slice(2),
+        name: name.slice(1),
+      });
+    } else if (name.length > 1 && name[0] === '.') {
+      holes.push({
+        type: HoleType.PROPERTY,
+        path,
+        index,
+        name: name.slice(1),
       });
     } else {
       holes.push({
