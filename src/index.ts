@@ -1,8 +1,21 @@
 export { Context } from './context';
-export { Directive, directiveSymbol } from './directive';
+export {
+  RefObject,
+  RefCallback,
+  EffectCallback,
+  Cleanup,
+} from './hook';
+export {
+  AttributePart,
+  EventPart,
+  Part,
+  ChildPart,
+  Directive,
+  directiveSymbol,
+} from './part';
 export { Signal, AtomSignal, ProjectedSignal, MemoizedSignal } from './signal';
-
-export { block } from './directives/block';
-export { list } from './directives/list';
-export { domRef } from './directives/domRef';
-export { classList } from './directives/classList';
+export { Renderable, RenderableWithHooks, Updater } from './updater';
+export { Scope } from './scope';
+export { ScopeInterface } from './scopeInterface';
+export { Template } from './template';
+export { TemplateInterface } from './templateInterface';

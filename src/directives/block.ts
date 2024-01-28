@@ -1,24 +1,22 @@
 import { Block as BlockChild } from '../block';
-import type { Context } from '../context';
-import { Directive, directiveSymbol } from '../directive';
-import { ChildPart } from '../part';
+import { ChildPart, Directive, Part, directiveSymbol } from '../part';
 import type { TemplateResult } from '../templateResult';
-import type { Part } from '../types';
+import type { Updater } from '../updater';
 
-export class Block<TProps> implements Directive {
-  private readonly _type: (props: TProps, context: Context) => TemplateResult;
+export class Block<TProps, TContext> implements Directive {
+  private readonly _type: (props: TProps, context: TContext) => TemplateResult;
 
   private readonly _props: TProps;
 
   constructor(
-    type: (props: TProps, context: Context) => TemplateResult,
+    type: (props: TProps, context: TContext) => TemplateResult,
     props: TProps,
   ) {
     this._type = type;
     this._props = props;
   }
 
-  [directiveSymbol](part: Part, context: Context): void {
+  [directiveSymbol](part: Part, updater: Updater<unknown>): void {
     if (!(part instanceof ChildPart)) {
       throw new Error('"List" directive must be used in an arbitrary child.');
     }
@@ -30,7 +28,7 @@ export class Block<TProps> implements Directive {
     if (value instanceof BlockChild) {
       if (value.type === this._type) {
         value.setProps(this._props);
-        value.scheduleUpdate(context);
+        value.scheduleUpdate(updater);
       } else {
         needsMount = true;
       }
@@ -42,18 +40,13 @@ export class Block<TProps> implements Directive {
       const newBlock = new BlockChild(
         this._type,
         this._props,
-        context.currentRenderable,
+        updater.currentRenderable,
       );
+
       part.setValue(newBlock);
-      context.requestUpdate(newBlock);
-      context.pushMutationEffect(part);
+
+      updater.requestUpdate(newBlock);
+      updater.pushMutationEffect(part);
     }
   }
-}
-
-export function block<TProps>(
-  type: (props: TProps, context: Context) => TemplateResult,
-  props: TProps,
-): Block<TProps> {
-  return new Block(type, props);
 }

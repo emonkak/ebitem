@@ -1,7 +1,13 @@
-import type { Context } from './context';
-import { Directive, directiveSymbol } from './directive';
-import { AttributePart, AttributeValue, ChildPart, ChildValue } from './part';
-import type { Part } from './types';
+import {
+  AttributePart,
+  AttributeValue,
+  ChildPart,
+  ChildValue,
+  Directive,
+  directiveSymbol,
+} from './part';
+import type { Part } from './part';
+import type { Updater } from './updater';
 
 // 0 is reserved to indicate an uninitialized signal.
 let globalVersionCounter = 1;
@@ -10,7 +16,7 @@ type Subscriber = () => void;
 
 type Subscription = () => void;
 
-type MapSignal<T> = T extends Array<any>
+type WrapSignals<T> = T extends Array<any>
   ? { [P in keyof T]: Signal<T[P]> }
   : never;
 
@@ -21,7 +27,7 @@ export abstract class Signal<T> implements Directive {
 
   abstract subscribe(_subscriber: Subscriber): Subscription;
 
-  [directiveSymbol](part: Part, context: Context): void {
+  [directiveSymbol](part: Part, updater: Updater<unknown>): void {
     if (part instanceof AttributePart) {
       if (part.value instanceof SignalAttribute && part.value.signal === this) {
         return;
@@ -29,7 +35,7 @@ export abstract class Signal<T> implements Directive {
 
       part.setValue(new SignalAttribute(this));
 
-      context.pushMutationEffect(part);
+      updater.pushMutationEffect(part);
     } else if (part instanceof ChildPart) {
       if (part.value instanceof SignalChild && part.value.signal === this) {
         return;
@@ -37,7 +43,7 @@ export abstract class Signal<T> implements Directive {
 
       part.setValue(new SignalChild(this));
 
-      context.pushMutationEffect(part);
+      updater.pushMutationEffect(part);
     }
 
     throw new Error(
@@ -124,7 +130,7 @@ export class MemoizedSignal<
 > extends Signal<ReturnType<TFactory>> {
   private readonly _factory: TFactory;
 
-  private readonly _dependencies: MapSignal<Parameters<TFactory>>;
+  private readonly _dependencies: WrapSignals<Parameters<TFactory>>;
 
   private _memoizedVersion = 0;
 
@@ -132,7 +138,7 @@ export class MemoizedSignal<
 
   constructor(
     factory: TFactory,
-    dependencies: MapSignal<Parameters<TFactory>>,
+    dependencies: WrapSignals<Parameters<TFactory>>,
   ) {
     super();
     this._factory = factory;
@@ -196,59 +202,61 @@ class SignalChild<T> extends ChildValue {
     return this._value.endNode;
   }
 
-  mount(part: ChildPart, context: Context): void {
+  mount(part: ChildPart, updater: Updater<unknown>): void {
     this._subscription = this._signal.subscribe(() => {
       this._value = ChildValue.upgrade(this._signal.value, this._value);
-      context.pushMutationEffect(part);
-      context.requestMutations();
+      updater.pushMutationEffect(part);
+      updater.requestMutations();
     });
   }
 
-  unmount(_part: ChildPart, _context: Context): void {
+  unmount(_part: ChildPart, _updater: Updater<unknown>): void {
     if (this._subscription) {
       this._subscription();
       this._subscription = null;
     }
   }
 
-  update(part: ChildPart, context: Context): void {
-    this._value.update(part, context);
+  update(part: ChildPart, updater: Updater<unknown>): void {
+    this._value.update(part, updater);
   }
 }
 
 class SignalAttribute<T> extends AttributeValue {
   private readonly _signal: Signal<T>;
 
-  private _value: AttributeValue;
+  private _committdValue: AttributeValue | null = null;
 
   private _subscription: Subscription | null = null;
 
   constructor(signal: Signal<T>) {
     super();
     this._signal = signal;
-    this._value = AttributeValue.upgrade(signal.value, null);
   }
 
   get signal(): Signal<T> {
     return this._signal;
   }
 
-  mount(part: AttributePart, context: Context): void {
+  mount(part: AttributePart, updater: Updater<unknown>): void {
     this._subscription = this._signal.subscribe(() => {
-      this._value = AttributeValue.upgrade(this._signal.value, this._value);
-      context.pushMutationEffect(part);
-      context.requestMutations();
+      updater.pushMutationEffect(part);
+      updater.requestMutations();
     });
   }
 
-  unmount(_part: AttributePart, _context: Context): void {
+  unmount(_part: AttributePart, _updater: Updater<unknown>): void {
     if (this._subscription) {
       this._subscription();
       this._subscription = null;
     }
   }
 
-  update(part: AttributePart, context: Context): void {
-    this._value.update(part, context);
+  update(part: AttributePart, updater: Updater<unknown>): void {
+    this._committdValue = AttributeValue.upgrade(
+      this._signal.value,
+      this._committdValue,
+    );
+    this._committdValue.update(part, updater);
   }
 }

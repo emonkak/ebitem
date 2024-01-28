@@ -1,12 +1,13 @@
-import type { Context } from './context';
 import {
   AttributePart,
   ChildPart,
   EventPart,
+  Part,
   mountPart,
   updatePart,
 } from './part';
-import { MountPoint, Part, TemplateInterface } from './types';
+import type { MountPoint, TemplateInterface } from './templateInterface';
+import type { Updater } from './updater';
 
 type Hole = AttributeHole | EventHole | ChildHole;
 
@@ -55,7 +56,7 @@ export class Template implements TemplateInterface {
     this._holes = holes;
   }
 
-  mount(values: unknown[], context: Context): MountPoint {
+  mount(values: unknown[], updater: Updater<unknown>): MountPoint {
     const node = this._templateElement.content.cloneNode(true);
     const parts = new Array(this._holes.length);
 
@@ -80,7 +81,7 @@ export class Template implements TemplateInterface {
         part = new ChildPart(child as ChildNode);
       }
 
-      mountPart(part, values[i], context);
+      mountPart(part, values[i], updater);
       parts[i] = part;
     }
 
@@ -91,10 +92,10 @@ export class Template implements TemplateInterface {
     parts: Part[],
     oldValues: unknown[],
     newValues: unknown[],
-    context: Context,
+    updater: Updater<unknown>,
   ): void {
     for (let i = 0, l = this._holes.length; i < l; i++) {
-      updatePart(parts[i]!, oldValues[i], newValues[i], context);
+      updatePart(parts[i]!, oldValues[i], newValues[i], updater);
     }
   }
 }

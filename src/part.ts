@@ -1,6 +1,17 @@
-import type { Context } from './context';
-import { directiveSymbol, isDirective } from './directive';
-import type { Part } from './types';
+import type { Effect, Updater } from './updater';
+
+export const directiveSymbol = Symbol();
+
+export interface Part<T = unknown> extends Effect {
+  get value(): T | null;
+  get node(): ChildNode;
+  setValue(newValue: unknown): void;
+  disconnect(updater: Updater<unknown>): void;
+}
+
+export interface Directive {
+  [directiveSymbol](part: Part, updater: Updater<unknown>): void;
+}
 
 export class AttributePart implements Part<AttributeValue> {
   private readonly _element: Element;
@@ -32,29 +43,29 @@ export class AttributePart implements Part<AttributeValue> {
     this._pendingValue = AttributeValue.upgrade(newValue, this._committedValue);
   }
 
-  commit(context: Context): void {
+  commit(updater: Updater<unknown>): void {
     const { _committedValue: oldValue, _pendingValue: newValue } = this;
 
     if (oldValue !== newValue) {
       if (oldValue) {
-        oldValue.unmount(this, context);
+        oldValue.unmount(this, updater);
       }
 
       if (newValue) {
-        newValue.mount(this, context);
+        newValue.mount(this, updater);
       }
     }
 
     if (newValue) {
-      newValue.update(this, context);
+      newValue.update(this, updater);
     }
 
     this._committedValue = newValue;
   }
 
-  disconnect(context: Context): void {
+  disconnect(updater: Updater<unknown>): void {
     if (this._committedValue) {
-      this._committedValue.unmount(this, context);
+      this._committedValue.unmount(this, updater);
     }
   }
 }
@@ -86,11 +97,11 @@ export abstract class AttributeValue {
     }
   }
 
-  abstract mount(_part: AttributePart, _context: Context): void;
+  abstract mount(_part: AttributePart, _updater: Updater<unknown>): void;
 
-  abstract unmount(_part: AttributePart, _context: Context): void;
+  abstract unmount(_part: AttributePart, _updater: Updater<unknown>): void;
 
-  abstract update(_part: AttributePart, _context: Context): void;
+  abstract update(_part: AttributePart, _updater: Updater<unknown>): void;
 }
 
 export class BooleanAttribute extends AttributeValue {
@@ -109,11 +120,11 @@ export class BooleanAttribute extends AttributeValue {
     this._value = newValue;
   }
 
-  mount(_part: AttributePart, _context: Context): void {}
+  mount(_part: AttributePart, _updater: Updater<unknown>): void {}
 
-  unmount(_part: AttributePart, _context: Context): void {}
+  unmount(_part: AttributePart, _updater: Updater<unknown>): void {}
 
-  update(part: AttributePart, _context: Context): void {
+  update(part: AttributePart, _updater: Updater<unknown>): void {
     const element = part.node;
     if (this._value) {
       element.setAttribute(part.attributeName, '');
@@ -139,11 +150,11 @@ export class StringAttribute extends AttributeValue {
     this._value = newValue;
   }
 
-  mount(_part: AttributePart, _context: Context): void {}
+  mount(_part: AttributePart, _updater: Updater<unknown>): void {}
 
-  unmount(_part: AttributePart, _context: Context): void {}
+  unmount(_part: AttributePart, _updater: Updater<unknown>): void {}
 
-  update(part: AttributePart, _context: Context): void {
+  update(part: AttributePart, _updater: Updater<unknown>): void {
     const element = part.node;
     element.setAttribute(part.attributeName, this._value);
   }
@@ -183,7 +194,7 @@ export class EventPart implements Part<EventListener> {
     this._pendingValue = newValue as EventListener;
   }
 
-  commit(_context: Context): void {
+  commit(_updater: Updater<unknown>): void {
     const {
       _element: element,
       _eventName: eventName,
@@ -202,7 +213,7 @@ export class EventPart implements Part<EventListener> {
     this._committedValue = newValue;
   }
 
-  disconnect(_context: Context): void {}
+  disconnect(_updater: Updater<unknown>): void {}
 }
 
 export class ChildPart implements Part<ChildValue> {
@@ -238,28 +249,28 @@ export class ChildPart implements Part<ChildValue> {
     this._pendingValue = ChildValue.upgrade(newValue, this._committedValue);
   }
 
-  commit(context: Context): void {
+  commit(updater: Updater<unknown>): void {
     const oldValue = this._committedValue;
     const newValue = this._pendingValue!;
 
     if (oldValue !== newValue) {
       if (oldValue) {
-        oldValue.unmount(this, context);
+        oldValue.unmount(this, updater);
       }
-      newValue.mount(this, context);
+      newValue.mount(this, updater);
     }
 
-    newValue.update(this, context);
+    newValue.update(this, updater);
 
     this._committedValue = newValue;
   }
 
-  disconnect(context: Context): void {
+  disconnect(updater: Updater<unknown>): void {
     if (this._node.isConnected) {
       this._node.remove();
     }
     if (this._committedValue) {
-      this._committedValue.unmount(this, context);
+      this._committedValue.unmount(this, updater);
     }
   }
 }
@@ -286,11 +297,11 @@ export abstract class ChildValue {
 
   abstract get endNode(): ChildNode | null;
 
-  abstract mount(_part: ChildPart, _context: Context): void;
+  abstract mount(_part: ChildPart, _updater: Updater<unknown>): void;
 
-  abstract unmount(_part: ChildPart, _context: Context): void;
+  abstract unmount(_part: ChildPart, _updater: Updater<unknown>): void;
 
-  abstract update(_part: ChildPart, _context: Context): void;
+  abstract update(_part: ChildPart, _updater: Updater<unknown>): void;
 }
 
 class TextChild extends ChildValue {
@@ -320,18 +331,18 @@ class TextChild extends ChildValue {
     this._value = newValue;
   }
 
-  mount(part: ChildPart, _context: Context): void {
+  mount(part: ChildPart, _updater: Updater<unknown>): void {
     const reference = part.endNode;
     reference.parentNode!.insertBefore(this._node, reference);
   }
 
-  unmount(_part: ChildPart, _context: Context): void {
+  unmount(_part: ChildPart, _updater: Updater<unknown>): void {
     if (this._node.isConnected) {
       this._node.remove();
     }
   }
 
-  update(_part: ChildPart, _context: Context): void {
+  update(_part: ChildPart, _updater: Updater<unknown>): void {
     this._node.textContent = this._value;
   }
 }
@@ -352,26 +363,36 @@ class NullChild extends ChildValue {
     return this._node;
   }
 
-  mount(part: ChildPart, _context: Context): void {
+  mount(part: ChildPart, _updater: Updater<unknown>): void {
     const reference = part.endNode;
     reference.parentNode!.insertBefore(this._node, reference);
   }
 
-  unmount(_part: ChildPart, _context: Context): void {
+  unmount(_part: ChildPart, _updater: Updater<unknown>): void {
     if (this._node.isConnected) {
       this._node.remove();
     }
   }
 
-  update(_part: ChildPart, _context: Context): void {}
+  update(_part: ChildPart, _updater: Updater<unknown>): void {}
 }
 
-export function mountPart(part: Part, value: unknown, context: Context): void {
+export function isDirective(value: unknown): value is Directive {
+  return (
+    typeof value === 'object' && value !== null && directiveSymbol in value
+  );
+}
+
+export function mountPart(
+  part: Part,
+  value: unknown,
+  updater: Updater<unknown>,
+): void {
   if (isDirective(value)) {
-    value[directiveSymbol](part, context);
+    value[directiveSymbol](part, updater);
   } else {
     part.setValue(value);
-    context.pushMutationEffect(part);
+    updater.pushMutationEffect(part);
   }
 }
 
@@ -379,15 +400,15 @@ export function updatePart(
   part: Part,
   oldValue: unknown,
   newValue: unknown,
-  context: Context,
+  updater: Updater<unknown>,
 ): void {
   if (Object.is(oldValue, newValue)) {
     return;
   }
   if (isDirective(newValue)) {
-    newValue[directiveSymbol](part, context);
+    newValue[directiveSymbol](part, updater);
   } else {
     part.setValue(newValue);
-    context.pushMutationEffect(part);
+    updater.pushMutationEffect(part);
   }
 }

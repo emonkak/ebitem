@@ -1,4 +1,12 @@
-import type { Cleanup, EffectCallback } from './types';
+export type Cleanup = () => void;
+
+export type EffectCallback = () => void | Cleanup;
+
+export type RefCallback<T> = (value: T) => void;
+
+export interface RefObject<T> {
+  current: T;
+}
 
 export type Hook = EffectHook | LayoutEffectHook | MemoHook | ReducerHook;
 

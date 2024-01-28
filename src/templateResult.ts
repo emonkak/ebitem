@@ -1,7 +1,7 @@
-import type { Context } from './context';
-import { directiveSymbol } from './directive';
 import { Fragment } from './fragment';
-import type { Part, TemplateInterface } from './types';
+import { Part, directiveSymbol } from './part';
+import type { TemplateInterface } from './templateInterface';
+import type { Updater } from './updater';
 
 export class TemplateResult {
   private readonly _template: TemplateInterface;
@@ -21,7 +21,7 @@ export class TemplateResult {
     return this._values;
   }
 
-  [directiveSymbol](part: Part, context: Context): void {
+  [directiveSymbol](part: Part, updater: Updater<unknown>): void {
     const value = part.value;
 
     let needsMount = false;
@@ -31,7 +31,7 @@ export class TemplateResult {
         const needsRequestUpdate = !value.isDirty;
         value.setValues(this._values);
         if (needsRequestUpdate) {
-          context.requestUpdate(value);
+          updater.requestUpdate(value);
         }
       } else {
         needsMount = true;
@@ -44,11 +44,13 @@ export class TemplateResult {
       const newFragment = new Fragment(
         this._template,
         this._values,
-        context.currentRenderable,
+        updater.currentRenderable,
       );
+
       part.setValue(newFragment);
-      context.requestUpdate(newFragment);
-      context.pushMutationEffect(part);
+
+      updater.requestUpdate(newFragment);
+      updater.pushMutationEffect(part);
     }
   }
 }

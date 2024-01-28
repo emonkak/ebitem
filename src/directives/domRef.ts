@@ -1,16 +1,15 @@
-import type { Context } from '../context';
-import { Directive, directiveSymbol } from '../directive';
-import { AttributePart } from '../part';
-import type { Part, Ref, RefCallback } from '../types';
+import type { RefCallback, RefObject } from '../hook';
+import { AttributePart, Directive, Part, directiveSymbol } from '../part';
+import type { Updater } from '../updater';
 
 export class DOMRef implements Directive {
-  private readonly _ref: Ref<Element | null> | RefCallback<Node>;
+  private readonly _ref: RefCallback<Element> | RefObject<Element | null>;
 
-  constructor(ref: Ref<Element | null>) {
+  constructor(ref: RefCallback<Element> | RefObject<Element | null>) {
     this._ref = ref;
   }
 
-  [directiveSymbol](part: Part, _context: Context): void {
+  [directiveSymbol](part: Part, _updater: Updater<unknown>): void {
     if (!(part instanceof AttributePart) || part.attributeName !== 'ref') {
       throw new Error(
         '"DOMRef" directive must be used in the "ref" attribute.',
@@ -23,8 +22,4 @@ export class DOMRef implements Directive {
       this._ref.current = part.node;
     }
   }
-}
-
-export function domRef(ref: Ref<Element | null>) {
-  return new DOMRef(ref);
 }

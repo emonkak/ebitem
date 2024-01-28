@@ -1,8 +1,9 @@
-import type { Context } from './context';
 import { Hook, HookType } from './hook';
-import { ChildPart, ChildValue } from './part';
-import { TemplateResult } from './templateResult';
-import type { Part, Renderable, TemplateInterface } from './types';
+import { ChildPart, ChildValue, Part } from './part';
+import type { ScopeInterface } from './scopeInterface';
+import type { TemplateInterface } from './templateInterface';
+import type { TemplateResult } from './templateResult';
+import type { Renderable, Updater } from './updater';
 
 const BlockFlag = {
   MOUNTED: 0b001,
@@ -10,18 +11,21 @@ const BlockFlag = {
   DIRTY: 0b100,
 };
 
-export class Block<TProps = unknown> extends ChildValue implements Renderable {
-  private readonly _type: (props: TProps, context: Context) => TemplateResult;
+export class Block<TProps, TContext>
+  extends ChildValue
+  implements Renderable<TContext>
+{
+  private readonly _type: (props: TProps, context: TContext) => TemplateResult;
 
   private _pendingProps: TProps;
 
   private _memoizedProps: TProps;
 
-  private _memoizedValues: unknown[] | null = null;
+  private _memoizedValues: unknown[] = [];
 
   private _memoizedTemplate: TemplateInterface | null = null;
 
-  private _parent: Renderable | null = null;
+  private _parent: Renderable<TContext> | null = null;
 
   private _flags: number = BlockFlag.DIRTY;
 
@@ -32,9 +36,9 @@ export class Block<TProps = unknown> extends ChildValue implements Renderable {
   private _hooks: Hook[] = [];
 
   constructor(
-    type: (props: TProps, context: Context) => TemplateResult,
+    type: (props: TProps, context: TContext) => TemplateResult,
     props: TProps,
-    parent: Renderable | null = null,
+    parent: Renderable<TContext> | null = null,
   ) {
     super();
     this._type = type;
@@ -51,7 +55,7 @@ export class Block<TProps = unknown> extends ChildValue implements Renderable {
     return this._nodes[this._nodes.length - 1] ?? null;
   }
 
-  get type(): (props: TProps, context: Context) => TemplateResult {
+  get type(): (props: TProps, context: TContext) => TemplateResult {
     return this._type;
   }
 
@@ -59,7 +63,7 @@ export class Block<TProps = unknown> extends ChildValue implements Renderable {
     return this._memoizedProps;
   }
 
-  get parent(): Renderable | null {
+  get parent(): Renderable<TContext> | null {
     return this._parent;
   }
 
@@ -75,7 +79,7 @@ export class Block<TProps = unknown> extends ChildValue implements Renderable {
     this._pendingProps = newProps;
   }
 
-  scheduleUpdate(context: Context): void {
+  scheduleUpdate(updater: Updater<TContext>): void {
     const needsUpdate =
       (this._flags & BlockFlag.MOUNTED) !== 0 &&
       (this._flags & BlockFlag.UNMOUNTED) === 0 &&
@@ -83,38 +87,34 @@ export class Block<TProps = unknown> extends ChildValue implements Renderable {
 
     if (needsUpdate) {
       this._flags |= BlockFlag.DIRTY;
-      context.requestUpdate(this);
+      updater.requestUpdate(this);
     }
   }
 
-  render(context: Context): void {
+  render(scope: ScopeInterface<TContext>, updater: Updater<TContext>): void {
     const render = this._type;
+    const context = scope.createContext(this, updater);
     const { template, values } = render(this._pendingProps, context);
 
-    if (
-      this._memoizedTemplate !== null &&
-      this._memoizedTemplate !== template
-    ) {
-      this._cleanTemplateStates(context);
-      this._memoizedValues = null;
-    }
-
-    if (this._memoizedValues === null) {
-      const { node, parts } = template.mount(values, context);
+    if (this._memoizedTemplate !== template) {
+      if (this._memoizedTemplate !== null) {
+        this._disconnectNodesAndParts(updater);
+      }
+      const { node, parts } = template.mount(values, updater);
       this._nodes = Array.from(node.childNodes);
       this._parts = parts;
+      this._memoizedTemplate = template;
       this._memoizedValues = values;
     } else {
-      template.patch(this._parts, this._memoizedValues, values, context);
+      template.patch(this._parts, this._memoizedValues, values, updater);
       this._memoizedValues = values;
     }
 
     this._flags ^= BlockFlag.DIRTY;
     this._memoizedProps = this._pendingProps;
-    this._memoizedTemplate = template;
   }
 
-  mount(part: ChildPart, _context: Context): void {
+  mount(part: ChildPart, _updater: Updater<unknown>): void {
     const reference = part.endNode;
     const parent = reference.parentNode;
 
@@ -127,26 +127,26 @@ export class Block<TProps = unknown> extends ChildValue implements Renderable {
     this._flags |= BlockFlag.MOUNTED;
   }
 
-  unmount(_part: ChildPart, context: Context): void {
+  unmount(_part: ChildPart, updater: Updater<unknown>): void {
     for (let i = 0, l = this._hooks.length; i < l; i++) {
       const hook = this._hooks[i]!;
       if (
         hook.type === HookType.EFFECT ||
         hook.type === HookType.LAYOUT_EFFECT
       ) {
-        hook.cleanup?.(context);
+        hook.cleanup?.();
       }
     }
 
-    this._cleanTemplateStates(context);
+    this._disconnectNodesAndParts(updater);
 
     this._flags |= BlockFlag.UNMOUNTED;
     this._flags ^= BlockFlag.DIRTY;
   }
 
-  update(_part: ChildPart, _context: Context): void {}
+  update(_part: ChildPart, _updater: Updater<unknown>): void {}
 
-  _cleanTemplateStates(context: Context): void {
+  _disconnectNodesAndParts(updater: Updater<unknown>): void {
     for (let i = 0, l = this._nodes.length; i < l; i++) {
       const node = this._nodes[i]!;
       if (node.isConnected) {
@@ -156,7 +156,7 @@ export class Block<TProps = unknown> extends ChildValue implements Renderable {
 
     for (let i = 0, l = this._parts.length; i < l; i++) {
       const part = this._parts[i]!;
-      part.disconnect(context);
+      part.disconnect(updater);
     }
   }
 }

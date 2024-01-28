@@ -1,81 +1,52 @@
-import { Block } from './block';
 import {
+  Cleanup,
+  EffectCallback,
   EffectHook,
   HookType,
   LayoutEffectHook,
   MemoHook,
   ReducerHook,
+  RefObject,
   ensureHookType,
 } from './hook';
-import { ChildPart } from './part';
+import type { ScopeInterface } from './scopeInterface';
 import { AtomSignal, Signal } from './signal';
-import { TemplateFactory, TemplateFactoryInterface } from './templateFactory';
 import { TemplateResult } from './templateResult';
-import type { Effect, EffectCallback, Ref, Renderable } from './types';
-
-type Env = { [key: string]: any };
+import type {
+  Effect,
+  Renderable,
+  RenderableWithHooks,
+  Updater,
+} from './updater';
 
 type ValueOrFunction<T> = T extends (...args: any[]) => any
   ? never
   : T | (() => T);
 
-export interface ContextOptions {
-  env: Env;
-  templateFactory: TemplateFactoryInterface;
-}
-
 export class Context {
-  private readonly _env: Env;
+  private readonly _renderable: RenderableWithHooks<Context>;
 
-  private readonly _envStack: WeakMap<Renderable, Env> = new WeakMap();
+  private readonly _updater: Updater<Context>;
 
-  private readonly _templateFactory: TemplateFactoryInterface;
-
-  private _currentRenderable: Renderable | null = null;
+  private readonly _scope: ScopeInterface<Context>;
 
   private _hookIndex = 0;
 
-  private _isRendering = false;
-
-  private _pendingLayoutEffects: Effect[] = [];
-
-  private _pendingMutationEffects: Effect[] = [];
-
-  private _pendingPassiveEffects: Effect[] = [];
-
-  private _pendingRenderables: Renderable[] = [];
-
-  constructor({
-    env = {},
-    templateFactory = new TemplateFactory(),
-  }: ContextOptions) {
-    this._envStack = new WeakMap();
-    this._env = env;
-    this._templateFactory = templateFactory;
-  }
-
-  get currentRenderable(): Renderable | null {
-    return this._currentRenderable;
+  constructor(
+    renderable: RenderableWithHooks<Context>,
+    updater: Updater<Context>,
+    scope: ScopeInterface<Context>,
+  ) {
+    this._renderable = renderable;
+    this._updater = updater;
+    this._scope = scope;
   }
 
   html(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
-    return this._templateFactory.createTemplate(strings, values);
+    return this._scope.createTemplate(strings, values);
   }
 
-  mount(container: Node, renderable: Renderable): void {
-    this.pushLayoutEffect({
-      commit(context: Context) {
-        const node = document.createComment('');
-        container.appendChild(node);
-        const part = new ChildPart(node);
-        part.setValue(renderable);
-        part.commit(context);
-      },
-    });
-    this.requestUpdate(renderable);
-  }
-
-  useAtomSignal<T>(initialValue: T): AtomSignal<T> {
+  useAtomSignal<T>(initialValue: ValueOrFunction<T>): AtomSignal<T> {
     const signalRef = this.useRef<AtomSignal<T> | null>(null);
     if (signalRef.current === null) {
       signalRef.current = new AtomSignal(
@@ -93,7 +64,7 @@ export class Context {
   }
 
   useEffect(callback: EffectCallback, dependencies?: unknown[]): void {
-    const { hooks } = this._currentRenderable as Block;
+    const { hooks } = this._renderable;
     const currentHook = hooks[this._hookIndex];
 
     if (currentHook) {
@@ -102,7 +73,7 @@ export class Context {
       currentHook.callback = callback;
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
-        this.pushPassiveEffect(new InvokeEffectHook(currentHook));
+        this._updater.pushPassiveEffect(new InvokeEffectHook(currentHook));
         currentHook.dependencies = dependencies;
       }
     } else {
@@ -115,21 +86,10 @@ export class Context {
 
       hooks[this._hookIndex] = newHook;
 
-      this.pushPassiveEffect(new InvokeEffectHook(newHook));
+      this._updater.pushPassiveEffect(new InvokeEffectHook(newHook));
     }
 
     this._hookIndex++;
-  }
-
-  useEnv<T>(name: string): T | undefined {
-    let renderable = this._currentRenderable;
-    do {
-      const env = this._envStack.get(renderable!);
-      if (env && Object.prototype.hasOwnProperty.call(env, name)) {
-        return env[name];
-      }
-    } while ((renderable = renderable!.parent));
-    return this._env[name];
   }
 
   useEvent<THandler extends (...args: any[]) => any>(
@@ -154,14 +114,14 @@ export class Context {
   }
 
   useLayoutEffect(callback: EffectCallback, dependencies?: unknown[]): void {
-    const { hooks } = this._currentRenderable as Block;
+    const { hooks } = this._renderable;
     const currentHook = hooks[this._hookIndex];
 
     if (currentHook) {
       ensureHookType<LayoutEffectHook>(HookType.LAYOUT_EFFECT, currentHook);
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
-        this.pushPassiveEffect(new InvokeEffectHook(currentHook));
+        this._updater.pushLayoutEffect(new InvokeEffectHook(currentHook));
         currentHook.dependencies = dependencies;
       }
 
@@ -176,14 +136,14 @@ export class Context {
 
       hooks[this._hookIndex] = newHook;
 
-      this.pushPassiveEffect(new InvokeEffectHook(newHook));
+      this._updater.pushLayoutEffect(new InvokeEffectHook(newHook));
     }
 
     this._hookIndex++;
   }
 
   useMemo<TResult>(factory: () => TResult, dependencies?: unknown[]): TResult {
-    const { hooks } = this._currentRenderable as Block;
+    const { hooks } = this._renderable;
     let currentHook = hooks[this._hookIndex];
 
     if (currentHook) {
@@ -212,8 +172,8 @@ export class Context {
     reducer: (state: TState, action: TAction) => TState,
     initialState: ValueOrFunction<TState>,
   ): [TState, (action: TAction) => void] {
-    const block = this._currentRenderable as Block;
-    const { hooks } = block;
+    const renderable = this._renderable;
+    const { hooks } = renderable;
     let currentHook = hooks[this._hookIndex];
 
     if (currentHook) {
@@ -225,7 +185,7 @@ export class Context {
           typeof initialState === 'function' ? initialState() : initialState,
         dispatch: (action: TAction) => {
           newHook.state = reducer(newHook.state, action);
-          block.scheduleUpdate(this);
+          renderable.scheduleUpdate(this._updater);
         },
       };
 
@@ -240,15 +200,15 @@ export class Context {
     ];
   }
 
-  useRef<T>(initialValue: T): Ref<T> {
+  useRef<T>(initialValue: T): RefObject<T> {
     return this.useMemo(() => ({ current: initialValue }), []);
   }
 
   useSignal<TSignal extends Signal<any>>(signal: TSignal): TSignal {
-    const block = this._currentRenderable as Block;
+    const renderable = this._renderable;
     this.useEffect(() => {
       return signal.subscribe(() => {
-        block.scheduleUpdate(this);
+        renderable.scheduleUpdate(this._updater);
       });
     }, [signal]);
     return signal;
@@ -265,166 +225,36 @@ export class Context {
   }
 
   useSyncEnternalStore<T>(
-    subscribe: (subscruber: () => void) => void,
+    subscribe: (subscruber: () => void) => Cleanup | void,
     getSnapshot: () => T,
   ): T {
-    const block = this._currentRenderable as Block;
+    const renderable = this._renderable;
     this.useEffect(() => {
       return subscribe(() => {
-        block.scheduleUpdate(this);
+        renderable.scheduleUpdate(this._updater);
       });
     }, [subscribe]);
     return getSnapshot();
   }
 
-  setEnv(env: Env): void {
-    if (this._currentRenderable) {
-      this._envStack.set(this._currentRenderable, env);
-    } else {
-      Object.assign(this._env, env);
-    }
-  }
-
-  requestUpdate(renderable: Renderable): void {
-    if (this._currentRenderable) {
-      if (this._currentRenderable !== renderable) {
-        this._pendingRenderables.push(renderable);
+  getContextValue<T>(key: PropertyKey): T | undefined {
+    let renderable: Renderable<Context> | null = this._renderable;
+    do {
+      const value = this._scope.getVariable(key, renderable);
+      if (value !== undefined) {
+        return value as T;
       }
-    } else {
-      this._pendingRenderables.push(renderable);
-      if (!this._isRendering) {
-        this._isRendering = true;
-        this._startRenderingPhase();
-      }
-    }
+    } while ((renderable = renderable.parent));
+    return undefined;
   }
 
-  requestMutations(): void {
-    if (!this._isRendering && this._pendingMutationEffects.length > 0) {
-      this._isRendering = true;
-      this._startBlockingPhase();
-    }
+  setContextValue(key: PropertyKey, value: unknown): void {
+    this._scope.setVariable(key, value, this._renderable);
   }
 
-  pushMutationEffect(effect: Effect): void {
-    this._pendingMutationEffects.push(effect);
+  requestUpdate(): void {
+    this._updater.requestUpdate(this._renderable);
   }
-
-  pushLayoutEffect(effect: Effect): void {
-    this._pendingLayoutEffects.push(effect);
-  }
-
-  pushPassiveEffect(effect: Effect): void {
-    this._pendingPassiveEffects.push(effect);
-  }
-
-  private _startRenderingPhase(): void {
-    scheduler.postTask(this._renderingPhase, {
-      priority: 'background',
-    });
-  }
-
-  private _startBlockingPhase(): void {
-    scheduler.postTask(this._blockingPhase, {
-      priority: 'user-blocking',
-    });
-  }
-
-  private _startPassiveEffectPhase(): void {
-    scheduler.postTask(this._passiveEffectPhase, {
-      priority: 'background',
-    });
-  }
-
-  private _renderingPhase = async () => {
-    console.time('Rendering phase');
-
-    for (let i = 0; i < this._pendingRenderables.length; i++) {
-      if (navigator.scheduling.isInputPending()) {
-        await yieldToMain();
-      }
-      const renderable = this._pendingRenderables[i]!;
-      if (renderable.isDirty && !hasDirtyParent(renderable)) {
-        this._hookIndex = 0;
-        this._currentRenderable = renderable;
-        this._currentRenderable.render(this);
-        this._currentRenderable = null;
-      }
-    }
-
-    this._pendingRenderables.length = 0;
-
-    if (
-      this._pendingMutationEffects.length > 0 ||
-      this._pendingLayoutEffects.length > 0
-    ) {
-      this._startBlockingPhase();
-    } else if (this._pendingPassiveEffects.length > 0) {
-      this._startPassiveEffectPhase();
-    } else {
-      this._isRendering = false;
-    }
-
-    console.timeEnd('Rendering phase');
-  };
-
-  private _blockingPhase = async () => {
-    console.time('Blocking phase');
-
-    for (let i = 0; i < this._pendingMutationEffects.length; i++) {
-      if (navigator.scheduling.isInputPending()) {
-        await yieldToMain();
-      }
-      this._pendingMutationEffects[i]!.commit(this);
-    }
-
-    this._pendingMutationEffects.length = 0;
-
-    for (let i = 0; i < this._pendingLayoutEffects.length; i++) {
-      if (navigator.scheduling.isInputPending()) {
-        await yieldToMain();
-      }
-      this._pendingLayoutEffects[i]!.commit(this);
-    }
-
-    this._pendingLayoutEffects.length = 0;
-
-    if (this._pendingPassiveEffects.length > 0) {
-      this._startPassiveEffectPhase();
-    } else if (this._pendingRenderables.length > 0) {
-      this._startRenderingPhase();
-    } else {
-      this._isRendering = false;
-    }
-
-    console.timeEnd('Blocking phase');
-  };
-
-  private _passiveEffectPhase = async () => {
-    console.time('Passive effect phase');
-
-    for (let i = 0; i < this._pendingPassiveEffects.length; i++) {
-      if (navigator.scheduling.isInputPending()) {
-        await yieldToMain();
-      }
-      this._pendingPassiveEffects[i]!.commit(this);
-    }
-
-    this._pendingPassiveEffects.length = 0;
-
-    if (this._pendingRenderables.length > 0) {
-      this._startRenderingPhase();
-    } else if (
-      this._pendingMutationEffects.length > 0 ||
-      this._pendingLayoutEffects.length > 0
-    ) {
-      this._startBlockingPhase();
-    } else {
-      this._isRendering = false;
-    }
-
-    console.timeEnd('Passive effect phase');
-  };
 }
 
 class InvokeEffectHook implements Effect {
@@ -434,9 +264,9 @@ class InvokeEffectHook implements Effect {
     this._hook = hook;
   }
 
-  commit(context: Context): void {
+  commit(_updater: Updater<unknown>): void {
     if (this._hook.cleanup) {
-      this._hook.cleanup(context);
+      this._hook.cleanup();
       this._hook.cleanup = undefined;
     }
 
@@ -455,27 +285,7 @@ function dependenciesAreChanged(
     newDependencies === undefined ||
     oldDependencies.length !== newDependencies.length ||
     newDependencies.some(
-      (dependencies, index) => dependencies !== oldDependencies[index],
+      (dependencies, index) => !Object.is(dependencies, oldDependencies[index]),
     )
   );
-}
-
-function hasDirtyParent(renderable: Renderable): boolean {
-  let currentRenderable: Renderable | null = renderable;
-  while ((currentRenderable = currentRenderable.parent)) {
-    if (renderable.isDirty) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function yieldToMain(): Promise<void> {
-  if ('scheduler' in globalThis && 'yield' in scheduler) {
-    return scheduler.yield();
-  }
-
-  return new Promise((resolve) => {
-    setTimeout(resolve, 0);
-  });
 }

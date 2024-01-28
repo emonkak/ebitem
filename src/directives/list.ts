@@ -1,7 +1,13 @@
-import type { Context } from '../context';
-import { Directive, directiveSymbol } from '../directive';
-import { ChildPart, ChildValue, mountPart, updatePart } from '../part';
-import type { Effect, Part } from '../types';
+import {
+  ChildPart,
+  ChildValue,
+  Directive,
+  Part,
+  directiveSymbol,
+  mountPart,
+  updatePart,
+} from '../part';
+import type { Effect, Updater } from '../updater';
 
 export class List<TItem, TValue, TKey> implements Directive {
   private readonly _items: TItem[];
@@ -20,7 +26,7 @@ export class List<TItem, TValue, TKey> implements Directive {
     this._keySelector = keySelector;
   }
 
-  [directiveSymbol](part: Part, context: Context): void {
+  [directiveSymbol](part: Part, updater: Updater<unknown>): void {
     if (!(part instanceof ChildPart)) {
       throw new Error('"List" directive must be used in an arbitrary child.');
     }
@@ -32,7 +38,7 @@ export class List<TItem, TValue, TKey> implements Directive {
         this._items,
         this._valueSelector,
         this._keySelector,
-        context,
+        updater,
       );
     } else {
       const list = new ListChild(
@@ -44,32 +50,8 @@ export class List<TItem, TValue, TKey> implements Directive {
       part.setValue(list);
     }
 
-    context.pushMutationEffect(part);
+    updater.pushMutationEffect(part);
   }
-}
-
-export function list<TItem>(items: TItem[]): List<TItem, TItem, number>;
-export function list<TItem, TValue>(
-  items: TItem[],
-  valueSelector: (item: TItem, index: number) => TValue,
-): List<TItem, TValue, number>;
-export function list<TItem, TValue, TKey>(
-  items: TItem[],
-  valueSelector: (item: TItem, index: number) => TValue,
-  keySelector: (item: TItem, index: number) => TKey,
-): List<TItem, TValue, number>;
-export function list<TItem, TValue, TKey>(
-  items: TItem[],
-  valueSelector: (item: TItem, index: number) => TValue = (
-    item: any,
-    _index: any,
-  ) => item,
-  keySelector: (item: TItem, index: number) => TKey = (
-    _item: any,
-    index: any,
-  ) => index,
-): List<TItem, TValue, TKey> {
-  return new List(items, valueSelector, keySelector);
 }
 
 export class ListChild<TItem, TValue, TKey> extends ChildValue {
@@ -125,15 +107,15 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
     return parts.length > 0 ? parts[parts.length - 1]!.endNode : null;
   }
 
-  mount(_part: Part, _context: Context): void {}
+  mount(_part: Part, _updater: Updater<unknown>): void {}
 
-  unmount(_part: Part, context: Context): void {
+  unmount(_part: Part, updater: Updater<unknown>): void {
     for (let i = 0, l = this._commitedParts.length; i < l; i++) {
-      this._commitedParts[i]!.disconnect(context);
+      this._commitedParts[i]!.disconnect(updater);
     }
   }
 
-  update(_part: ChildPart, _context: Context): void {
+  update(_part: ChildPart, _updater: Updater<unknown>): void {
     this._commitedParts = this._pendingParts;
     this._commitedValues = this._pendingValues;
     this._commitedKeys = this._pendingKeys;
@@ -143,7 +125,7 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
     newItems: TItem[],
     valueSelector: (item: TItem, index: number) => TValue,
     keySelector: (item: TItem, index: number) => TKey,
-    context: Context,
+    updater: Updater<unknown>,
   ): void {
     const oldParts: (ItemPart | undefined)[] = this._commitedParts;
     const oldValues = this._commitedValues;
@@ -173,34 +155,34 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
       } else if (oldKeys[oldHead] === newKeys[newHead]) {
         // Old head matches new head; update in place
         const part = oldParts[oldHead]!;
-        updatePart(part, oldValues[oldHead], newValues[newHead], context);
+        updatePart(part, oldValues[oldHead], newValues[newHead], updater);
         newParts[newHead] = part;
         oldHead++;
         newHead++;
       } else if (oldKeys[oldTail] === newKeys[newTail]) {
         // Old tail matches new tail; update in place
         const part = oldParts[oldTail]!;
-        updatePart(part, oldValues[oldTail], newValues[newTail], context);
+        updatePart(part, oldValues[oldTail], newValues[newTail], updater);
         newParts[newTail] = part;
         oldTail--;
         newTail--;
       } else if (oldKeys[oldHead] === newKeys[newTail]) {
         // Old tail matches new head; update and move to new head
         const part = oldParts[oldHead]!;
-        context.pushMutationEffect(
+        updater.pushMutationEffect(
           new ReorderItemPart(part, newParts[newTail + 1] ?? null),
         );
-        updatePart(part, oldValues[oldHead], newValues[newTail], context);
+        updatePart(part, oldValues[oldHead], newValues[newTail], updater);
         newParts[newTail] = part;
         oldHead++;
         newTail--;
       } else if (oldKeys[oldTail] === newKeys[newHead]) {
         // Old tail matches new head; update and move to new head
         const part = oldParts[oldTail]!;
-        context.pushMutationEffect(
+        updater.pushMutationEffect(
           new ReorderItemPart(part, oldParts[oldHead] ?? null),
         );
-        updatePart(part, oldValues[oldTail], newValues[newHead], context);
+        updatePart(part, oldValues[oldTail], newValues[newHead], updater);
         newParts[newHead] = part;
         oldTail--;
         newHead++;
@@ -214,12 +196,12 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
         if (!newKeyToIndexMap.has(oldKeys[oldHead]!)) {
           // Old head is no longer in new list; remove
           const part = oldParts[oldHead]!;
-          context.pushMutationEffect(new DisconnectChildPart(part));
+          updater.pushMutationEffect(new DisconnectChildPart(part));
           oldHead++;
         } else if (!newKeyToIndexMap.has(oldKeys[oldTail]!)) {
           // Old tail is no longer in new list; remove
           const part = oldParts[oldTail]!;
-          context.pushMutationEffect(new DisconnectChildPart(part));
+          updater.pushMutationEffect(new DisconnectChildPart(part));
           oldTail--;
         } else {
           // Any mismatches at this point are due to additions or
@@ -229,14 +211,14 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
           if (oldIndex !== undefined) {
             // Reuse old part
             const oldPart = oldParts[oldIndex]!;
-            context.pushMutationEffect(
+            updater.pushMutationEffect(
               new ReorderItemPart(oldPart, oldParts[oldHead] ?? null),
             );
             updatePart(
               oldPart,
               oldValues[oldHead],
               newValues[newHead],
-              context,
+              updater,
             );
             newParts[newHead] = oldPart;
             // This marks the old part as having been used, so that
@@ -249,7 +231,7 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
               document.createComment(''),
               this._containerPart,
             );
-            mountPart(part, newValues[newHead], context);
+            mountPart(part, newValues[newHead], updater);
             newParts[newHead] = part;
           }
           newHead++;
@@ -265,7 +247,7 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
         document.createComment(''),
         this._containerPart,
       );
-      mountPart(newPart, newValues[newHead], context);
+      mountPart(newPart, newValues[newHead], updater);
       newParts[newHead] = newPart;
       newHead++;
     }
@@ -274,7 +256,7 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
     while (oldHead <= oldTail) {
       const oldPart = oldParts[oldHead];
       if (oldPart) {
-        context.pushMutationEffect(new DisconnectChildPart(oldPart));
+        updater.pushMutationEffect(new DisconnectChildPart(oldPart));
       }
       oldHead++;
     }
@@ -293,23 +275,23 @@ export class ItemPart extends ChildPart implements Part {
     this._containerPart = containerPart;
   }
 
-  override commit(context: Context): void {
+  override commit(updater: Updater<unknown>): void {
     if (!this.node.isConnected) {
       const reference = this._containerPart.endNode;
       reference.parentNode!.insertBefore(this._node, reference);
     }
 
-    super.commit(context);
+    super.commit(updater);
   }
 
-  reorder(referencePart: ChildPart | null, context: Context): void {
+  reorder(referencePart: ChildPart | null, updater: Updater<unknown>): void {
     const reference = referencePart
       ? referencePart.startNode
       : this._containerPart.endNode;
 
     reference.parentNode?.insertBefore(this._node, reference);
 
-    this._committedValue?.mount(this, context);
+    this._committedValue?.mount(this, updater);
   }
 }
 
@@ -320,8 +302,8 @@ class DisconnectChildPart implements Effect {
     this._part = part;
   }
 
-  commit(context: Context): void {
-    this._part.disconnect(context);
+  commit(updater: Updater<unknown>): void {
+    this._part.disconnect(updater);
   }
 }
 
@@ -335,8 +317,8 @@ class ReorderItemPart implements Effect {
     this._referencePart = referencePart;
   }
 
-  commit(context: Context): void {
-    this._part.reorder(this._referencePart, context);
+  commit(updater: Updater<unknown>): void {
+    this._part.reorder(this._referencePart, updater);
   }
 }
 
