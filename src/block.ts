@@ -30,7 +30,7 @@ export class Block<TProps, TContext>
 
   private _flags: number = BlockFlag.DIRTY;
 
-  private _nodes: ChildNode[] = [];
+  private _children: ChildNode[] = [];
 
   private _parts: Part[] = [];
 
@@ -49,11 +49,11 @@ export class Block<TProps, TContext>
   }
 
   get startNode(): ChildNode | null {
-    return this._nodes[0] ?? null;
+    return this._children[0] ?? null;
   }
 
   get endNode(): ChildNode | null {
-    return this._nodes[this._nodes.length - 1] ?? null;
+    return this._children[this._children.length - 1] ?? null;
   }
 
   get type(): (props: TProps, context: TContext) => TemplateResult {
@@ -101,8 +101,8 @@ export class Block<TProps, TContext>
       if (this._memoizedTemplate !== null) {
         this._disconnectNodesAndParts(updater);
       }
-      const { node, parts } = template.mount(values, updater);
-      this._nodes = Array.from(node.childNodes);
+      const { children, parts } = template.mount(values, updater);
+      this._children = children;
       this._parts = parts;
       this._memoizedTemplate = template;
       this._memoizedValues = values;
@@ -119,9 +119,9 @@ export class Block<TProps, TContext>
     const reference = part.endNode;
     const parent = reference.parentNode;
 
-    if (parent) {
-      for (let i = 0, l = this._nodes.length; i < l; i++) {
-        parent.insertBefore(this._nodes[i]!, reference);
+    if (parent !== null) {
+      for (let i = 0, l = this._children.length; i < l; i++) {
+        parent.insertBefore(this._children[i]!, reference);
       }
     }
 
@@ -148,8 +148,8 @@ export class Block<TProps, TContext>
   update(_part: ChildPart, _updater: Updater): void {}
 
   _disconnectNodesAndParts(updater: Updater): void {
-    for (let i = 0, l = this._nodes.length; i < l; i++) {
-      const node = this._nodes[i]!;
+    for (let i = 0, l = this._children.length; i < l; i++) {
+      const node = this._children[i]!;
       if (node.isConnected) {
         node.remove();
       }

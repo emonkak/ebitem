@@ -2,7 +2,7 @@ import type { Part } from './part';
 import type { Updater } from './updater';
 
 export interface MountPoint {
-  node: Node;
+  children: ChildNode[];
   parts: Part[];
 }
 

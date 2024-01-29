@@ -16,7 +16,7 @@ export class Fragment<TContext>
 
   private _parent: Renderable<TContext> | null = null;
 
-  private _nodes: ChildNode[] = [];
+  private _children: ChildNode[] = [];
 
   private _parts: Part[] = [];
 
@@ -32,7 +32,7 @@ export class Fragment<TContext>
   }
 
   get endNode(): ChildNode | null {
-    return this._nodes[this._nodes.length - 1] ?? null;
+    return this._children[this._children.length - 1] ?? null;
   }
 
   get isDirty(): boolean {
@@ -44,7 +44,7 @@ export class Fragment<TContext>
   }
 
   get startNode(): ChildNode | null {
-    return this._nodes[0] ?? null;
+    return this._children[0] ?? null;
   }
 
   get template(): TemplateInterface {
@@ -65,11 +65,11 @@ export class Fragment<TContext>
 
   render(_scope: ScopeInterface<TContext>, updater: Updater<TContext>): void {
     if (this._memoizedValues === null) {
-      const { node, parts } = this._template.mount(
+      const { children, parts } = this._template.mount(
         this._pendingValues,
         updater,
       );
-      this._nodes = Array.from(node.childNodes);
+      this._children = children;
       this._parts = parts;
     } else {
       this._template.patch(
@@ -88,17 +88,17 @@ export class Fragment<TContext>
     const parent = reference.parentNode;
 
     if (parent) {
-      for (let i = 0, l = this._nodes.length; i < l; i++) {
-        parent.insertBefore(this._nodes[i]!, reference);
+      for (let i = 0, l = this._children.length; i < l; i++) {
+        parent.insertBefore(this._children[i]!, reference);
       }
     }
   }
 
   unmount(_part: ChildPart, updater: Updater): void {
-    for (let i = 0, l = this._nodes.length; i < l; i++) {
-      const node = this._nodes[i]!;
-      if (node.isConnected) {
-        node.remove();
+    for (let i = 0, l = this._children.length; i < l; i++) {
+      const child = this._children[i]!;
+      if (child.isConnected) {
+        child.remove();
       }
     }
 

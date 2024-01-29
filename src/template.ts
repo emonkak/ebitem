@@ -62,13 +62,13 @@ export class Template implements TemplateInterface {
   }
 
   mount(values: unknown[], updater: Updater): MountPoint {
-    const node = this._templateElement.content.cloneNode(true);
+    const root = this._templateElement.content.cloneNode(true);
     const parts = new Array(this._holes.length);
 
     for (let i = 0, l = this._holes.length; i < l; i++) {
       const hole = this._holes[i]!;
 
-      let child = node;
+      let child = root;
 
       for (let j = 0, m = hole.path.length; j < m; j++) {
         child = child.childNodes[hole.path[j]!]!;
@@ -98,7 +98,7 @@ export class Template implements TemplateInterface {
       parts[i] = part;
     }
 
-    return { node, parts };
+    return { children: Array.from(root.childNodes), parts };
   }
 
   patch(
