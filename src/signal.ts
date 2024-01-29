@@ -1,3 +1,5 @@
+import { Slab } from './slab';
+
 // 0 is reserved to indicate an uninitialized signal.
 let globalVersionCounter = 1;
 
@@ -26,7 +28,7 @@ export abstract class Signal<T> {
 }
 
 export class AtomSignal<T> extends Signal<T> {
-  private readonly _subscribers: Subscriber[] = [];
+  private readonly _subscribers: Slab<Subscriber> = new Slab();
 
   private _value: T;
 
@@ -44,9 +46,12 @@ export class AtomSignal<T> extends Signal<T> {
 
   set value(newValue: T) {
     this._value = newValue;
-    for (let i = 0, l = this._subscribers.length; i < l; i++) {
-      this._subscribers[i]!();
-      this._version = ++globalVersionCounter;
+    this._version = ++globalVersionCounter;
+
+    const subscribers = this._subscribers.values();
+
+    for (let i = 0, l = subscribers.length; i < l; i++) {
+      subscribers[i]!();
     }
   }
 
@@ -55,12 +60,9 @@ export class AtomSignal<T> extends Signal<T> {
   }
 
   subscribe(subscriber: Subscriber): Subscription {
-    this._subscribers.push(subscriber);
+    const slot = this._subscribers.insert(subscriber);
     return () => {
-      const i = this._subscribers.indexOf(subscriber);
-      if (i >= 0) {
-        this._subscribers.splice(i, 1);
-      }
+      this._subscribers.remove(slot);
     };
   }
 }
