@@ -4,6 +4,11 @@ import type { ScopeInterface } from './scopeInterface';
 import type { TemplateInterface } from './templateInterface';
 import type { Renderable, Updater } from './updater';
 
+const FragmentFlag = {
+  DIRTY: 0b1,
+  UPDATING: 0b10,
+};
+
 export class Fragment<TContext>
   extends ChildValue
   implements Renderable<TContext>
@@ -19,6 +24,8 @@ export class Fragment<TContext>
   private _children: ChildNode[] = [];
 
   private _parts: Part[] = [];
+
+  private _flags = FragmentFlag.DIRTY;
 
   constructor(
     template: TemplateInterface,
@@ -36,7 +43,7 @@ export class Fragment<TContext>
   }
 
   get isDirty(): boolean {
-    return this._memoizedValues !== this._pendingValues;
+    return (this._flags & FragmentFlag.DIRTY) !== 0;
   }
 
   get parent(): Renderable<TContext> | null {
@@ -55,12 +62,20 @@ export class Fragment<TContext>
     return this._memoizedValues;
   }
 
-  scheduleUpdate(updater: Updater<TContext>): void {
+  forceUpdate(updater: Updater<TContext>): void {
+    if ((this._flags & FragmentFlag.UPDATING) !== 0) {
+      return;
+    }
+
+    this._flags |= FragmentFlag.UPDATING;
     updater.requestUpdate(this);
   }
 
   setValues(values: unknown[]): void {
-    this._pendingValues = values;
+    if (values !== this._pendingValues) {
+      this._pendingValues = values;
+      this._flags |= FragmentFlag.DIRTY;
+    }
   }
 
   render(_scope: ScopeInterface<TContext>, updater: Updater<TContext>): void {
@@ -81,6 +96,7 @@ export class Fragment<TContext>
     }
 
     this._memoizedValues = this._pendingValues;
+    this._flags ^= FragmentFlag.DIRTY | FragmentFlag.UPDATING;
   }
 
   mount(part: ChildPart, _updater: Updater): void {

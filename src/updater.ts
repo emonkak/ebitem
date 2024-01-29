@@ -9,7 +9,7 @@ export interface Effect {
 export interface Renderable<TContext> {
   get isDirty(): boolean;
   get parent(): Renderable<TContext> | null;
-  scheduleUpdate(updater: Updater<TContext>): void;
+  forceUpdate(updater: Updater<TContext>): void;
   render(scope: ScopeInterface<TContext>, updater: Updater<TContext>): void;
 }
 

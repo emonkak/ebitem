@@ -38,7 +38,8 @@ export class Context {
   }
 
   html(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
-    return this._scope.createTemplate(strings, values);
+    const template = this._scope.createTemplate(strings, values);
+    return new TemplateResult(template, values);
   }
 
   useAtomSignal<T>(initialValue: ValueOrFunction<T>): AtomSignal<T> {
@@ -53,7 +54,7 @@ export class Context {
 
   useCallback<TCallback extends Function>(
     callback: TCallback,
-    dependencies?: unknown[],
+    dependencies: unknown[],
   ): TCallback {
     return this.useMemo(() => callback, dependencies);
   }
@@ -137,7 +138,7 @@ export class Context {
     this._hookIndex++;
   }
 
-  useMemo<TResult>(factory: () => TResult, dependencies?: unknown[]): TResult {
+  useMemo<TResult>(factory: () => TResult, dependencies: unknown[]): TResult {
     const { hooks } = this._renderable;
     let currentHook = hooks[this._hookIndex];
 
@@ -180,7 +181,7 @@ export class Context {
           typeof initialState === 'function' ? initialState() : initialState,
         dispatch: (action: TAction) => {
           newHook.state = reducer(newHook.state, action);
-          renderable.scheduleUpdate(this._updater);
+          renderable.forceUpdate(this._updater);
         },
       };
 
@@ -203,7 +204,7 @@ export class Context {
     const renderable = this._renderable;
     this.useEffect(() => {
       return signal.subscribe(() => {
-        renderable.scheduleUpdate(this._updater);
+        renderable.forceUpdate(this._updater);
       });
     }, [signal]);
     return signal;
@@ -226,7 +227,7 @@ export class Context {
     const renderable = this._renderable;
     this.useEffect(() => {
       return subscribe(() => {
-        renderable.scheduleUpdate(this._updater);
+        renderable.forceUpdate(this._updater);
       });
     }, [subscribe]);
     return getSnapshot();

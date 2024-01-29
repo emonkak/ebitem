@@ -1,7 +1,7 @@
 import { Context } from './context';
 import type { ScopeInterface } from './scopeInterface';
 import { Template } from './template';
-import { TemplateResult } from './templateResult';
+import { TemplateInterface } from './templateInterface';
 import type { Renderable, RenderableBlock, Updater } from './updater';
 
 type Varibales = { [key: PropertyKey]: unknown };
@@ -50,16 +50,16 @@ export class Scope implements ScopeInterface<Context> {
 
   createTemplate(
     strings: TemplateStringsArray,
-    values: unknown[],
-  ): TemplateResult {
+    _values: unknown[],
+  ): TemplateInterface {
     let template = this._templateCaches.get(strings);
 
-    if (!template) {
+    if (template === undefined) {
       template = Template.parse(strings, this._marker);
       this._templateCaches.set(strings, template);
     }
 
-    return new TemplateResult(template, values);
+    return template;
   }
 }
 

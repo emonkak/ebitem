@@ -1,15 +1,14 @@
 import { Hook, HookType } from './hook';
-import { Part } from './part';
 import { ChildPart, ChildValue } from './parts';
 import type { ScopeInterface } from './scopeInterface';
-import type { TemplateInterface } from './templateInterface';
+import type { MountPoint, TemplateInterface } from './templateInterface';
 import type { TemplateResult } from './templateResult';
 import type { Renderable, RenderableBlock, Updater } from './updater';
 
 const BlockFlag = {
-  MOUNTED: 0b001,
-  UNMOUNTED: 0b010,
-  DIRTY: 0b100,
+  MOUNTED: 0b1,
+  DIRTY: 0b10,
+  UPDATING: 0b100,
 };
 
 export class Block<TProps, TContext>
@@ -20,21 +19,24 @@ export class Block<TProps, TContext>
 
   private _pendingProps: TProps;
 
-  private _memoizedProps: TProps;
+  private _pendingMountPoint: MountPoint | null = null;
 
-  private _memoizedValues: unknown[] = [];
+  private _memoizedMountPoint: MountPoint | null = null;
+
+  private _memoizedProps: TProps;
 
   private _memoizedTemplate: TemplateInterface | null = null;
 
-  private _parent: Renderable<TContext> | null = null;
+  private _memoizedValues: unknown[] = [];
+
+  private _cachedMountPoints: WeakMap<TemplateInterface, MountPoint> | null =
+    null;
 
   private _flags: number = BlockFlag.DIRTY;
 
-  private _children: ChildNode[] = [];
-
-  private _parts: Part[] = [];
-
   private _hooks: Hook[] = [];
+
+  private _parent: Renderable<TContext> | null = null;
 
   constructor(
     type: (props: TProps, context: TContext) => TemplateResult,
@@ -49,11 +51,15 @@ export class Block<TProps, TContext>
   }
 
   get startNode(): ChildNode | null {
-    return this._children[0] ?? null;
+    return this._memoizedMountPoint?.children[0] ?? null;
   }
 
   get endNode(): ChildNode | null {
-    return this._children[this._children.length - 1] ?? null;
+    if (this._memoizedMountPoint !== null) {
+      const { children } = this._memoizedMountPoint;
+      return children[children.length - 1]!;
+    }
+    return null;
   }
 
   get type(): (props: TProps, context: TContext) => TemplateResult {
@@ -77,19 +83,22 @@ export class Block<TProps, TContext>
   }
 
   setProps(newProps: TProps): void {
-    this._pendingProps = newProps;
+    if (newProps !== this._pendingProps) {
+      this._pendingProps = newProps;
+      this._flags |= BlockFlag.DIRTY;
+    }
   }
 
-  scheduleUpdate(updater: Updater<TContext>): void {
-    const needsUpdate =
-      (this._flags & BlockFlag.MOUNTED) !== 0 &&
-      (this._flags & BlockFlag.UNMOUNTED) === 0 &&
-      (this._flags & BlockFlag.DIRTY) === 0;
-
-    if (needsUpdate) {
-      this._flags |= BlockFlag.DIRTY;
-      updater.requestUpdate(this);
+  forceUpdate(updater: Updater<TContext>): void {
+    if (
+      (this._flags & BlockFlag.MOUNTED) === 0 ||
+      (this._flags & BlockFlag.UPDATING) !== 0
+    ) {
+      return;
     }
+
+    this._flags |= BlockFlag.DIRTY | BlockFlag.UPDATING;
+    updater.requestUpdate(this);
   }
 
   render(scope: ScopeInterface<TContext>, updater: Updater<TContext>): void {
@@ -97,35 +106,49 @@ export class Block<TProps, TContext>
     const context = scope.createContext(this, updater);
     const { template, values } = render(this._pendingProps, context);
 
-    if (this._memoizedTemplate !== template) {
-      if (this._memoizedTemplate !== null) {
-        this._disconnectNodesAndParts(updater);
+    if (this._memoizedMountPoint === null) {
+      this._pendingMountPoint = template.mount(values, updater);
+    } else if (this._memoizedTemplate !== template) {
+      // The new template is different from the previous one. The
+      // previous mount point is saved for future renders.
+      if (this._cachedMountPoints === null) {
+        // Since it is rare that different templates are returned, we defer
+        // creating mount point caches.
+        this._cachedMountPoints = new WeakMap();
+        this._pendingMountPoint = template.mount(values, updater);
+      } else {
+        this._pendingMountPoint =
+          this._cachedMountPoints.get(template) ??
+          template.mount(values, updater);
       }
-      const { children, parts } = template.mount(values, updater);
-      this._children = children;
-      this._parts = parts;
-      this._memoizedTemplate = template;
-      this._memoizedValues = values;
+
+      // If a memoized mount point exists, a memoized template exists.
+      this._cachedMountPoints.set(
+        this._memoizedTemplate!,
+        this._memoizedMountPoint,
+      );
     } else {
-      template.patch(this._parts, this._memoizedValues, values, updater);
-      this._memoizedValues = values;
+      template.patch(
+        this._memoizedMountPoint.parts,
+        this._memoizedValues,
+        values,
+        updater,
+      );
     }
 
-    this._flags ^= BlockFlag.DIRTY;
+    this._flags ^= BlockFlag.DIRTY | BlockFlag.UPDATING;
     this._memoizedProps = this._pendingProps;
+    this._memoizedValues = values;
+    this._memoizedTemplate = template;
   }
 
   mount(part: ChildPart, _updater: Updater): void {
-    const reference = part.endNode;
-    const parent = reference.parentNode;
-
-    if (parent !== null) {
-      for (let i = 0, l = this._children.length; i < l; i++) {
-        parent.insertBefore(this._children[i]!, reference);
-      }
+    if (this._pendingMountPoint !== null) {
+      connectMountPoint(this._pendingMountPoint, part);
     }
 
     this._flags |= BlockFlag.MOUNTED;
+    this._memoizedMountPoint = this._pendingMountPoint;
   }
 
   unmount(_part: ChildPart, updater: Updater): void {
@@ -139,25 +162,55 @@ export class Block<TProps, TContext>
       }
     }
 
-    this._disconnectNodesAndParts(updater);
+    if (this._memoizedMountPoint !== null) {
+      disconnectMountPoint(this._memoizedMountPoint, updater);
+    }
 
-    this._flags |= BlockFlag.UNMOUNTED;
-    this._flags ^= BlockFlag.DIRTY;
+    this._flags ^= BlockFlag.MOUNTED;
   }
 
-  update(_part: ChildPart, _updater: Updater): void {}
+  update(part: ChildPart, updater: Updater): void {
+    const oldMountPoint = this._memoizedMountPoint;
+    const newMountPoint = this._pendingMountPoint;
 
-  _disconnectNodesAndParts(updater: Updater): void {
-    for (let i = 0, l = this._children.length; i < l; i++) {
-      const node = this._children[i]!;
-      if (node.isConnected) {
-        node.remove();
+    if (newMountPoint !== oldMountPoint) {
+      if (oldMountPoint !== null) {
+        disconnectMountPoint(oldMountPoint, updater);
       }
-    }
 
-    for (let i = 0, l = this._parts.length; i < l; i++) {
-      const part = this._parts[i]!;
-      part.disconnect(updater);
+      if (newMountPoint !== null) {
+        connectMountPoint(newMountPoint, part);
+      }
+
+      this._memoizedMountPoint = newMountPoint;
     }
+  }
+}
+
+function connectMountPoint({ children }: MountPoint, part: ChildPart): void {
+  const reference = part.endNode;
+  const parent = reference.parentNode;
+
+  if (parent !== null) {
+    for (let i = 0, l = children.length; i < l; i++) {
+      parent.insertBefore(children[i]!, reference);
+    }
+  }
+}
+
+function disconnectMountPoint(
+  { children, parts }: MountPoint,
+  updater: Updater,
+): void {
+  for (let i = 0, l = children.length; i < l; i++) {
+    const node = children[i]!;
+    if (node.isConnected) {
+      node.remove();
+    }
+  }
+
+  for (let i = 0, l = parts.length; i < l; i++) {
+    const part = parts[i]!;
+    part.disconnect(updater);
   }
 }

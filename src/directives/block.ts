@@ -29,10 +29,10 @@ export class Block<TProps, TContext> implements Directive {
 
     if (value instanceof BlockChild) {
       if (value.type === this._type) {
-        // Update will be skipped if the same directive is called twice.
-        if (value.props !== this._props) {
-          value.setProps(this._props);
-          value.scheduleUpdate(updater);
+        value.setProps(this._props);
+        // Skip the update if the same directive is called twice.
+        if (value.isDirty) {
+          value.forceUpdate(updater);
         }
       } else {
         needsMount = true;
