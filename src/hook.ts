@@ -2,6 +2,8 @@ export type Cleanup = () => void;
 
 export type EffectCallback = () => void | Cleanup;
 
+export type Ref<T> = RefCallback<T> | RefObject<T>;
+
 export type RefCallback<T> = (value: T) => void;
 
 export interface RefObject<T> {

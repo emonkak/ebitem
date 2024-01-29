@@ -1,5 +1,5 @@
 import type { Context } from '../context';
-import type { RefCallback, RefObject } from '../hook';
+import type { Ref } from '../hook';
 import type { TemplateResult } from '../templateResult';
 import { Block } from './block';
 import { ClassList, ClassSpecifier } from './classList';
@@ -17,7 +17,7 @@ export function classList(...classSpecifiers: ClassSpecifier[]): ClassList {
   return new ClassList(classSpecifiers);
 }
 
-export function domRef(ref: RefObject<Element | null> | RefCallback<Element>) {
+export function domRef(ref: Ref<Element | null>) {
   return new DOMRef(ref);
 }
 
