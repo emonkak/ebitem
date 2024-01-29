@@ -54,5 +54,11 @@ export class EventPart implements Part {
     this._committedValue = newValue;
   }
 
-  disconnect(_updater: Updater): void {}
+  disconnect(_updater: Updater): void {
+    if (this._committedValue) {
+      // The element may be retained by someone, so we remove the event listener
+      // to avoid memory leaks.
+      this._element.removeEventListener(this._name, this._committedValue);
+    }
+  }
 }
