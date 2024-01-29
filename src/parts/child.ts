@@ -9,6 +9,8 @@ export class ChildPart implements Part {
 
   private _pendingValue: ChildValue | null = null;
 
+  private _dirty = false;
+
   constructor(node: ChildNode) {
     this._node = node;
   }
@@ -33,22 +35,32 @@ export class ChildPart implements Part {
 
   setValue(newValue: unknown): void {
     this._pendingValue = ChildValue.upgrade(newValue, this._committedValue);
+    this._dirty = true;
   }
 
   commit(updater: Updater): void {
+    if (!this._dirty) {
+      return;
+    }
+
     const oldValue = this._committedValue;
-    const newValue = this._pendingValue!;
+    const newValue = this._pendingValue;
 
     if (oldValue !== newValue) {
       if (oldValue) {
         oldValue.unmount(this, updater);
       }
-      newValue.mount(this, updater);
+      if (newValue !== null) {
+        newValue.mount(this, updater);
+      }
     }
 
-    newValue.update(this, updater);
+    if (newValue !== null) {
+      newValue.update(this, updater);
+    }
 
     this._committedValue = newValue;
+    this._dirty = false;
   }
 
   disconnect(updater: Updater): void {

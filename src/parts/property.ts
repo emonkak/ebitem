@@ -11,6 +11,8 @@ export class PropertyPart implements Part {
 
   private _pendingValue: PropertyValue | null = null;
 
+  private _dirty = false;
+
   constructor(element: Element, name: string) {
     this._element = element;
     this._name = name;
@@ -20,20 +22,26 @@ export class PropertyPart implements Part {
     return this._element;
   }
 
-  get value(): unknown {
-    return this._committedValue;
-  }
-
   get name(): string {
     return this._name;
   }
 
+  get value(): unknown {
+    return this._committedValue;
+  }
+
   setValue(newValue: unknown): void {
     this._pendingValue = PropertyValue.upgrade(newValue, this._committedValue);
+    this._dirty = true;
   }
 
   commit(updater: Updater): void {
-    const { _committedValue: oldValue, _pendingValue: newValue } = this;
+    if (!this._dirty) {
+      return;
+    }
+
+    const oldValue = this._committedValue;
+    const newValue = this._pendingValue;
 
     if (oldValue !== newValue) {
       if (oldValue !== null) {
@@ -50,6 +58,7 @@ export class PropertyPart implements Part {
     }
 
     this._committedValue = newValue;
+    this._dirty = false;
   }
 
   disconnect(updater: Updater): void {

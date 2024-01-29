@@ -11,6 +11,8 @@ export class AttributePart implements Part {
 
   private _committedValue: AttributeValue | null = null;
 
+  private _dirty = false;
+
   constructor(element: Element, name: string) {
     this._element = element;
     this._name = name;
@@ -30,10 +32,16 @@ export class AttributePart implements Part {
 
   setValue(newValue: unknown): void {
     this._pendingValue = AttributeValue.upgrade(newValue, this._committedValue);
+    this._dirty = true;
   }
 
   commit(updater: Updater): void {
-    const { _committedValue: oldValue, _pendingValue: newValue } = this;
+    if (!this._dirty) {
+      return;
+    }
+
+    const oldValue = this._committedValue;
+    const newValue = this._pendingValue;
 
     if (oldValue !== newValue) {
       if (oldValue !== null) {
@@ -50,6 +58,7 @@ export class AttributePart implements Part {
     }
 
     this._committedValue = newValue;
+    this._dirty = false;
   }
 
   disconnect(updater: Updater): void {

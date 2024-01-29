@@ -50,8 +50,8 @@ export class Block<TProps, TContext> implements Directive {
 
       part.setValue(newBlock);
 
-      updater.requestUpdate(newBlock);
       updater.pushMutationEffect(part);
+      updater.requestUpdate(newBlock);
     }
   }
 }
