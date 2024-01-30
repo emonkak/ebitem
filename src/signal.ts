@@ -1,8 +1,5 @@
 import { Slab } from './slab';
 
-// 0 is reserved to indicate an uninitialized signal.
-let globalVersionCounter = 1;
-
 export type Subscriber = () => void;
 
 export type Subscription = () => void;
@@ -32,12 +29,11 @@ export class AtomSignal<T> extends Signal<T> {
 
   private _value: T;
 
-  private _version: number;
+  private _version = 1;
 
   constructor(initialValue: T) {
     super();
     this._value = initialValue;
-    this._version = globalVersionCounter;
   }
 
   get value(): T {
@@ -46,7 +42,7 @@ export class AtomSignal<T> extends Signal<T> {
 
   set value(newValue: T) {
     this._value = newValue;
-    this._version = ++globalVersionCounter;
+    this._version += 1;
 
     const subscribers = this._subscribers.values();
 
@@ -99,7 +95,7 @@ export class MemoizedSignal<
 
   private readonly _dependencies: WrapSignals<Parameters<TFactory>>;
 
-  private _memoizedVersion = 0;
+  private _memoizedVersion = 0; // 0 is indicated an uninitialized signal
 
   private _memoizedResult: ReturnType<TFactory> | null = null;
 
@@ -126,13 +122,14 @@ export class MemoizedSignal<
   }
 
   get version(): number {
+    // The version number is started from 1.
     return this._dependencies.reduce(
-      (version, dependency) => Math.max(version, dependency.version),
-      0,
+      (version, dependency) => version + dependency.version,
+      1 - this._dependencies.length,
     );
   }
 
-  subscribe(subscriber: () => void): Subscription {
+  subscribe(subscriber: Subscriber): Subscription {
     const subscriptions = this._dependencies.map((dependency) =>
       dependency.subscribe(subscriber),
     );
