@@ -1,7 +1,7 @@
 import { Directive, directiveSymbol } from '../directive';
 import { Part } from '../part';
 import { AttributePart } from '../parts';
-import type { Updater } from '../updater';
+import type { Effect, Updater } from '../updater';
 
 export type ClassSpecifier = string | { [key: string]: boolean };
 
@@ -12,14 +12,31 @@ export class ClassList implements Directive {
     this._classSpecifiers = classSpecifiers;
   }
 
-  [directiveSymbol](part: Part, _updater: Updater): void {
+  [directiveSymbol](part: Part, updater: Updater): void {
     if (!(part instanceof AttributePart) || part.name !== 'class') {
       throw new Error(
         '"ClassList" directive must be used in the "class" attribute.',
       );
     }
 
-    const { classList } = part.node;
+    updater.pushMutationEffect(
+      new UpdateClassList(part, this._classSpecifiers),
+    );
+  }
+}
+
+class UpdateClassList implements Effect {
+  private _part: AttributePart;
+
+  private _classSpecifiers: ClassSpecifier[];
+
+  constructor(part: AttributePart, classSpecifiers: ClassSpecifier[]) {
+    this._part = part;
+    this._classSpecifiers = classSpecifiers;
+  }
+
+  commit(_updater: Updater): void {
+    const { classList } = this._part.node;
 
     for (let i = 0, l = this._classSpecifiers.length; i < l; i++) {
       const classSpecifier = this._classSpecifiers[i];
@@ -36,8 +53,4 @@ export class ClassList implements Directive {
       }
     }
   }
-}
-
-export function classList(...classSpecifiers: ClassSpecifier[]): ClassList {
-  return new ClassList(classSpecifiers);
 }
