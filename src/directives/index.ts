@@ -5,6 +5,7 @@ import { Block } from './block';
 import { ClassList, ClassSpecifier } from './classList';
 import { DOMRef } from './domRef';
 import { List } from './list';
+import { Style, StyleDeclaration } from './style';
 
 export function block<TProps, TContext = Context>(
   type: (props: TProps, context: TContext) => TemplateResult,
@@ -43,4 +44,8 @@ export function list<TItem, TValue, TKey>(
   ) => index,
 ): List<TItem, TValue, TKey> {
   return new List(items, valueSelector, keySelector);
+}
+
+export function style(styleDeclaration: StyleDeclaration): Style {
+  return new Style(styleDeclaration);
 }
