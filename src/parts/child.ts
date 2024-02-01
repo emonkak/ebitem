@@ -64,10 +64,8 @@ export class ChildPart implements Part {
   }
 
   disconnect(updater: Updater): void {
-    if (this._node.isConnected) {
-      this._node.remove();
-    }
-    if (this._committedValue) {
+    this._node.remove();
+    if (this._committedValue !== null) {
       this._committedValue.unmount(this, updater);
     }
   }
@@ -130,9 +128,7 @@ export class NullChild extends ChildValue {
   }
 
   unmount(_part: ChildPart, _updater: Updater): void {
-    if (this._node.isConnected) {
-      this._node.remove();
-    }
+    this._node.remove();
   }
 
   update(_part: ChildPart, _updater: Updater): void {}
@@ -226,9 +222,7 @@ export class TextChild extends ChildValue {
   }
 
   unmount(_part: ChildPart, _updater: Updater): void {
-    if (this._node.isConnected) {
-      this._node.remove();
-    }
+    this._node.remove();
   }
 
   update(_part: ChildPart, _updater: Updater): void {

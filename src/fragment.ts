@@ -113,9 +113,7 @@ export class Fragment<TContext>
   unmount(_part: ChildPart, updater: Updater): void {
     for (let i = 0, l = this._children.length; i < l; i++) {
       const child = this._children[i]!;
-      if (child.isConnected) {
-        child.remove();
-      }
+      child.remove();
     }
 
     for (let i = 0, l = this._parts.length; i < l; i++) {

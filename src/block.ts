@@ -204,9 +204,7 @@ function disconnectMountPoint(
 ): void {
   for (let i = 0, l = children.length; i < l; i++) {
     const node = children[i]!;
-    if (node.isConnected) {
-      node.remove();
-    }
+    node.remove();
   }
 
   for (let i = 0, l = parts.length; i < l; i++) {

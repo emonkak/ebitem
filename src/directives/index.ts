@@ -6,6 +6,7 @@ import { ClassList, ClassSpecifier } from './classList';
 import { DOMRef } from './domRef';
 import { List } from './list';
 import { Style, StyleDeclaration } from './style';
+import { UnsafeHTML } from './unsafeHTML';
 
 export function block<TProps, TContext = Context>(
   type: (props: TProps, context: TContext) => TemplateResult,
@@ -48,4 +49,8 @@ export function list<TItem, TValue, TKey>(
 
 export function style(styleDeclaration: StyleDeclaration): Style {
   return new Style(styleDeclaration);
+}
+
+export function unsafeHTML(html: string): UnsafeHTML {
+  return new UnsafeHTML(html);
 }
