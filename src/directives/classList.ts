@@ -3,9 +3,9 @@ import type { Part } from '../part';
 import { AttributePart } from '../parts';
 import type { Effect, Updater } from '../updater';
 
-export type ClassMap = { [key: string]: boolean };
+export type ClassMap = Map<string, boolean>;
 
-export type ClassSpecifier = string | ClassMap;
+export type ClassSpecifier = string | { [key: string]: boolean };
 
 export class ClassList implements Directive {
   private readonly _classMap: ClassMap;
@@ -13,12 +13,16 @@ export class ClassList implements Directive {
   constructor(classSpecifiers: ClassSpecifier[]) {
     this._classMap = classSpecifiers.reduce<ClassMap>((acc, classSpecifier) => {
       if (typeof classSpecifier === 'string') {
-        acc[classSpecifier] = true;
+        acc.set(classSpecifier, true);
       } else {
-        Object.assign(acc, classSpecifier);
+        const classNames = Object.keys(classSpecifier);
+        for (let i = 0, l = classNames.length; i < l; i++) {
+          const className = classNames[i]!;
+          acc.set(className, classSpecifier[className]!);
+        }
       }
       return acc;
-    }, {});
+    }, new Map());
   }
 
   [directiveSymbol](part: Part, updater: Updater): void {
@@ -33,9 +37,9 @@ export class ClassList implements Directive {
 }
 
 class UpdateClassList implements Effect {
-  private _part: AttributePart;
+  private readonly _part: AttributePart;
 
-  private _classMap: ClassMap;
+  private readonly _classMap: ClassMap;
 
   constructor(part: AttributePart, classMap: ClassMap) {
     this._part = part;
@@ -48,23 +52,16 @@ class UpdateClassList implements Effect {
     for (let i = 0, l = classList.length; i < l; i++) {
       const className = classList[i]!;
 
-      if (
-        Object.hasOwn(this._classMap, className) &&
-        !this._classMap[className]
-      ) {
+      if (!this._classMap.has(className)) {
         classList.remove(className);
       }
     }
 
-    const newClassNames = Object.keys(this._classMap);
-
-    for (let i = 0, l = newClassNames.length; i < l; i++) {
-      const newClassName = newClassNames[i]!;
-
-      if (this._classMap[newClassName]) {
-        classList.add(newClassName);
+    for (const [className, value] of this._classMap.entries()) {
+      if (value) {
+        classList.add(className);
       } else {
-        classList.remove(newClassName);
+        classList.remove(className);
       }
     }
   }
