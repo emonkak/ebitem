@@ -1,3 +1,4 @@
+import type { Hook } from './hook';
 import { Part } from './part';
 import { ChildPart, ChildValue } from './parts';
 import type { ScopeInterface } from './scopeInterface';
@@ -60,6 +61,11 @@ export class Fragment<TContext>
 
   get values(): unknown[] {
     return this._memoizedValues;
+  }
+
+  get hooks(): Hook[] {
+    // HACK: Fragement is not supprted hooks. This is a dummy value.
+    return [];
   }
 
   forceUpdate(updater: Updater<TContext>): void {

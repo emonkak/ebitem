@@ -9,12 +9,9 @@ export interface Effect {
 export interface Renderable<TContext> {
   get isDirty(): boolean;
   get parent(): Renderable<TContext> | null;
+  get hooks(): Hook[];
   forceUpdate(updater: Updater<TContext>): void;
   render(scope: ScopeInterface<TContext>, updater: Updater<TContext>): void;
-}
-
-export interface RenderableBlock<TContext> extends Renderable<TContext> {
-  get hooks(): Hook[];
 }
 
 export class Updater<TContext = unknown> {

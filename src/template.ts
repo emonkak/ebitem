@@ -122,6 +122,7 @@ function parseAttribtues(
 ): void {
   // Persist element attributes since ones may be removed.
   const attributes = [...element.attributes];
+
   for (let i = 0, l = attributes.length; i < l; i++) {
     const attribute = attributes[i]!;
 

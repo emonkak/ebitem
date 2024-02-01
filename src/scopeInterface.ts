@@ -1,5 +1,5 @@
 import type { TemplateInterface } from './templateInterface';
-import type { Renderable, RenderableBlock, Updater } from './updater';
+import type { Renderable, Updater } from './updater';
 
 export interface ScopeInterface<TContext> {
   getVariable(key: PropertyKey, renderable: Renderable<TContext>): unknown;
@@ -11,7 +11,7 @@ export interface ScopeInterface<TContext> {
   ): void;
 
   createContext(
-    renderable: RenderableBlock<TContext>,
+    renderable: Renderable<TContext>,
     updater: Updater<TContext>,
   ): TContext;
 

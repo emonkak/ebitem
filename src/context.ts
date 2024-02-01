@@ -12,14 +12,14 @@ import {
 import type { ScopeInterface } from './scopeInterface';
 import { AtomSignal, Signal } from './signal';
 import { TemplateResult } from './templateResult';
-import type { Effect, Renderable, RenderableBlock, Updater } from './updater';
+import type { Effect, Renderable, Updater } from './updater';
 
 type ValueOrFunction<T> = T extends (...args: any[]) => any
   ? never
   : T | (() => T);
 
 export class Context {
-  private readonly _renderable: RenderableBlock<Context>;
+  private readonly _renderable: Renderable<Context>;
 
   private readonly _updater: Updater<Context>;
 
@@ -28,7 +28,7 @@ export class Context {
   private _hookIndex = 0;
 
   constructor(
-    renderable: RenderableBlock<Context>,
+    renderable: Renderable<Context>,
     updater: Updater<Context>,
     scope: ScopeInterface<Context>,
   ) {

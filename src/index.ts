@@ -17,4 +17,4 @@ export { ScopeInterface } from './scopeInterface';
 export { Signal, AtomSignal, ProjectedSignal, MemoizedSignal } from './signal';
 export { Template } from './template';
 export { TemplateInterface } from './templateInterface';
-export { Renderable, RenderableBlock, Updater } from './updater';
+export { Renderable, Updater } from './updater';
