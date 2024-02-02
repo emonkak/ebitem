@@ -1,4 +1,4 @@
-import { Slab } from './slab';
+import { SlotMap } from './slotMap';
 
 export type Subscriber = () => void;
 
@@ -25,7 +25,7 @@ export abstract class Signal<T> {
 }
 
 export class AtomSignal<T> extends Signal<T> {
-  private readonly _subscribers: Slab<Subscriber> = new Slab();
+  private readonly _subscribers = new SlotMap<Subscriber>();
 
   private _value: T;
 

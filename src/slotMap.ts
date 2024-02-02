@@ -2,7 +2,7 @@ export interface Slot {
   index: number;
 }
 
-export class Slab<T> {
+export class SlotMap<T> {
   private readonly _values: T[] = [];
 
   private readonly _slots: Slot[] = [];
