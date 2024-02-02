@@ -83,14 +83,13 @@ export abstract class ChildValue {
     } else if (newValue == null) {
       return oldValue instanceof NullChild ? oldValue : new NullChild();
     } else {
+      const stringValue =
+        typeof newValue === 'string' ? newValue : newValue.toString();
       if (oldValue instanceof TextChild) {
-        oldValue.value =
-          typeof newValue === 'string' ? newValue : newValue.toString();
+        oldValue.value = stringValue;
         return oldValue;
       } else {
-        return new TextChild(
-          typeof newValue === 'string' ? newValue : newValue.toString(),
-        );
+        return new TextChild(stringValue);
       }
     }
   }
