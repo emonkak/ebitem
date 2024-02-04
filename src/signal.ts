@@ -1,4 +1,4 @@
-import { SlotMap } from './slotMap.js';
+import { LinkedList } from './linkedList.js';
 
 export type Subscriber = () => void;
 
@@ -25,7 +25,7 @@ export abstract class Signal<T> {
 }
 
 export class AtomSignal<T> extends Signal<T> {
-  private readonly _subscribers = new SlotMap<Subscriber>();
+  private readonly _subscribers = new LinkedList<Subscriber>();
 
   private _value: T;
 
@@ -44,10 +44,12 @@ export class AtomSignal<T> extends Signal<T> {
     this._value = newValue;
     this._version += 1;
 
-    const subscribers = this._subscribers.values();
-
-    for (let i = 0, l = subscribers.length; i < l; i++) {
-      subscribers[i]!();
+    for (
+      let node = this._subscribers.front();
+      node !== null;
+      node = node.next
+    ) {
+      node.value();
     }
   }
 
@@ -56,9 +58,9 @@ export class AtomSignal<T> extends Signal<T> {
   }
 
   subscribe(subscriber: Subscriber): Subscription {
-    const slot = this._subscribers.insert(subscriber);
+    const node = this._subscribers.pushBack(subscriber);
     return () => {
-      this._subscribers.remove(slot);
+      this._subscribers.remove(node);
     };
   }
 }
