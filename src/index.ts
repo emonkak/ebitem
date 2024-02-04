@@ -17,7 +17,7 @@ export { ScopeInterface } from './scopeInterface.js';
 export {
   Signal,
   AtomSignal,
-  ProjectedSignal,
+  ComputedSignal,
   MemoizedSignal,
 } from './signal.js';
 export { Template } from './template.js';

@@ -4,23 +4,27 @@ export type Subscriber = () => void;
 
 export type Subscription = () => void;
 
-type WrapSignals<T> = T extends Array<any>
-  ? { [P in keyof T]: Signal<T[P]> }
+type UnwrapSignals<T> = T extends Array<any>
+  ? { [P in keyof T]: UnwrapSignal<T[P]> }
   : never;
+
+type UnwrapSignal<T> = T extends Signal<infer V> ? V : never;
 
 export abstract class Signal<T> {
   abstract get value(): T;
 
   abstract get version(): number;
 
-  abstract subscribe(_subscriber: Subscriber): Subscription;
+  abstract subscribe(subscriber: Subscriber): Subscription;
 
-  map<TResult>(selector: (value: T) => TResult): ProjectedSignal<T, TResult> {
-    return new ProjectedSignal(this, selector);
+  map<TResult>(
+    selector: (value: T) => TResult,
+  ): ComputedSignal<TResult, [Signal<T>]> {
+    return ComputedSignal.fromValues(selector, [this as Signal<T>]);
   }
 
-  memoized(): MemoizedSignal<(value: T) => T> {
-    return new MemoizedSignal((value) => value, [this]);
+  memoized(): MemoizedSignal<T> {
+    return new MemoizedSignal(this);
   }
 }
 
@@ -49,7 +53,8 @@ export class AtomSignal<T> extends Signal<T> {
       node !== null;
       node = node.next
     ) {
-      node.value();
+      const subscriber = node.value;
+      subscriber();
     }
   }
 
@@ -65,70 +70,51 @@ export class AtomSignal<T> extends Signal<T> {
   }
 }
 
-export class ProjectedSignal<TValue, TResult> extends Signal<TResult> {
-  private readonly _signal: Signal<TValue>;
+export class ComputedSignal<
+  TResult,
+  TDependencies extends Signal<any>[],
+> extends Signal<TResult> {
+  private readonly _factory: (...signals: TDependencies) => TResult;
 
-  private readonly _selector: (value: TValue) => TResult;
+  private readonly _dependencies: TDependencies;
 
-  constructor(signal: Signal<TValue>, selector: (value: TValue) => TResult) {
-    super();
-    this._signal = signal;
-    this._selector = selector;
+  static fromValues<TResult, TDependencies extends Signal<any>[]>(
+    factory: (...args: UnwrapSignals<TDependencies>) => TResult,
+    dependencies: TDependencies,
+  ): ComputedSignal<TResult, TDependencies> {
+    return new ComputedSignal((...signals) => {
+      const args = signals.map(
+        (signal) => signal.value,
+      ) as UnwrapSignals<TDependencies>;
+      return factory(...args);
+    }, dependencies);
   }
-
-  get value(): TResult {
-    const selector = this._selector;
-    return selector(this._signal.value);
-  }
-
-  get version(): number {
-    return this._signal.version;
-  }
-
-  subscribe(subscriber: Subscriber): Subscription {
-    return this._signal.subscribe(subscriber);
-  }
-}
-
-export class MemoizedSignal<
-  TFactory extends (...args: any[]) => any,
-> extends Signal<ReturnType<TFactory>> {
-  private readonly _factory: TFactory;
-
-  private readonly _dependencies: WrapSignals<Parameters<TFactory>>;
-
-  private _memoizedVersion = 0; // 0 is indicated an uninitialized signal
-
-  private _memoizedResult: ReturnType<TFactory> | null = null;
 
   constructor(
-    factory: TFactory,
-    dependencies: WrapSignals<Parameters<TFactory>>,
+    factory: (...signals: TDependencies) => TResult,
+    dependencies: TDependencies,
   ) {
     super();
     this._factory = factory;
     this._dependencies = dependencies;
   }
 
-  get value(): ReturnType<TFactory> {
-    const newVersion = this.version;
-    if (this._memoizedVersion < newVersion) {
-      const memoizedFn = this._factory;
-      const newValues = this._dependencies.map(
-        (dependency) => dependency.value,
-      );
-      this._memoizedVersion = newVersion;
-      this._memoizedResult = memoizedFn(...newValues);
-    }
-    return this._memoizedResult!;
+  get value(): TResult {
+    const factory = this._factory;
+    return factory(...this._dependencies);
   }
 
   get version(): number {
-    // The version number is started from 1.
-    return this._dependencies.reduce(
-      (version, dependency) => version + dependency.version,
-      1 - this._dependencies.length,
-    );
+    const dependencies = this._dependencies;
+    const size = dependencies.length;
+
+    let version = 1;
+
+    for (let i = 0; i < size; i++) {
+      version += dependencies[i]!.version;
+    }
+
+    return version - size;
   }
 
   subscribe(subscriber: Subscriber): Subscription {
@@ -140,5 +126,41 @@ export class MemoizedSignal<
         subscriptions[i]!();
       }
     };
+  }
+}
+
+export class MemoizedSignal<TResult> extends Signal<TResult> {
+  private readonly _signal: Signal<TResult>;
+
+  private _memoizedResult: TResult | null;
+
+  private _memoizedVersion = 0; // 0 is indicated an uninitialized signal.
+
+  constructor(
+    signal: Signal<TResult>,
+    initialResult: TResult | null = null,
+    initialVersion = 0,
+  ) {
+    super();
+    this._signal = signal;
+    this._memoizedResult = initialResult;
+    this._memoizedVersion = initialVersion;
+  }
+
+  get value(): TResult {
+    const newVersion = this._signal.version;
+    if (this._memoizedVersion < newVersion) {
+      this._memoizedResult = this._signal.value;
+      this._memoizedVersion = newVersion;
+    }
+    return this._memoizedResult!;
+  }
+
+  get version(): number {
+    return this._signal.version;
+  }
+
+  subscribe(subscriber: Subscriber): Subscription {
+    return this._signal.subscribe(subscriber);
   }
 }
