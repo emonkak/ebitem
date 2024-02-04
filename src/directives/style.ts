@@ -1,7 +1,7 @@
-import { Directive, directiveSymbol } from '../directive';
-import type { Part } from '../part';
-import { AttributePart } from '../parts';
-import type { Effect, Updater } from '../updater';
+import { Directive, directiveSymbol } from '../directive.js';
+import type { Part } from '../part.js';
+import { AttributePart } from '../parts/index.js';
+import type { Effect, Updater } from '../updater.js';
 
 type ExtractStringProperty<T> = {
   [P in keyof T]: P extends string ? (T[P] extends string ? P : never) : never;

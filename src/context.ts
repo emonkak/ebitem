@@ -8,11 +8,11 @@ import {
   ReducerHook,
   RefObject,
   ensureHookType,
-} from './hook';
-import type { ScopeInterface } from './scopeInterface';
-import { AtomSignal, Signal } from './signal';
-import { TemplateResult } from './templateResult';
-import type { Effect, Renderable, Updater } from './updater';
+} from './hook.js';
+import type { ScopeInterface } from './scopeInterface.js';
+import { AtomSignal, Signal } from './signal.js';
+import { TemplateResult } from './templateResult.js';
+import type { Effect, Renderable, Updater } from './updater.js';
 
 type ValueOrFunction<T> = T extends (...args: any[]) => any
   ? never

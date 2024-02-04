@@ -1,5 +1,5 @@
-import type { Part } from './part';
-import type { Updater } from './updater';
+import type { Part } from './part.js';
+import type { Updater } from './updater.js';
 
 export interface TemplateInterface {
   mount(values: unknown[], updater: Updater): MountPoint;

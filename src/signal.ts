@@ -1,4 +1,4 @@
-import { SlotMap } from './slotMap';
+import { SlotMap } from './slotMap.js';
 
 export type Subscriber = () => void;
 

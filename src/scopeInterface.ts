@@ -1,5 +1,5 @@
-import type { TemplateInterface } from './templateInterface';
-import type { Renderable, Updater } from './updater';
+import type { TemplateInterface } from './templateInterface.js';
+import type { Renderable, Updater } from './updater.js';
 
 export interface ScopeInterface<TContext> {
   getVariable(key: PropertyKey, renderable: Renderable<TContext>): unknown;

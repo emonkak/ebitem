@@ -1,9 +1,9 @@
-import { Block as BlockChild } from '../block';
-import { Directive, directiveSymbol } from '../directive';
-import { Part } from '../part';
-import { ChildPart } from '../parts';
-import type { TemplateResult } from '../templateResult';
-import type { Updater } from '../updater';
+import { Block as BlockChild } from '../block.js';
+import { Directive, directiveSymbol } from '../directive.js';
+import { Part } from '../part.js';
+import { ChildPart } from '../parts/index.js';
+import type { TemplateResult } from '../templateResult.js';
+import type { Updater } from '../updater.js';
 
 export class Block<TProps, TContext> implements Directive {
   private readonly _type: (props: TProps, context: TContext) => TemplateResult;

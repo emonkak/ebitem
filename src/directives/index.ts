@@ -1,12 +1,12 @@
-import type { Context } from '../context';
-import type { Ref } from '../hook';
-import type { TemplateResult } from '../templateResult';
-import { Block } from './block';
-import { ClassList, ClassSpecifier } from './classList';
-import { DOMRef } from './domRef';
-import { List } from './list';
-import { Style, StyleDeclaration } from './style';
-import { UnsafeHTML } from './unsafeHTML';
+import type { Context } from '../context.js';
+import type { Ref } from '../hook.js';
+import type { TemplateResult } from '../templateResult.js';
+import { Block } from './block.js';
+import { ClassList, ClassSpecifier } from './classList.js';
+import { DOMRef } from './domRef.js';
+import { List } from './list.js';
+import { Style, StyleDeclaration } from './style.js';
+import { UnsafeHTML } from './unsafeHTML.js';
 
 export function block<TProps, TContext = Context>(
   type: (props: TProps, context: TContext) => TemplateResult,

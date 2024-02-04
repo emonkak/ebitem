@@ -1,8 +1,8 @@
-import { Directive, directiveSymbol } from '../directive';
-import type { Ref } from '../hook';
-import { Part } from '../part';
-import { AttributePart, AttributeValue } from '../parts';
-import type { Updater } from '../updater';
+import { Directive, directiveSymbol } from '../directive.js';
+import type { Ref } from '../hook.js';
+import { Part } from '../part.js';
+import { AttributePart, AttributeValue } from '../parts/index.js';
+import type { Updater } from '../updater.js';
 
 export class DOMRef implements Directive {
   private readonly _ref: Ref<Element | null>;

@@ -1,9 +1,9 @@
-import type { Hook } from './hook';
-import { Part } from './part';
-import { ChildPart, ChildValue } from './parts';
-import type { ScopeInterface } from './scopeInterface';
-import type { TemplateInterface } from './templateInterface';
-import type { Renderable, Updater } from './updater';
+import type { Hook } from './hook.js';
+import { Part } from './part.js';
+import { ChildPart, ChildValue } from './parts/index.js';
+import type { ScopeInterface } from './scopeInterface.js';
+import type { TemplateInterface } from './templateInterface.js';
+import type { Renderable, Updater } from './updater.js';
 
 const FragmentFlag = {
   DIRTY: 0b1,

@@ -1,10 +1,10 @@
-import { Part, mountPart, updatePart } from './part';
-import { AttributePart } from './parts';
-import { ChildPart } from './parts/child';
-import { EventPart } from './parts/event';
-import { PropertyPart } from './parts/property';
-import type { MountPoint, TemplateInterface } from './templateInterface';
-import type { Updater } from './updater';
+import { Part, mountPart, updatePart } from './part.js';
+import { ChildPart } from './parts/child.js';
+import { EventPart } from './parts/event.js';
+import { AttributePart } from './parts/index.js';
+import { PropertyPart } from './parts/property.js';
+import type { MountPoint, TemplateInterface } from './templateInterface.js';
+import type { Updater } from './updater.js';
 
 type Hole = AttributeHole | EventHole | ChildHole | PropertyHole;
 

@@ -1,9 +1,9 @@
-import { directiveSymbol } from './directive';
-import { Fragment } from './fragment';
-import { Part } from './part';
-import { ChildPart } from './parts';
-import type { TemplateInterface } from './templateInterface';
-import type { Updater } from './updater';
+import { directiveSymbol } from './directive.js';
+import { Fragment } from './fragment.js';
+import { Part } from './part.js';
+import { ChildPart } from './parts/index.js';
+import type { TemplateInterface } from './templateInterface.js';
+import type { Updater } from './updater.js';
 
 export class TemplateResult {
   private readonly _template: TemplateInterface;

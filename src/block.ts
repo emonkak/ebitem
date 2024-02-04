@@ -1,9 +1,9 @@
-import { Hook, HookType } from './hook';
-import { ChildPart, ChildValue } from './parts';
-import type { ScopeInterface } from './scopeInterface';
-import type { MountPoint, TemplateInterface } from './templateInterface';
-import type { TemplateResult } from './templateResult';
-import type { Renderable, Updater } from './updater';
+import { Hook, HookType } from './hook.js';
+import { ChildPart, ChildValue } from './parts/index.js';
+import type { ScopeInterface } from './scopeInterface.js';
+import type { MountPoint, TemplateInterface } from './templateInterface.js';
+import type { TemplateResult } from './templateResult.js';
+import type { Renderable, Updater } from './updater.js';
 
 const BlockFlag = {
   MOUNTED: 0b1,

@@ -1,7 +1,7 @@
-import { Directive, directiveSymbol } from '../directive';
-import { Part, mountPart, updatePart } from '../part';
-import { ChildPart, ChildValue } from '../parts';
-import type { Effect, Updater } from '../updater';
+import { Directive, directiveSymbol } from '../directive.js';
+import { Part, mountPart, updatePart } from '../part.js';
+import { ChildPart, ChildValue } from '../parts/index.js';
+import type { Effect, Updater } from '../updater.js';
 
 export class List<TItem, TValue, TKey> implements Directive {
   private readonly _items: TItem[];

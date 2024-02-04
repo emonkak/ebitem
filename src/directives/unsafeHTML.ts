@@ -1,7 +1,7 @@
-import { Directive, directiveSymbol } from '../directive';
-import type { Part } from '../part';
-import { ChildPart, ChildValue } from '../parts';
-import type { Updater } from '../updater';
+import { Directive, directiveSymbol } from '../directive.js';
+import type { Part } from '../part.js';
+import { ChildPart, ChildValue } from '../parts/index.js';
+import type { Updater } from '../updater.js';
 
 export class UnsafeHTML implements Directive {
   private readonly _html: string;

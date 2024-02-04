@@ -1,5 +1,5 @@
-import { directiveSymbol, isDirective } from './directive';
-import type { Effect, Updater } from './updater';
+import { directiveSymbol, isDirective } from './directive.js';
+import type { Effect, Updater } from './updater.js';
 
 export interface Part extends Effect {
   get node(): ChildNode;

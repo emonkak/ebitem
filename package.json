@@ -2,37 +2,30 @@
   "name": "@emonkak/tempura",
   "version": "0.0.0",
   "main": "index.js",
+  "type": "module",
   "author": "Shota Nozaki",
   "license": "MIT",
   "scripts": {
     "build": "wireit",
-    "clean": "rm index.js"
+    "clean": "tsc --build --clean",
+    "test": "node --no-warnings=ExperimentalWarning --loader ts-node/esm --test test/**/*.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.5.3",
-    "esbuild": "^0.20.0",
+    "@types/node": "^20.11.16",
+    "ts-node": "^10.9.2",
     "typescript": "^5.3.3",
     "wireit": "^0.14.4"
   },
   "wireit": {
     "build": {
-      "command": "esbuild --bundle src/index.ts --outfile=index.js",
-      "files": [
-        "src/**/*.ts"
-      ],
-      "output": [
-        "index.js"
-      ],
-      "dependencies": [
-        "tsc"
-      ]
-    },
-    "tsc": {
       "command": "tsc --build",
       "files": [
         "src/**/*.ts"
       ],
-      "output": []
+      "output": [
+        "dist/**/*.js"
+      ]
     }
   }
 }

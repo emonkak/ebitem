@@ -1,6 +1,6 @@
-import type { Hook } from './hook';
-import { ChildPart } from './parts/child';
-import type { ScopeInterface } from './scopeInterface';
+import type { Hook } from './hook.js';
+import { ChildPart } from './parts/child.js';
+import type { ScopeInterface } from './scopeInterface.js';
 
 export interface Effect {
   commit(updater: Updater): void;

@@ -1,4 +1,4 @@
-export { ChildPart, ChildValue } from './child';
-export { AttributePart, AttributeValue } from './attribute';
-export { EventPart } from './event';
-export { PropertyPart, PropertyValue } from './property';
+export { ChildPart, ChildValue } from './child.js';
+export { AttributePart, AttributeValue } from './attribute.js';
+export { EventPart } from './event.js';
+export { PropertyPart, PropertyValue } from './property.js';

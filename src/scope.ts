@@ -1,8 +1,8 @@
-import { Context } from './context';
-import type { ScopeInterface } from './scopeInterface';
-import { Template } from './template';
-import { TemplateInterface } from './templateInterface';
-import type { Renderable, Updater } from './updater';
+import { Context } from './context.js';
+import type { ScopeInterface } from './scopeInterface.js';
+import { Template } from './template.js';
+import { TemplateInterface } from './templateInterface.js';
+import type { Renderable, Updater } from './updater.js';
 
 type Varibales = { [key: PropertyKey]: unknown };
 
