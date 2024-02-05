@@ -15,7 +15,7 @@
     "outDir": "dist",
     "rootDir": "src",
     "strict": true,
-    "target": "esnext"
+    "target": "es2022"
   },
   "include": ["src/**/*", "typings/**/*"]
 }
