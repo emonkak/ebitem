@@ -1,7 +1,7 @@
 import { Block as BlockChild } from '../block.js';
 import { Directive, directiveSymbol } from '../directive.js';
 import { Part } from '../part.js';
-import { ChildPart } from '../parts/index.js';
+import { ChildPart } from '../parts.js';
 import type { TemplateResult } from '../templateResult.js';
 import type { Updater } from '../updater.js';
 

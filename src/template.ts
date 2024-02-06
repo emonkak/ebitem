@@ -1,7 +1,7 @@
 import { Part, mountPart, updatePart } from './part.js';
+import { AttributePart } from './parts.js';
 import { ChildPart } from './parts/child.js';
 import { EventPart } from './parts/event.js';
-import { AttributePart } from './parts/index.js';
 import { PropertyPart } from './parts/property.js';
 import type { MountPoint, TemplateInterface } from './templateInterface.js';
 import type { Updater } from './updater.js';

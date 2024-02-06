@@ -1,6 +1,6 @@
 import { Directive, directiveSymbol } from '../directive.js';
 import type { Part } from '../part.js';
-import { AttributePart } from '../parts/index.js';
+import { AttributePart } from '../parts.js';
 import type { Effect, Updater } from '../updater.js';
 
 export type ClassMap = Map<string, boolean>;

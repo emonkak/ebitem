@@ -1,7 +1,7 @@
 import { directiveSymbol } from './directive.js';
 import { Fragment } from './fragment.js';
 import { Part } from './part.js';
-import { ChildPart } from './parts/index.js';
+import { ChildPart } from './parts.js';
 import type { TemplateInterface } from './templateInterface.js';
 import type { Updater } from './updater.js';
 

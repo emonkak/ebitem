@@ -1,5 +1,5 @@
 import { Hook, HookType } from './hook.js';
-import { ChildPart, ChildValue } from './parts/index.js';
+import { ChildPart, ChildValue } from './parts.js';
 import type { ScopeInterface } from './scopeInterface.js';
 import type { MountPoint, TemplateInterface } from './templateInterface.js';
 import type { TemplateResult } from './templateResult.js';
