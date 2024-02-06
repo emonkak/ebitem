@@ -23,6 +23,10 @@ export class LinkedList<T> {
     return this._head;
   }
 
+  isEmpty(): boolean {
+    return this._head === null;
+  }
+
   pushBack(value: T): Node<T> {
     const node = { prev: this._tail, next: null, value };
 
