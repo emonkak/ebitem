@@ -10,7 +10,8 @@ import {
   ensureHookType,
 } from './hook.js';
 import type { ScopeInterface } from './scopeInterface.js';
-import { AtomSignal, Signal } from './signal.js';
+import { Signal } from './signal.js';
+import { AtomSignal } from './signals.js';
 import { TemplateResult } from './templateResult.js';
 import type { Effect, Renderable, Updater } from './updater.js';
 
