@@ -8,23 +8,48 @@
   "scripts": {
     "build": "wireit",
     "clean": "tsc --build --clean",
-    "test": "node --no-warnings=ExperimentalWarning --loader ts-node/esm --test test/**/*.ts"
+    "test": "wireit"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.5.3",
     "@types/node": "^20.11.16",
-    "ts-node": "^10.9.2",
+    "tsx": "^4.7.0",
     "typescript": "^5.3.3",
     "wireit": "^0.14.4"
   },
   "wireit": {
     "build": {
+      "dependencies": [
+        "tsc:build"
+      ]
+    },
+    "test": {
+      "command": "node --import tsx/esm --test test/**/*.ts",
+      "files": [
+        "src/**/*.ts",
+        "test/**/*.ts",
+        "typings/**/*.d.ts"
+      ],
+      "dependencies": [
+        "tsc:test"
+      ]
+    },
+    "tsc:build": {
       "command": "tsc --build",
       "files": [
-        "src/**/*.ts"
+        "src/**/*.ts",
+        "typings/**/*.d.ts"
       ],
       "output": [
         "dist/**/*.js"
+      ]
+    },
+    "tsc:test": {
+      "command": "tsc --build tsconfig.test.json",
+      "files": [
+        "src/**/*.ts",
+        "test/**/*.ts",
+        "typings/**/*.d.ts"
       ]
     }
   }
