@@ -4,6 +4,10 @@ import { Part } from '../part.js';
 import { AttributePart, AttributeValue } from '../parts/index.js';
 import type { Updater } from '../updater.js';
 
+export function domRef(ref: Ref<Element | null>) {
+  return new DOMRef(ref);
+}
+
 export class DOMRef implements Directive {
   private readonly _ref: Ref<Element | null>;
 

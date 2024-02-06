@@ -3,6 +3,10 @@ import type { Part } from '../part.js';
 import { ChildPart, ChildValue } from '../parts/index.js';
 import type { Updater } from '../updater.js';
 
+export function unsafeHTML(html: string): UnsafeHTML {
+  return new UnsafeHTML(html);
+}
+
 export class UnsafeHTML implements Directive {
   private readonly _html: string;
 

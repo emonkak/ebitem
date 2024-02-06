@@ -7,6 +7,10 @@ export type ClassMap = Map<string, boolean>;
 
 export type ClassSpecifier = string | { [key: string]: boolean };
 
+export function classList(...classSpecifiers: ClassSpecifier[]): ClassList {
+  return new ClassList(classSpecifiers);
+}
+
 export class ClassList implements Directive {
   private readonly _classMap: ClassMap;
 

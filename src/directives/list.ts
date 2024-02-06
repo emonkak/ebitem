@@ -3,6 +3,30 @@ import { Part, mountPart, updatePart } from '../part.js';
 import { ChildPart, ChildValue } from '../parts/index.js';
 import type { Effect, Updater } from '../updater.js';
 
+export function list<TItem>(items: TItem[]): List<TItem, TItem, number>;
+export function list<TItem, TValue>(
+  items: TItem[],
+  valueSelector: (item: TItem, index: number) => TValue,
+): List<TItem, TValue, number>;
+export function list<TItem, TValue, TKey>(
+  items: TItem[],
+  valueSelector: (item: TItem, index: number) => TValue,
+  keySelector: (item: TItem, index: number) => TKey,
+): List<TItem, TValue, number>;
+export function list<TItem, TValue, TKey>(
+  items: TItem[],
+  valueSelector: (item: TItem, index: number) => TValue = (
+    item: any,
+    _index: any,
+  ) => item,
+  keySelector: (item: TItem, index: number) => TKey = (
+    _item: any,
+    index: any,
+  ) => index,
+): List<TItem, TValue, TKey> {
+  return new List(items, valueSelector, keySelector);
+}
+
 export class List<TItem, TValue, TKey> implements Directive {
   private readonly _items: TItem[];
 

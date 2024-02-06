@@ -5,6 +5,13 @@ import { ChildPart } from '../parts/index.js';
 import type { TemplateResult } from '../templateResult.js';
 import type { Updater } from '../updater.js';
 
+export function block<TProps, TContext>(
+  type: (props: TProps, context: TContext) => TemplateResult,
+  props: TProps,
+): Block<TProps, TContext> {
+  return new Block(type, props);
+}
+
 export class Block<TProps, TContext> implements Directive {
   private readonly _type: (props: TProps, context: TContext) => TemplateResult;
 

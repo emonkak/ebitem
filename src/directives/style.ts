@@ -11,6 +11,10 @@ export type StyleProperty = ExtractStringProperty<CSSStyleDeclaration>;
 
 export type StyleDeclaration = Record<StyleProperty, string>;
 
+export function style(styleDeclaration: StyleDeclaration): Style {
+  return new Style(styleDeclaration);
+}
+
 export class Style implements Directive {
   private readonly _styleDeclaration: StyleDeclaration;
 
