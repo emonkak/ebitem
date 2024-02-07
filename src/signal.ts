@@ -20,4 +20,8 @@ export abstract class Signal<T> {
   memoized(): MemoizedSignal<T> {
     return new MemoizedSignal(this);
   }
+
+  toJSON(): T {
+    return this.value;
+  }
 }

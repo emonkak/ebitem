@@ -1,9 +1,10 @@
 import { Signal } from '../src/signal.js';
-import { AtomSignal, AutoSignal, StructSignal } from '../src/signals.js';
+import { AtomSignal, AutoSignal, ArraySignal, StructSignal } from '../src/signals.js';
 
 interface PersonState {
   firstName: AtomSignal<string>;
   lastName: AtomSignal<string>;
+  addresses: ArraySignal<AtomSignal<string>>;
 }
 
 class PersonStore extends StructSignal<PersonState> {
@@ -24,6 +25,7 @@ class PersonStore extends StructSignal<PersonState> {
 const store = new PersonStore({
   firstName: new AtomSignal('John'),
   lastName: new AtomSignal('Doe'),
+  addresses: new ArraySignal([new AtomSignal('Japan')])
 });
 
 console.log(store.version);
@@ -37,3 +39,5 @@ console.log(store.version, store.fullName.version, store.fullName.value);
 store.lastName.value = 'Tramp';
 
 console.log(store.version, store.fullName.version, store.fullName.value);
+
+console.log(JSON.stringify(store));
