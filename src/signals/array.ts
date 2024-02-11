@@ -77,6 +77,12 @@ export class ArraySignal<T> extends Signal<T[]> {
     return this._version;
   }
 
+  batch(update: (values: T[]) => boolean): void {
+    if (update(this._values)) {
+      this._notifyChange();
+    }
+  }
+
   subscribe(subscriber: Subscriber): Subscription {
     const node = this._subscribers.pushBack(subscriber);
     return () => {
