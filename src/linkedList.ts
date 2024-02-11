@@ -27,6 +27,34 @@ export class LinkedList<T> {
     return this._head === null;
   }
 
+  popBack(): Node<T> | null {
+    const tail = this._tail;
+
+    if (tail !== null && tail.prev !== null) {
+      this._tail = tail.prev;
+      this._tail.next = null;
+    } else {
+      this._head = null;
+      this._tail = null;
+    }
+
+    return tail;
+  }
+
+  popFront(): Node<T> | null {
+    const head = this._head;
+
+    if (head !== null && head.next !== null) {
+      this._head = head.next;
+      this._head.prev = null;
+    } else {
+      this._head = null;
+      this._tail = null;
+    }
+
+    return head;
+  }
+
   pushBack(value: T): Node<T> {
     const node = { prev: this._tail, next: null, value };
 
