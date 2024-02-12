@@ -57,8 +57,9 @@ export class TemplateResult {
 
       part.setValue(newFragment);
 
+      updater.pushRenderable(newFragment);
       updater.pushMutationEffect(part);
-      updater.requestUpdate(newFragment);
+      updater.requestUpdate();
     }
   }
 }

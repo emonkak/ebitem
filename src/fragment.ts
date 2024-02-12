@@ -68,7 +68,8 @@ export class Fragment<TContext>
     }
 
     this._flags |= FragmentFlag.UPDATING;
-    updater.requestUpdate(this);
+    updater.pushRenderable(this);
+    updater.requestUpdate();
   }
 
   setValues(values: unknown[]): void {
@@ -78,7 +79,7 @@ export class Fragment<TContext>
     }
   }
 
-  render(_scope: ScopeInterface<TContext>, updater: Updater<TContext>): void {
+  render(updater: Updater<TContext>, _scope: ScopeInterface<TContext>): void {
     if (this._memoizedValues === null) {
       const { children, parts } = this._template.mount(
         this._pendingValues,

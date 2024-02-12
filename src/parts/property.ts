@@ -139,7 +139,7 @@ export class SignalProperty<T> extends PropertyValue {
   mount(part: PropertyPart, updater: Updater): void {
     this._subscription = this._signal.subscribe(() => {
       updater.pushMutationEffect(part);
-      updater.requestMutations();
+      updater.requestUpdate();
     });
   }
 

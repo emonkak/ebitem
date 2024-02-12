@@ -98,10 +98,11 @@ export class Block<TProps, TContext>
     }
 
     this._flags |= BlockFlag.DIRTY | BlockFlag.UPDATING;
-    updater.requestUpdate(this);
+    updater.pushRenderable(this);
+    updater.requestUpdate();
   }
 
-  render(scope: ScopeInterface<TContext>, updater: Updater<TContext>): void {
+  render(updater: Updater<TContext>, scope: ScopeInterface<TContext>): void {
     const render = this._type;
     const context = scope.createContext(this, this._hooks, updater);
     const { template, values } = render(this._pendingProps, context);

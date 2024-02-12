@@ -251,7 +251,8 @@ export class Context {
   }
 
   requestUpdate(): void {
-    this._updater.requestUpdate(this._renderable);
+    this._updater.pushRenderable(this._renderable);
+    this._updater.requestUpdate();
   }
 }
 

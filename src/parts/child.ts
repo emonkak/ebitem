@@ -162,7 +162,7 @@ export class SignalChild<T> extends ChildValue {
   mount(part: ChildPart, updater: Updater): void {
     this._subscription = this._signal.subscribe(() => {
       updater.pushMutationEffect(part);
-      updater.requestMutations();
+      updater.requestUpdate();
     });
   }
 

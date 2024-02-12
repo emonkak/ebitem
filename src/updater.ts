@@ -9,7 +9,7 @@ export interface Renderable<TContext> {
   get isDirty(): boolean;
   get parent(): Renderable<TContext> | null;
   forceUpdate(updater: Updater<TContext>): void;
-  render(scope: ScopeInterface<TContext>, updater: Updater<TContext>): void;
+  render(updater: Updater<TContext>, scope: ScopeInterface<TContext>): void;
 }
 
 export class Updater<TContext = unknown> {
@@ -35,7 +35,8 @@ export class Updater<TContext = unknown> {
     return this._currentRenderable;
   }
 
-  mount(container: Node, renderable: Renderable<TContext>): void {
+  mount(renderable: Renderable<TContext>, container: Node): void {
+    this.pushRenderable(renderable);
     this.pushLayoutEffect({
       commit(updater: Updater<TContext>) {
         const node = document.createComment('');
@@ -45,127 +46,129 @@ export class Updater<TContext = unknown> {
         part.commit(updater);
       },
     });
-    this.requestUpdate(renderable);
-  }
-
-  requestUpdate(renderable: Renderable<TContext>): void {
-    this._pendingRenderables.push(renderable);
-
-    if (!this._isUpdating) {
-      this._isUpdating = true;
-      this._startRenderingPhase();
-    }
-  }
-
-  requestMutations(): void {
-    if (!this._isUpdating && this._pendingMutationEffects.length > 0) {
-      this._isUpdating = true;
-      this._startBlockingPhase();
-    }
-  }
-
-  pushMutationEffect(effect: Effect): void {
-    this._pendingMutationEffects.push(effect);
+    this.requestUpdate();
   }
 
   pushLayoutEffect(effect: Effect): void {
     this._pendingLayoutEffects.push(effect);
   }
 
+  pushMutationEffect(effect: Effect): void {
+    this._pendingMutationEffects.push(effect);
+  }
+
   pushPassiveEffect(effect: Effect): void {
     this._pendingPassiveEffects.push(effect);
   }
 
-  private _startRenderingPhase(): void {
-    scheduleBackgroundTask(async () => {
-      console.time('Rendering phase');
-
-      for (let i = 0; i < this._pendingRenderables.length; i++) {
-        if (navigator.scheduling.isInputPending()) {
-          await yieldToMain();
-        }
-        const renderable = this._pendingRenderables[i]!;
-        if (renderable.isDirty && !hasDirtyParent(renderable)) {
-          this._currentRenderable = renderable;
-          renderable.render(this._scope, this);
-          this._currentRenderable = null;
-        }
-      }
-
-      this._pendingRenderables.length = 0;
-
-      if (
-        this._pendingMutationEffects.length > 0 ||
-        this._pendingLayoutEffects.length > 0
-      ) {
-        this._startBlockingPhase();
-      } else if (this._pendingPassiveEffects.length > 0) {
-        this._startPassiveEffectPhase();
-      } else {
-        this._isUpdating = false;
-      }
-
-      console.timeEnd('Rendering phase');
-    });
+  pushRenderable(renderable: Renderable<TContext>): void {
+    this._pendingRenderables.push(renderable);
   }
 
-  private _startBlockingPhase(): void {
-    scheduleUserBlockingTask(async () => {
-      console.time('Blocking phase');
-
-      for (let i = 0; i < this._pendingMutationEffects.length; i++) {
-        this._pendingMutationEffects[i]!.commit(this);
-      }
-
-      this._pendingMutationEffects.length = 0;
-
-      for (let i = 0; i < this._pendingLayoutEffects.length; i++) {
-        if (navigator.scheduling.isInputPending()) {
-          await yieldToMain();
-        }
-        this._pendingLayoutEffects[i]!.commit(this);
-      }
-
-      this._pendingLayoutEffects.length = 0;
-
-      if (this._pendingPassiveEffects.length > 0) {
-        this._startPassiveEffectPhase();
-      } else if (this._pendingRenderables.length > 0) {
-        this._startRenderingPhase();
-      } else {
-        this._isUpdating = false;
-      }
-
-      console.timeEnd('Blocking phase');
-    });
+  async requestUpdate(): Promise<void> {
+    if (this._isUpdating) {
+      return;
+    }
+    this._isUpdating = true;
+    try {
+      await this._startLoop();
+    } finally {
+      this._isUpdating = false;
+    }
   }
 
-  private _startPassiveEffectPhase(): void {
-    scheduleBackgroundTask(async () => {
-      console.time('Passive effect phase');
+  async _startLoop(): Promise<void> {
+    do {
+      if (this._hasRenderable()) {
+        await scheduleBackgroundTask(async () => {
+          console.time('Rendering phase');
 
-      for (let i = 0; i < this._pendingPassiveEffects.length; i++) {
-        if (navigator.scheduling.isInputPending()) {
-          await yieldToMain();
-        }
-        this._pendingPassiveEffects[i]!.commit(this);
+          do {
+            const renderables = this._pendingRenderables;
+
+            this._pendingRenderables = [];
+
+            for (let i = 0, l = renderables.length; i < l; i++) {
+              const renderable = renderables[i]!;
+              if (!renderable.isDirty || hasDirtyParent(renderable)) {
+                continue;
+              }
+              if (navigator.scheduling.isInputPending()) {
+                await yieldToMain();
+              }
+              this._currentRenderable = renderable;
+              try {
+                renderable.render(this, this._scope);
+              } finally {
+                this._currentRenderable = null;
+              }
+            }
+          } while (this._pendingRenderables.length > 0);
+
+          console.timeEnd('Rendering phase');
+        });
       }
 
-      this._pendingPassiveEffects.length = 0;
+      if (this._hasBlockingEffect()) {
+        await scheduleUserBlockingTask(async () => {
+          console.time('Blocking phase');
 
-      if (this._pendingRenderables.length > 0) {
-        this._startRenderingPhase();
-      } else if (
-        this._pendingMutationEffects.length > 0 ||
-        this._pendingLayoutEffects.length > 0
-      ) {
-        this._startBlockingPhase();
-      } else {
-        this._isUpdating = false;
+          const mutationEffects = this._pendingMutationEffects;
+          const layoutEffects = this._pendingLayoutEffects;
+
+          this._pendingMutationEffects = [];
+          this._pendingLayoutEffects = [];
+
+          for (let i = 0, l = mutationEffects.length; i < l; i++) {
+            mutationEffects[i]!.commit(this);
+          }
+
+          for (let i = 0, l = layoutEffects.length; i < l; i++) {
+            layoutEffects[i]!.commit(this);
+          }
+
+          console.timeEnd('Blocking phase');
+        });
       }
 
-      console.timeEnd('Passive effect phase');
-    });
+      if (this._hasPassiveEffect()) {
+        await scheduleBackgroundTask(async () => {
+          console.time('Background phase');
+
+          const passiveEffects = this._pendingPassiveEffects;
+
+          this._pendingPassiveEffects = [];
+
+          for (let i = 0, l = passiveEffects.length; i < l; i++) {
+            if (navigator.scheduling.isInputPending()) {
+              await yieldToMain();
+            }
+            passiveEffects[i]!.commit(this);
+          }
+
+          console.timeEnd('Background phase');
+        });
+      }
+    } while (
+      this._hasRenderable() ||
+      this._hasBlockingEffect() ||
+      this._hasPassiveEffect()
+    );
+  }
+
+  private _hasBlockingEffect(): boolean {
+    return (
+      this._pendingMutationEffects.length > 0 ||
+      this._pendingLayoutEffects.length > 0
+    );
+  }
+
+  private _hasPassiveEffect(): boolean {
+    return this._pendingPassiveEffects.length > 0;
+  }
+
+  private _hasRenderable(): boolean {
+    return this._pendingRenderables.length > 0;
   }
 }
 
@@ -179,28 +182,36 @@ function hasDirtyParent(renderable: Renderable<unknown>): boolean {
   return false;
 }
 
-function scheduleBackgroundTask(task: () => void): void {
-  if ('scheduler' in globalThis && 'postTask' in scheduler) {
-    scheduler.postTask(task, { priority: 'background' });
-  } else {
-    requestIdleCallback(task);
-  }
+function scheduleBackgroundTask(task: () => Promise<void>): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if ('scheduler' in globalThis && 'postTask' in scheduler) {
+      scheduler.postTask(() => task().then(resolve, reject), {
+        priority: 'background',
+      });
+    } else {
+      requestIdleCallback(() => task().then(resolve, reject));
+    }
+  });
 }
 
-function scheduleUserBlockingTask(task: () => void): void {
-  if ('scheduler' in globalThis && 'postTask' in scheduler) {
-    scheduler.postTask(task, { priority: 'user-blocking' });
-  } else {
-    requestAnimationFrame(task);
-  }
+function scheduleUserBlockingTask(task: () => Promise<void>): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if ('scheduler' in globalThis && 'postTask' in scheduler) {
+      scheduler.postTask(() => task().then(resolve, reject), {
+        priority: 'user-blocking',
+      });
+    } else {
+      requestAnimationFrame(() => task().then(resolve, reject));
+    }
+  });
 }
 
 function yieldToMain(): Promise<void> {
   if ('scheduler' in globalThis && 'yield' in scheduler) {
     return scheduler.yield();
+  } else {
+    return new Promise((resolve) => {
+      queueMicrotask(resolve);
+    });
   }
-
-  return new Promise((resolve) => {
-    queueMicrotask(resolve);
-  });
 }
