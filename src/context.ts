@@ -9,6 +9,7 @@ import {
   RefObject,
   ensureHookType,
 } from './hook.js';
+import type { Hook } from './hook.js';
 import type { ScopeInterface } from './scopeInterface.js';
 import { Signal } from './signal.js';
 import { AtomSignal } from './signals.js';
@@ -22,6 +23,8 @@ type ValueOrFunction<T> = T extends (...args: any[]) => any
 export class Context {
   private readonly _renderable: Renderable<Context>;
 
+  private readonly _hooks: Hook[];
+
   private readonly _updater: Updater<Context>;
 
   private readonly _scope: ScopeInterface<Context>;
@@ -30,10 +33,12 @@ export class Context {
 
   constructor(
     renderable: Renderable<Context>,
+    hooks: Hook[],
     updater: Updater<Context>,
     scope: ScopeInterface<Context>,
   ) {
     this._renderable = renderable;
+    this._hooks = hooks;
     this._updater = updater;
     this._scope = scope;
   }
@@ -61,8 +66,7 @@ export class Context {
   }
 
   useEffect(callback: EffectCallback, dependencies?: unknown[]): void {
-    const { hooks } = this._renderable;
-    const currentHook = hooks[this._hookIndex];
+    const currentHook = this._hooks[this._hookIndex];
 
     if (currentHook) {
       ensureHookType<EffectHook>(HookType.EFFECT, currentHook);
@@ -81,7 +85,7 @@ export class Context {
         cleanup: undefined,
       };
 
-      hooks[this._hookIndex] = newHook;
+      this._hooks[this._hookIndex] = newHook;
 
       this._updater.pushPassiveEffect(new InvokeEffectHook(newHook));
     }
@@ -111,8 +115,7 @@ export class Context {
   }
 
   useLayoutEffect(callback: EffectCallback, dependencies?: unknown[]): void {
-    const { hooks } = this._renderable;
-    const currentHook = hooks[this._hookIndex];
+    const currentHook = this._hooks[this._hookIndex];
 
     if (currentHook) {
       ensureHookType<LayoutEffectHook>(HookType.LAYOUT_EFFECT, currentHook);
@@ -131,7 +134,7 @@ export class Context {
         cleanup: undefined,
       };
 
-      hooks[this._hookIndex] = newHook;
+      this._hooks[this._hookIndex] = newHook;
 
       this._updater.pushLayoutEffect(new InvokeEffectHook(newHook));
     }
@@ -140,8 +143,7 @@ export class Context {
   }
 
   useMemo<TResult>(factory: () => TResult, dependencies: unknown[]): TResult {
-    const { hooks } = this._renderable;
-    let currentHook = hooks[this._hookIndex];
+    let currentHook = this._hooks[this._hookIndex];
 
     if (currentHook) {
       ensureHookType<MemoHook>(HookType.MEMO, currentHook);
@@ -157,7 +159,7 @@ export class Context {
         dependencies,
       };
 
-      currentHook = hooks[this._hookIndex] = newHook;
+      currentHook = this._hooks[this._hookIndex] = newHook;
     }
 
     this._hookIndex++;
@@ -170,8 +172,7 @@ export class Context {
     initialState: ValueOrFunction<TState>,
   ): [TState, (action: TAction) => void] {
     const renderable = this._renderable;
-    const { hooks } = renderable;
-    let currentHook = hooks[this._hookIndex];
+    let currentHook = this._hooks[this._hookIndex];
 
     if (currentHook) {
       ensureHookType<ReducerHook>(HookType.REDUCER, currentHook);
@@ -186,7 +187,7 @@ export class Context {
         },
       };
 
-      currentHook = hooks[this._hookIndex] = newHook as ReducerHook;
+      currentHook = this._hooks[this._hookIndex] = newHook as ReducerHook;
     }
 
     this._hookIndex++;

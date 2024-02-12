@@ -103,7 +103,7 @@ export class Block<TProps, TContext>
 
   render(scope: ScopeInterface<TContext>, updater: Updater<TContext>): void {
     const render = this._type;
-    const context = scope.createContext(this, updater);
+    const context = scope.createContext(this, this._hooks, updater);
     const { template, values } = render(this._pendingProps, context);
 
     if (this._memoizedMountPoint === null) {

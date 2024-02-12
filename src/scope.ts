@@ -1,4 +1,5 @@
 import { Context } from './context.js';
+import type { Hook } from './hook.js';
 import type { ScopeInterface } from './scopeInterface.js';
 import { Template } from './template.js';
 import { TemplateInterface } from './templateInterface.js';
@@ -43,9 +44,10 @@ export class Scope implements ScopeInterface<Context> {
 
   createContext(
     renderable: Renderable<Context>,
+    hooks: Hook[],
     updater: Updater<Context>,
   ): Context {
-    return new Context(renderable, updater, this);
+    return new Context(renderable, hooks, updater, this);
   }
 
   createTemplate(

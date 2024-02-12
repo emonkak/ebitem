@@ -1,4 +1,3 @@
-import type { Hook } from './hook.js';
 import { ChildPart } from './parts/child.js';
 import type { ScopeInterface } from './scopeInterface.js';
 
@@ -9,7 +8,6 @@ export interface Effect {
 export interface Renderable<TContext> {
   get isDirty(): boolean;
   get parent(): Renderable<TContext> | null;
-  get hooks(): Hook[];
   forceUpdate(updater: Updater<TContext>): void;
   render(scope: ScopeInterface<TContext>, updater: Updater<TContext>): void;
 }

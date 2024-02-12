@@ -1,3 +1,4 @@
+import type { Hook } from './hook.js';
 import type { TemplateInterface } from './templateInterface.js';
 import type { Renderable, Updater } from './updater.js';
 
@@ -12,6 +13,7 @@ export interface ScopeInterface<TContext> {
 
   createContext(
     renderable: Renderable<TContext>,
+    hooks: Hook[],
     updater: Updater<TContext>,
   ): TContext;
 
