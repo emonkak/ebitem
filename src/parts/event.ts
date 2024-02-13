@@ -80,6 +80,7 @@ export class EventPart implements Part {
       // The element may be retained by someone, so we remove the event listener
       // to avoid memory leaks.
       this._element.removeEventListener(this._name, this, this._committedValue);
+      this._committedValue = null;
     }
   }
 

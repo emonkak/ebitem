@@ -64,6 +64,7 @@ export class AttributePart implements Part {
   disconnect(updater: Updater): void {
     if (this._committedValue !== null) {
       this._committedValue.unmount(this, updater);
+      this._committedValue = null;
     }
   }
 }

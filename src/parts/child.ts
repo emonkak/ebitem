@@ -67,6 +67,7 @@ export class ChildPart implements Part {
     this._node.remove();
     if (this._committedValue !== null) {
       this._committedValue.unmount(this, updater);
+      this._committedValue = null;
     }
   }
 }
