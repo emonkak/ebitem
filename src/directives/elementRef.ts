@@ -4,11 +4,11 @@ import { Part } from '../part.js';
 import { AttributePart, AttributeValue } from '../parts.js';
 import type { Updater } from '../updater.js';
 
-export function domRef(ref: Ref<Element | null>) {
-  return new DOMRef(ref);
+export function elementRef(ref: Ref<Element | null>) {
+  return new ElementRef(ref);
 }
 
-export class DOMRef implements Directive {
+export class ElementRef implements Directive {
   private readonly _ref: Ref<Element | null>;
 
   constructor(ref: Ref<Element | null>) {
@@ -18,7 +18,7 @@ export class DOMRef implements Directive {
   [directiveSymbol](part: Part, updater: Updater): void {
     if (!(part instanceof AttributePart) || part.name !== 'ref') {
       throw new Error(
-        '"DOMRef" directive must be used in the "ref" attribute.',
+        '"ElementRef" directive must be used in the "ref" attribute.',
       );
     }
 
