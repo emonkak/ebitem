@@ -30,7 +30,7 @@ export class AttributePart implements Part {
     return this._name;
   }
 
-  setValue(newValue: unknown): void {
+  setValue(newValue: unknown, _updater: Updater): void {
     this._pendingValue = AttributeValue.upgrade(newValue, this._committedValue);
     this._dirty = true;
   }

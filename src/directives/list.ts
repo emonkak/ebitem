@@ -1,5 +1,5 @@
 import { Directive, directiveSymbol } from '../directive.js';
-import { Part, mountPart, updatePart } from '../part.js';
+import { DisconnectPart, Part, mountPart, updatePart } from '../part.js';
 import { ChildPart, ChildValue } from '../parts.js';
 import type { Effect, Updater } from '../updater.js';
 
@@ -65,7 +65,7 @@ export class List<TItem, TValue, TKey> implements Directive {
         this._keySelector,
         part,
       );
-      part.setValue(list);
+      part.setValue(list, updater);
     }
 
     updater.pushMutationEffect(part);
@@ -214,12 +214,12 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
         if (!newKeyToIndexMap.has(oldKeys[oldHead]!)) {
           // Old head is no longer in new list; remove
           const part = oldParts[oldHead]!;
-          updater.pushMutationEffect(new DisconnectChildPart(part));
+          updater.pushMutationEffect(new DisconnectPart(part));
           oldHead++;
         } else if (!newKeyToIndexMap.has(oldKeys[oldTail]!)) {
           // Old tail is no longer in new list; remove
           const part = oldParts[oldTail]!;
-          updater.pushMutationEffect(new DisconnectChildPart(part));
+          updater.pushMutationEffect(new DisconnectPart(part));
           oldTail--;
         } else {
           // Any mismatches at this point are due to additions or
@@ -274,7 +274,7 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
     while (oldHead <= oldTail) {
       const oldPart = oldParts[oldHead];
       if (oldPart) {
-        updater.pushMutationEffect(new DisconnectChildPart(oldPart));
+        updater.pushMutationEffect(new DisconnectPart(oldPart));
       }
       oldHead++;
     }
@@ -310,18 +310,6 @@ export class ItemPart extends ChildPart implements Part {
     reference.parentNode?.insertBefore(this._node, reference);
 
     this._committedValue?.mount(this, updater);
-  }
-}
-
-class DisconnectChildPart implements Effect {
-  private readonly _part: ChildPart;
-
-  constructor(part: ChildPart) {
-    this._part = part;
-  }
-
-  commit(updater: Updater): void {
-    this._part.disconnect(updater);
   }
 }
 

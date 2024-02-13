@@ -3,43 +3,43 @@ import { AttributePart } from './parts.js';
 import { ChildPart } from './parts/child.js';
 import { EventPart } from './parts/event.js';
 import { PropertyPart } from './parts/property.js';
+import { SpreadPart } from './parts/spread.js';
 import type { MountPoint, TemplateInterface } from './templateInterface.js';
 import type { Updater } from './updater.js';
 
-type Hole = AttributeHole | EventHole | ChildHole | PropertyHole;
-
-enum HoleType {
-  ATTRIBUTE = 'ATTRIBUTE',
-  CHILD = 'CHILD',
-  EVENT = 'EVENT',
-  PROPERTY = 'PROPERTY',
-}
+type Hole = AttributeHole | ChildHole | EventHole | PropertyHole | SpreadHole;
 
 interface AttributeHole {
-  type: HoleType.ATTRIBUTE;
+  type: 'attribute';
   path: number[];
   index: number;
   name: string;
 }
 
 interface ChildHole {
-  type: HoleType.CHILD;
+  type: 'child';
   path: number[];
   index: number;
 }
 
 interface EventHole {
-  type: HoleType.EVENT;
+  type: 'event';
   path: number[];
   index: number;
   name: string;
 }
 
 interface PropertyHole {
-  type: HoleType.PROPERTY;
+  type: 'property';
   path: number[];
   index: number;
   name: string;
+}
+
+interface SpreadHole {
+  type: 'spread';
+  path: number[];
+  index: number;
 }
 
 export class Template implements TemplateInterface {
@@ -79,17 +79,20 @@ export class Template implements TemplateInterface {
       let part;
 
       switch (hole.type) {
-        case HoleType.ATTRIBUTE:
+        case 'attribute':
           part = new AttributePart(child as Element, hole.name);
           break;
-        case HoleType.EVENT:
+        case 'event':
           part = new EventPart(child as Element, hole.name);
           break;
-        case HoleType.CHILD:
+        case 'child':
           part = new ChildPart(child as ChildNode);
           break;
-        case HoleType.PROPERTY:
+        case 'property':
           part = new PropertyPart(child as Element, hole.name);
+          break;
+        case 'spread':
+          part = new SpreadPart(child as Element);
           break;
       }
 
@@ -125,34 +128,40 @@ function parseAttribtues(
 
   for (let i = 0, l = attributes.length; i < l; i++) {
     const attribute = attributes[i]!;
-
-    if (attribute.value !== marker) {
-      continue;
-    }
-
     const name = attribute.name;
+    const value = attribute.value;
 
-    if (name.length > 1 && name[0] === '@') {
+    if (name === marker && value === '') {
       holes.push({
-        type: HoleType.EVENT,
+        type: 'spread',
         path,
         index,
-        name: name.slice(1),
       });
-    } else if (name.length > 1 && name[0] === '.') {
-      holes.push({
-        type: HoleType.PROPERTY,
-        path,
-        index,
-        name: name.slice(1),
-      });
+    } else if (value === marker) {
+      if (name.length > 1 && name[0] === '@') {
+        holes.push({
+          type: 'event',
+          path,
+          index,
+          name: name.slice(1),
+        });
+      } else if (name.length > 1 && name[0] === '.') {
+        holes.push({
+          type: 'property',
+          path,
+          index,
+          name: name.slice(1),
+        });
+      } else {
+        holes.push({
+          type: 'attribute',
+          path,
+          index,
+          name,
+        });
+      }
     } else {
-      holes.push({
-        type: HoleType.ATTRIBUTE,
-        path,
-        index,
-        name,
-      });
+      continue;
     }
 
     element.removeAttribute(name);
@@ -193,7 +202,7 @@ function parseChildren(
           }
 
           holes.push({
-            type: HoleType.CHILD,
+            type: 'child',
             path,
             index: i,
           });

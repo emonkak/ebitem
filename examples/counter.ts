@@ -59,7 +59,7 @@ function App(_props: {}, context: Context): TemplateResult {
   });
 
   return context.html`
-    <div>
+    <div ${{ class: 'root' }}>
       ${block(Counter, {
         count: counterSignal,
       })}

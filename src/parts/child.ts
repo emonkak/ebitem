@@ -33,7 +33,7 @@ export class ChildPart implements Part {
     return this._committedValue;
   }
 
-  setValue(newValue: unknown): void {
+  setValue(newValue: unknown, _updater: Updater): void {
     this._pendingValue = ChildValue.upgrade(newValue, this._committedValue);
     this._dirty = true;
   }

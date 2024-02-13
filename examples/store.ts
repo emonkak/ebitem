@@ -1,9 +1,5 @@
-import {
-  ArraySignal,
-  AtomSignal,
-  AutoSignal,
-  StructSignal,
-} from '../src/signals.js';
+import { AtomSignal } from '../src/signal.js';
+import { ArraySignal, AutoSignal, StructSignal } from '../src/signals.js';
 
 interface PersonState {
   firstName: AtomSignal<string>;

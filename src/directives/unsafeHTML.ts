@@ -29,7 +29,7 @@ export class UnsafeHTML implements Directive {
       return;
     }
 
-    part.setValue(new UnsafeHTMLChild(this._html));
+    part.setValue(new UnsafeHTMLChild(this._html), updater);
 
     updater.pushMutationEffect(part);
   }

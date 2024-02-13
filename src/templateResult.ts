@@ -36,7 +36,7 @@ export class TemplateResult {
 
     if (value instanceof Fragment) {
       if (value.template === this._template) {
-        value.setValues(this._values);
+        value.values = this._values;
         // Skip the update if the same directive is called twice.
         if (value.isDirty) {
           value.forceUpdate(updater);
@@ -55,7 +55,7 @@ export class TemplateResult {
         updater.currentRenderable,
       );
 
-      part.setValue(newFragment);
+      part.setValue(newFragment, updater);
 
       updater.pushRenderable(newFragment);
       updater.pushMutationEffect(part);

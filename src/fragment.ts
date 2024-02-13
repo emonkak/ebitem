@@ -62,6 +62,13 @@ export class Fragment<TContext>
     return this._memoizedValues;
   }
 
+  set values(newValues: unknown[]) {
+    if (newValues !== this._pendingValues) {
+      this._pendingValues = newValues;
+      this._flags |= FragmentFlag.DIRTY;
+    }
+  }
+
   forceUpdate(updater: Updater<TContext>): void {
     if ((this._flags & FragmentFlag.UPDATING) !== 0) {
       return;
@@ -70,13 +77,6 @@ export class Fragment<TContext>
     this._flags |= FragmentFlag.UPDATING;
     updater.pushRenderable(this);
     updater.requestUpdate();
-  }
-
-  setValues(values: unknown[]): void {
-    if (values !== this._pendingValues) {
-      this._pendingValues = values;
-      this._flags |= FragmentFlag.DIRTY;
-    }
   }
 
   render(updater: Updater<TContext>, _scope: ScopeInterface<TContext>): void {

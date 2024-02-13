@@ -50,7 +50,7 @@ export class Updater<TContext = unknown> {
         const node = document.createComment('');
         container.appendChild(node);
         const part = new ChildPart(node);
-        part.setValue(renderable);
+        part.setValue(renderable, updater);
         part.commit(updater);
       },
     });

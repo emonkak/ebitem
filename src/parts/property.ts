@@ -30,7 +30,7 @@ export class PropertyPart implements Part {
     return this._committedValue;
   }
 
-  setValue(newValue: unknown): void {
+  setValue(newValue: unknown, _updater: Updater): void {
     this._pendingValue = PropertyValue.upgrade(newValue, this._committedValue);
     this._dirty = true;
   }

@@ -32,7 +32,7 @@ export class EventPart implements Part {
     return this._name;
   }
 
-  setValue(newValue: unknown): void {
+  setValue(newValue: unknown, _updater: Updater): void {
     if (
       !(
         newValue === null ||
