@@ -62,7 +62,7 @@ export class PropertyPart implements Part {
   }
 
   disconnect(updater: Updater): void {
-    if (this._committedValue) {
+    if (this._committedValue !== null) {
       this._committedValue.unmount(this, updater);
     }
   }

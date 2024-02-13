@@ -1,14 +1,17 @@
 import type { Part } from '../part.js';
 import type { Updater } from '../updater.js';
 
+type EventListenerWithOptions = EventListenerOrEventListenerObject &
+  AddEventListenerOptions;
+
 export class EventPart implements Part {
   private readonly _element: Element;
 
   private readonly _name: string;
 
-  private _committedValue: EventListener | null = null;
+  private _committedValue: EventListenerWithOptions | null = null;
 
-  private _pendingValue: EventListener | null = null;
+  private _pendingValue: EventListenerWithOptions | null = null;
 
   private _dirty = false;
 
@@ -21,7 +24,7 @@ export class EventPart implements Part {
     return this._element;
   }
 
-  get value(): EventListener | null {
+  get value(): EventListenerWithOptions | null {
     return this._committedValue;
   }
 
@@ -30,11 +33,20 @@ export class EventPart implements Part {
   }
 
   setValue(newValue: unknown): void {
-    if (newValue !== null && typeof newValue !== 'function') {
-      throw new Error('The value of "EventPart" must be a function or null.');
+    if (
+      !(
+        newValue === null ||
+        typeof newValue === 'function' ||
+        (typeof newValue === 'object' &&
+          typeof (newValue as any).handleEvent === 'function')
+      )
+    ) {
+      throw new Error(
+        'The value of "EventPart" must be a EventListener, EventListenerObject or null.',
+      );
     }
 
-    this._pendingValue = newValue as EventListener | null;
+    this._pendingValue = newValue as EventListenerWithOptions | null;
   }
 
   commit(_updater: Updater): void {
@@ -49,12 +61,14 @@ export class EventPart implements Part {
       _pendingValue: newValue,
     } = this;
 
-    if (oldValue !== null) {
-      element.removeEventListener(name, oldValue);
-    }
+    if (oldValue !== newValue) {
+      if (oldValue !== null) {
+        element.removeEventListener(name, this, oldValue);
+      }
 
-    if (newValue !== null) {
-      element.addEventListener(name, newValue);
+      if (newValue !== null) {
+        element.addEventListener(name, this, newValue);
+      }
     }
 
     this._committedValue = newValue;
@@ -62,10 +76,21 @@ export class EventPart implements Part {
   }
 
   disconnect(_updater: Updater): void {
-    if (this._committedValue) {
+    if (this._committedValue !== null) {
       // The element may be retained by someone, so we remove the event listener
       // to avoid memory leaks.
-      this._element.removeEventListener(this._name, this._committedValue);
+      this._element.removeEventListener(this._name, this, this._committedValue);
+    }
+  }
+
+  handleEvent(event: Event): void {
+    const value = this._committedValue;
+    if (value !== null) {
+      if (typeof value === 'function') {
+        value.call(this._element, event);
+      } else {
+        value.handleEvent(event);
+      }
     }
   }
 }
