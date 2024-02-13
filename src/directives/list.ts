@@ -302,6 +302,11 @@ export class ItemPart extends ChildPart implements Part {
     super.commit(updater);
   }
 
+  override disconnect(updater: Updater): void {
+    this._node.remove();
+    super.disconnect(updater);
+  }
+
   reorder(referencePart: ChildPart | null, updater: Updater): void {
     const reference = referencePart
       ? referencePart.startNode

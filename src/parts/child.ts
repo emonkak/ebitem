@@ -64,7 +64,6 @@ export class ChildPart implements Part {
   }
 
   disconnect(updater: Updater): void {
-    this._node.remove();
     if (this._committedValue !== null) {
       this._committedValue.unmount(this, updater);
       this._committedValue = null;
