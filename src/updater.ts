@@ -1,4 +1,5 @@
 import { ChildPart } from './parts/child.js';
+import { Scheduler, getDefaultScheduler } from './scheduler.js';
 import type { ScopeInterface } from './scopeInterface.js';
 
 export interface Effect {
@@ -12,8 +13,14 @@ export interface Renderable<TContext> {
   render(updater: Updater<TContext>, scope: ScopeInterface<TContext>): void;
 }
 
+export interface UpdaterOptions {
+  scheduler: Scheduler;
+}
+
 export class Updater<TContext = unknown> {
   private readonly _scope: ScopeInterface<TContext>;
+
+  private readonly _scheduler: Scheduler;
 
   private _currentRenderable: Renderable<TContext> | null = null;
 
@@ -27,8 +34,9 @@ export class Updater<TContext = unknown> {
 
   private _isUpdating = false;
 
-  constructor(scope: ScopeInterface<TContext>) {
+  constructor(scope: ScopeInterface<TContext>, { scheduler }: UpdaterOptions) {
     this._scope = scope;
+    this._scheduler = scheduler ?? getDefaultScheduler();
   }
 
   get currentRenderable(): Renderable<TContext> | null {
@@ -80,7 +88,7 @@ export class Updater<TContext = unknown> {
   async _startLoop(): Promise<void> {
     do {
       if (this._hasRenderable()) {
-        await scheduleBackgroundTask(async () => {
+        await this._scheduler.postRenderingTask(async () => {
           console.time('Rendering phase');
 
           do {
@@ -110,7 +118,7 @@ export class Updater<TContext = unknown> {
       }
 
       if (this._hasBlockingEffect()) {
-        await scheduleUserBlockingTask(async () => {
+        await this._scheduler.postBlockingTask(async () => {
           console.time('Blocking phase');
 
           const mutationEffects = this._pendingMutationEffects;
@@ -132,7 +140,7 @@ export class Updater<TContext = unknown> {
       }
 
       if (this._hasPassiveEffect()) {
-        await scheduleBackgroundTask(async () => {
+        await this._scheduler.postBackgroundTask(async () => {
           console.time('Background phase');
 
           const passiveEffects = this._pendingPassiveEffects;
@@ -180,30 +188,6 @@ function hasDirtyParent(renderable: Renderable<unknown>): boolean {
     }
   }
   return false;
-}
-
-function scheduleBackgroundTask(task: () => Promise<void>): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if ('scheduler' in globalThis && 'postTask' in scheduler) {
-      scheduler.postTask(() => task().then(resolve, reject), {
-        priority: 'background',
-      });
-    } else {
-      requestIdleCallback(() => task().then(resolve, reject));
-    }
-  });
-}
-
-function scheduleUserBlockingTask(task: () => Promise<void>): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if ('scheduler' in globalThis && 'postTask' in scheduler) {
-      scheduler.postTask(() => task().then(resolve, reject), {
-        priority: 'user-blocking',
-      });
-    } else {
-      requestAnimationFrame(() => task().then(resolve, reject));
-    }
-  });
 }
 
 function yieldToMain(): Promise<void> {
