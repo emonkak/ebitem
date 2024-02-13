@@ -1,4 +1,3 @@
-import { Signal } from '../src/signal.js';
 import {
   ArraySignal,
   AtomSignal,
@@ -13,7 +12,7 @@ interface PersonState {
 }
 
 class PersonStore extends StructSignal<PersonState> {
-  readonly fullName: Signal<string> = new AutoSignal(
+  readonly fullName = new AutoSignal(
     ({ firstName, lastName }) => firstName.value + ' ' + lastName.value,
     this.value,
   );

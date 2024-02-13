@@ -17,15 +17,14 @@ export class StructSignal<
   get version(): number {
     const value = this._value;
     const keys = Object.keys(value) as (keyof T)[];
-    const size = keys.length;
 
     let version = 1;
 
-    for (let i = 0; i < size; i++) {
-      version += value[keys[i]!].version;
+    for (let i = 0, l = keys.length; i < l; i++) {
+      version += value[keys[i]!].version - 1;
     }
 
-    return version - size;
+    return version;
   }
 
   subscribe(subscriber: Subscriber): Subscription {

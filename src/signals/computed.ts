@@ -42,15 +42,14 @@ export class ComputedSignal<
 
   get version(): number {
     const dependencies = this._dependencies;
-    const size = dependencies.length;
 
     let version = 1;
 
-    for (let i = 0; i < size; i++) {
-      version += dependencies[i]!.version;
+    for (let i = 0, l = dependencies.length; i < l; i++) {
+      version += dependencies[i]!.version - 1;
     }
 
-    return version - size;
+    return version;
   }
 
   subscribe(subscriber: Subscriber): Subscription {
