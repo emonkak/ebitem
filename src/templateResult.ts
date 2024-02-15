@@ -36,8 +36,7 @@ export class TemplateResult {
 
     if (value instanceof Fragment) {
       if (value.template === this._template) {
-        value.values = this._values;
-        // Skip the update if the same directive is called twice.
+        value.setValues(this._values);
         if (value.isDirty) {
           value.forceUpdate(updater);
         }

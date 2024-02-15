@@ -27,7 +27,7 @@ export class Block<TProps, TContext> implements Directive {
 
   [directiveSymbol](part: Part, updater: Updater): void {
     if (!(part instanceof ChildPart)) {
-      throw new Error('"List" directive must be used in an arbitrary child.');
+      throw new Error('"Block" directive must be used in an arbitrary child.');
     }
 
     const value = part.value;
@@ -37,7 +37,6 @@ export class Block<TProps, TContext> implements Directive {
     if (value instanceof BlockChild) {
       if (value.type === this._type) {
         value.setProps(this._props);
-        // Skip the update if the same directive is called twice.
         if (value.isDirty) {
           value.forceUpdate(updater);
         }

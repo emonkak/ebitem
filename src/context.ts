@@ -11,8 +11,7 @@ import {
 } from './hook.js';
 import type { Hook } from './hook.js';
 import type { ScopeInterface } from './scopeInterface.js';
-import { Signal } from './signal.js';
-import { AtomSignal } from './signals.js';
+import type { Signal } from './signal.js';
 import { TemplateResult } from './templateResult.js';
 import type { Effect, Renderable, Updater } from './updater.js';
 
@@ -46,16 +45,6 @@ export class Context {
   html(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
     const template = this._scope.createTemplate(strings, values);
     return new TemplateResult(template, values);
-  }
-
-  useAtomSignal<T>(initialValue: ValueOrFunction<T>): AtomSignal<T> {
-    const signalRef = this.useRef<AtomSignal<T> | null>(null);
-    if (signalRef.current === null) {
-      signalRef.current = new AtomSignal(
-        typeof initialValue === 'function' ? initialValue() : initialValue,
-      );
-    }
-    return this.useSignal(signalRef.current);
   }
 
   useCallback<TCallback extends Function>(

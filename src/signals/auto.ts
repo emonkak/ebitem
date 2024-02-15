@@ -1,6 +1,10 @@
-import { Signal, Subscriber, Subscription } from '../signal.js';
-import { ComputedSignal } from './computed.js';
-import { MemoizedSignal } from './memoized.js';
+import {
+  ComputedSignal,
+  MemoizedSignal,
+  Signal,
+  Subscriber,
+  Subscription,
+} from '../signal.js';
 
 export class AutoSignal<
   TResult,

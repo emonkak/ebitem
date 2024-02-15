@@ -66,7 +66,7 @@ export class Scope implements ScopeInterface<Context> {
 }
 
 function getUUID(): ReturnType<typeof crypto.randomUUID> {
-  if (crypto.randomUUID) {
+  if (typeof crypto.randomUUID === 'function') {
     return crypto.randomUUID();
   }
   const s = [...crypto.getRandomValues(new Uint8Array(16))]

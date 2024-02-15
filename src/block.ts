@@ -6,9 +6,9 @@ import type { TemplateResult } from './templateResult.js';
 import type { Renderable, Updater } from './updater.js';
 
 const BlockFlag = {
-  MOUNTED: 0b1,
-  DIRTY: 0b10,
-  UPDATING: 0b100,
+  DIRTY: 0b1,
+  UPDATING: 0b10,
+  MOUNTED: 0b100,
 };
 
 export class Block<TProps, TContext>
@@ -16,6 +16,8 @@ export class Block<TProps, TContext>
   implements Renderable<TContext>
 {
   private readonly _type: (props: TProps, context: TContext) => TemplateResult;
+
+  private readonly _parent: Renderable<TContext> | null;
 
   private _pendingProps: TProps;
 
@@ -35,8 +37,6 @@ export class Block<TProps, TContext>
   private _flags: number = BlockFlag.DIRTY;
 
   private _hooks: Hook[] = [];
-
-  private _parent: Renderable<TContext> | null = null;
 
   constructor(
     type: (props: TProps, context: TContext) => TemplateResult,
@@ -123,7 +123,8 @@ export class Block<TProps, TContext>
           template.mount(values, updater);
       }
 
-      // If a memoized mount point exists, a memoized template exists.
+      // If the memoized mount point exists, the memoized template definitely
+      // exists.
       this._cachedMountPoints.set(
         this._memoizedTemplate!,
         this._memoizedMountPoint,
@@ -137,7 +138,7 @@ export class Block<TProps, TContext>
       );
     }
 
-    this._flags ^= BlockFlag.DIRTY | BlockFlag.UPDATING;
+    this._flags &= ~(BlockFlag.DIRTY | BlockFlag.UPDATING);
     this._memoizedProps = this._pendingProps;
     this._memoizedValues = values;
     this._memoizedTemplate = template;
@@ -167,7 +168,7 @@ export class Block<TProps, TContext>
       disconnectMountPoint(this._memoizedMountPoint, updater);
     }
 
-    this._flags ^= BlockFlag.MOUNTED;
+    this._flags &= ~BlockFlag.MOUNTED;
   }
 
   update(part: ChildPart, updater: Updater): void {

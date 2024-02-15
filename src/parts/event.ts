@@ -13,8 +13,6 @@ export class EventPart implements Part {
 
   private _pendingValue: EventListenerWithOptions | null = null;
 
-  private _dirty = false;
-
   constructor(element: Element, name: string) {
     this._element = element;
     this._name = name;
@@ -50,10 +48,6 @@ export class EventPart implements Part {
   }
 
   commit(_updater: Updater): void {
-    if (!this._dirty) {
-      return;
-    }
-
     const {
       _element: element,
       _name: name,
@@ -69,10 +63,9 @@ export class EventPart implements Part {
       if (newValue !== null) {
         element.addEventListener(name, this, newValue);
       }
-    }
 
-    this._committedValue = newValue;
-    this._dirty = false;
+      this._committedValue = newValue;
+    }
   }
 
   disconnect(_updater: Updater): void {

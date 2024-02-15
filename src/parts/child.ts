@@ -47,9 +47,10 @@ export class ChildPart implements Part {
     const newValue = this._pendingValue;
 
     if (oldValue !== newValue) {
-      if (oldValue) {
+      if (oldValue !== null) {
         oldValue.unmount(this, updater);
       }
+
       if (newValue !== null) {
         newValue.mount(this, updater);
       }
@@ -177,10 +178,20 @@ export class SignalChild<T> extends ChildValue {
     const { version } = this._signal;
 
     if (this._memoizedVersion < version) {
-      this._memoizedValue = ChildValue.upgrade(
+      const oldValue = this._memoizedValue;
+
+      if (oldValue !== null) {
+        oldValue.unmount(part, updater);
+      }
+
+      const newValue = ChildValue.upgrade(
         this._signal.value,
         this._memoizedValue,
       );
+
+      newValue.mount(part, updater);
+
+      this._memoizedValue = newValue;
       this._memoizedVersion = version;
     }
 

@@ -1,12 +1,12 @@
-import { Part } from './part.js';
 import { ChildPart, ChildValue } from './parts.js';
 import type { ScopeInterface } from './scopeInterface.js';
-import type { TemplateInterface } from './templateInterface.js';
+import type { MountPoint, TemplateInterface } from './templateInterface.js';
 import type { Renderable, Updater } from './updater.js';
 
 const FragmentFlag = {
   DIRTY: 0b1,
   UPDATING: 0b10,
+  MOUNTED: 0b100,
 };
 
 export class Fragment<TContext>
@@ -15,15 +15,13 @@ export class Fragment<TContext>
 {
   private readonly _template: TemplateInterface;
 
+  private readonly _parent: Renderable<TContext> | null;
+
   private _pendingValues: unknown[];
 
-  private _memoizedValues: unknown[] = [];
+  private _memoizedValues: unknown[];
 
-  private _parent: Renderable<TContext> | null = null;
-
-  private _children: ChildNode[] = [];
-
-  private _parts: Part[] = [];
+  private _mountPoint: MountPoint | null = null;
 
   private _flags = FragmentFlag.DIRTY;
 
@@ -35,11 +33,16 @@ export class Fragment<TContext>
     super();
     this._template = template;
     this._pendingValues = values;
+    this._memoizedValues = values;
     this._parent = parent;
   }
 
   get endNode(): ChildNode | null {
-    return this._children[this._children.length - 1] ?? null;
+    if (this._mountPoint === null) {
+      return null;
+    }
+    const { children } = this._mountPoint;
+    return children[children.length - 1] ?? null;
   }
 
   get isDirty(): boolean {
@@ -51,7 +54,7 @@ export class Fragment<TContext>
   }
 
   get startNode(): ChildNode | null {
-    return this._children[0] ?? null;
+    return this._mountPoint?.children[0] ?? null;
   }
 
   get template(): TemplateInterface {
@@ -62,7 +65,7 @@ export class Fragment<TContext>
     return this._memoizedValues;
   }
 
-  set values(newValues: unknown[]) {
+  setValues(newValues: unknown[]) {
     if (newValues !== this._pendingValues) {
       this._pendingValues = newValues;
       this._flags |= FragmentFlag.DIRTY;
@@ -70,57 +73,68 @@ export class Fragment<TContext>
   }
 
   forceUpdate(updater: Updater<TContext>): void {
-    if ((this._flags & FragmentFlag.UPDATING) !== 0) {
+    if (
+      (this._flags & FragmentFlag.MOUNTED) === 0 ||
+      (this._flags & FragmentFlag.UPDATING) !== 0
+    ) {
       return;
     }
 
-    this._flags |= FragmentFlag.UPDATING;
+    this._flags |= FragmentFlag.DIRTY | FragmentFlag.UPDATING;
     updater.pushRenderable(this);
     updater.requestUpdate();
   }
 
   render(updater: Updater<TContext>, _scope: ScopeInterface<TContext>): void {
-    if (this._memoizedValues === null) {
-      const { children, parts } = this._template.mount(
-        this._pendingValues,
-        updater,
-      );
-      this._children = children;
-      this._parts = parts;
-    } else {
+    if (this._mountPoint !== null) {
+      const { parts } = this._mountPoint;
       this._template.patch(
-        this._parts,
+        parts,
         this._memoizedValues,
         this._pendingValues,
         updater,
       );
+    } else {
+      this._mountPoint = this._template.mount(this._pendingValues, updater);
     }
 
     this._memoizedValues = this._pendingValues;
-    this._flags ^= FragmentFlag.DIRTY | FragmentFlag.UPDATING;
+    this._flags &= ~(FragmentFlag.DIRTY | FragmentFlag.UPDATING);
   }
 
   mount(part: ChildPart, _updater: Updater): void {
-    const reference = part.endNode;
-    const parent = reference.parentNode;
+    if (this._mountPoint !== null) {
+      const { children } = this._mountPoint;
+      const reference = part.endNode;
+      const parent = reference.parentNode;
 
-    if (parent) {
-      for (let i = 0, l = this._children.length; i < l; i++) {
-        parent.insertBefore(this._children[i]!, reference);
+      if (parent !== null) {
+        for (let i = 0, l = children.length; i < l; i++) {
+          parent.insertBefore(children[i]!, reference);
+        }
       }
     }
+
+    this._flags |= FragmentFlag.MOUNTED;
   }
 
   unmount(_part: ChildPart, updater: Updater): void {
-    for (let i = 0, l = this._children.length; i < l; i++) {
-      const child = this._children[i]!;
-      child.remove();
+    if (this._mountPoint !== null) {
+      const { children, parts } = this._mountPoint;
+      for (let i = 0, l = children.length; i < l; i++) {
+        const child = children[i]!;
+        child.remove();
+      }
+
+      for (let i = 0, l = parts.length; i < l; i++) {
+        const part = parts[i]!;
+        part.disconnect(updater);
+      }
+
+      this._mountPoint = null;
     }
 
-    for (let i = 0, l = this._parts.length; i < l; i++) {
-      const part = this._parts[i]!;
-      part.disconnect(updater);
-    }
+    this._flags &= ~FragmentFlag.MOUNTED;
   }
 
   update(_part: ChildPart, _updater: Updater): void {}

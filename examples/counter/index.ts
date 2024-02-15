@@ -1,3 +1,17 @@
+import {
+  AtomSignal,
+  Block,
+  Context,
+  Scope,
+  Signal,
+  TemplateResult,
+  Updater,
+  block,
+  classList,
+  elementRef,
+  list,
+} from '@emonkak/tempura';
+
 const counterSignal = new AtomSignal(0);
 
 function App(_props: {}, context: Context): TemplateResult {
@@ -9,7 +23,7 @@ function App(_props: {}, context: Context): TemplateResult {
     'quux',
   ]);
 
-  context.setEnv({ state: 'My Env' });
+  context.setContextValue('state', 'My Env');
 
   const itemsList = context.useMemo(
     () =>
@@ -65,9 +79,9 @@ function App(_props: {}, context: Context): TemplateResult {
       })}
       <ul>${itemsList}</ul>
       <p>
-        <button type="button" onclick=${onIncrement}>+1</button>
-        <button type="button" onclick=${onDecrement}>-1</button>
-        <button type="button" onclick=${onShuffle}>Shuffle</button>
+        <button type="button" @click=${onIncrement}>+1</button>
+        <button type="button" @click=${onDecrement}>-1</button>
+        <button type="button" @click=${onShuffle}>Shuffle</button>
       </p>
     </div>
   `;
@@ -84,14 +98,14 @@ function Item(
   { title, onUp, onDown, onDelete }: ItemProps,
   context: Context,
 ): TemplateResult {
-  const state = context.useEnv('state');
+  const state = context.getContextValue('state');
 
   return context.html`
     <li>
       <span>${title} (${state})</span>
-      <button type="button" onclick=${context.useEvent(onUp)}>Up</button>
-      <button type="button" onclick=${context.useEvent(onDown)}>Down</button>
-      <button type="button" onclick=${context.useEvent(onDelete)}>Delete</button>
+      <button type="button" @click=${context.useEvent(onUp)}>Up</button>
+      <button type="button" @click=${context.useEvent(onDown)}>Down</button>
+      <button type="button" @click=${context.useEvent(onDelete)}>Delete</button>
     </li>
   `;
 }
@@ -107,7 +121,7 @@ function Counter({ count }: CounterProps, context: Context): TemplateResult {
 
   return context.html`
     <h1>
-      <span class="count-label" ref=${new DOMRef(countLabelRef)}>COUNT: </span>
+      <span class="count-label" ref=${elementRef(countLabelRef)}>COUNT: </span>
       <span
         class=${classList('count-value', {
           'is-odd': count.value % 2 !== 0,
@@ -132,4 +146,6 @@ function shuffle<T>(elements: T[]): T[] {
   return elements;
 }
 
-mount(document.body, new Block(App, {}), new Context());
+const updater = new Updater(new Scope());
+
+updater.mount(new Block(App, {}), document.body);

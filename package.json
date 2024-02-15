@@ -1,56 +1,20 @@
 {
   "name": "@emonkak/tempura",
   "version": "0.0.0",
-  "main": "index.js",
+  "main": "dist/index.js",
   "type": "module",
   "author": "Shota Nozaki",
   "license": "MIT",
   "scripts": {
-    "build": "wireit",
+    "build": "tsc --build",
     "clean": "tsc --build --clean",
-    "test": "wireit"
+    "test": "node --import tsx/esm --test test/**/*.ts",
+    "watch": "tsc --build --watch"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.5.3",
     "@types/node": "^20.11.16",
     "tsx": "^4.7.0",
-    "typescript": "^5.3.3",
-    "wireit": "^0.14.4"
-  },
-  "wireit": {
-    "build": {
-      "dependencies": [
-        "tsc:build"
-      ]
-    },
-    "test": {
-      "command": "node --import tsx/esm --test test/**/*.ts",
-      "files": [
-        "src/**/*.ts",
-        "test/**/*.ts",
-        "typings/**/*.d.ts"
-      ],
-      "dependencies": [
-        "tsc:test"
-      ]
-    },
-    "tsc:build": {
-      "command": "tsc --build",
-      "files": [
-        "src/**/*.ts",
-        "typings/**/*.d.ts"
-      ],
-      "output": [
-        "dist/**/*.js"
-      ]
-    },
-    "tsc:test": {
-      "command": "tsc --build tsconfig.test.json",
-      "files": [
-        "src/**/*.ts",
-        "test/**/*.ts",
-        "typings/**/*.d.ts"
-      ]
-    }
+    "typescript": "^5.3.3"
   }
 }

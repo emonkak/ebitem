@@ -64,6 +64,7 @@ export class List<TItem, TValue, TKey> implements Directive {
         this._valueSelector,
         this._keySelector,
         part,
+        updater,
       );
       part.setValue(list, updater);
     }
@@ -92,6 +93,7 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
     valueSelector: (item: TItem, index: number) => TValue,
     keySelector: (item: TItem, index: number) => TKey,
     containerPart: ChildPart,
+    updater: Updater,
   ) {
     super();
 
@@ -104,6 +106,7 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
       const part = new ItemPart(document.createComment(''), containerPart);
       const value = valueSelector(item, i);
       const key = keySelector(item, i);
+      mountPart(part, value, updater);
       parts[i] = part;
       values[i] = value;
       keys[i] = key;

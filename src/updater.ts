@@ -14,7 +14,7 @@ export interface Renderable<TContext> {
 }
 
 export interface UpdaterOptions {
-  scheduler: Scheduler;
+  scheduler?: Scheduler;
 }
 
 export class Updater<TContext = unknown> {
@@ -34,7 +34,10 @@ export class Updater<TContext = unknown> {
 
   private _isUpdating = false;
 
-  constructor(scope: ScopeInterface<TContext>, { scheduler }: UpdaterOptions) {
+  constructor(
+    scope: ScopeInterface<TContext>,
+    { scheduler }: UpdaterOptions = {},
+  ) {
     this._scope = scope;
     this._scheduler = scheduler ?? getDefaultScheduler();
   }
@@ -181,9 +184,9 @@ export class Updater<TContext = unknown> {
 }
 
 function hasDirtyParent(renderable: Renderable<unknown>): boolean {
-  let currentRenderable: Renderable<unknown> | null = renderable;
-  while ((currentRenderable = currentRenderable.parent)) {
-    if (renderable.isDirty) {
+  let current: Renderable<unknown> | null = renderable;
+  while ((current = current.parent)) {
+    if (current.isDirty) {
       return true;
     }
   }
