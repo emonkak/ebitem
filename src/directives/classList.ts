@@ -12,21 +12,10 @@ export function classList(...classSpecifiers: ClassSpecifier[]): ClassList {
 }
 
 export class ClassList implements Directive {
-  private readonly _classMap: ClassMap;
+  private readonly _classSpecifiers: ClassSpecifier[];
 
   constructor(classSpecifiers: ClassSpecifier[]) {
-    this._classMap = classSpecifiers.reduce<ClassMap>((acc, classSpecifier) => {
-      if (typeof classSpecifier === 'string') {
-        acc.set(classSpecifier, true);
-      } else {
-        const classNames = Object.keys(classSpecifier);
-        for (let i = 0, l = classNames.length; i < l; i++) {
-          const className = classNames[i]!;
-          acc.set(className, classSpecifier[className]!);
-        }
-      }
-      return acc;
-    }, new Map());
+    this._classSpecifiers = classSpecifiers;
   }
 
   [directiveSymbol](part: Part, updater: Updater): void {
@@ -36,36 +25,51 @@ export class ClassList implements Directive {
       );
     }
 
-    updater.pushMutationEffect(new UpdateClassList(part, this._classMap));
+    updater.pushMutationEffect(
+      new UpdateClassList(part, this._classSpecifiers),
+    );
   }
 }
 
 class UpdateClassList implements Effect {
   private readonly _part: AttributePart;
 
-  private readonly _classMap: ClassMap;
+  private readonly _classSpecifiers: ClassSpecifier[];
 
-  constructor(part: AttributePart, classMap: ClassMap) {
+  constructor(part: AttributePart, classSpecifiers: ClassSpecifier[]) {
     this._part = part;
-    this._classMap = classMap;
+    this._classSpecifiers = classSpecifiers;
   }
 
   commit(_updater: Updater): void {
     const { classList } = this._part.node;
+    const visitedClasses: string[] = [];
 
-    for (let i = 0, l = classList.length; i < l; i++) {
-      const className = classList[i]!;
-
-      if (!this._classMap.has(className)) {
-        classList.remove(className);
+    for (let i = 0, l = this._classSpecifiers.length; i < l; i++) {
+      const classSpecifier = this._classSpecifiers[i]!;
+      if (typeof classSpecifier === 'string') {
+        classList.add(classSpecifier);
+        visitedClasses.push(classSpecifier);
+      } else {
+        const names = Object.keys(classSpecifier);
+        for (let i = 0, l = names.length; i < l; i++) {
+          const name = names[i]!;
+          if (classSpecifier[name]) {
+            classList.add(name);
+            visitedClasses.push(name);
+          } else {
+            classList.remove(name);
+          }
+        }
       }
     }
 
-    for (const [className, value] of this._classMap.entries()) {
-      if (value) {
-        classList.add(className);
-      } else {
-        classList.remove(className);
+    if (visitedClasses.length < classList.length) {
+      for (let i = 0, l = classList.length; i < l; i++) {
+        const name = classList[i]!;
+        if (!visitedClasses.includes(name)) {
+          classList.remove(name);
+        }
       }
     }
   }
