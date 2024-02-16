@@ -10,6 +10,7 @@ import {
   classList,
   elementRef,
   list,
+  slot,
 } from '@emonkak/tempura';
 
 const counterSignal = new AtomSignal(0);
@@ -83,6 +84,12 @@ function App(_props: {}, context: Context): TemplateResult {
         <button type="button" @click=${onDecrement}>-1</button>
         <button type="button" @click=${onShuffle}>Shuffle</button>
       </p>
+      ${context.html`<div>Hello World!</div>`}
+      ${slot(
+        'article',
+        { lang: 'en' },
+        context.html`<span>Hello World!</span>`,
+      )}
     </div>
   `;
 }
