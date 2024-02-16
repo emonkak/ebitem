@@ -33,9 +33,9 @@ export class Block<TProps, TContext>
   private _cachedMountPoints: WeakMap<TemplateInterface, MountPoint> | null =
     null;
 
-  private _flags: number = BlockFlag.DIRTY;
+  private _currentHooks: Hook[] = [];
 
-  private _hooks: Hook[] = [];
+  private _flags: number = BlockFlag.DIRTY;
 
   constructor(
     type: (props: TProps, context: TContext) => TemplateResult,
@@ -73,8 +73,8 @@ export class Block<TProps, TContext>
     return this._parent;
   }
 
-  get hooks(): Hook[] {
-    return this._hooks;
+  get currentHooks(): Hook[] {
+    return this._currentHooks;
   }
 
   get isDirty(): boolean {
@@ -99,45 +99,55 @@ export class Block<TProps, TContext>
   }
 
   render(updater: Updater<TContext>, scope: ScopeInterface<TContext>): void {
+    const newHooks = new Array(this._currentHooks.length);
     const render = this._type;
-    const context = scope.createContext(this, this._hooks, updater);
+    const context = scope.createContext(this, newHooks, updater);
     const { template, values } = render(this._pendingProps, context);
 
-    if (this._memoizedMountPoint === null) {
-      this._pendingMountPoint = template.mount(values, updater);
-    } else if (this._memoizedTemplate !== template) {
-      // The new template is different from the previous one. The
-      // previous mount point is saved for future renders.
-      if (this._cachedMountPoints === null) {
-        // Since it is rare that different templates are returned, we defer
-        // creating mount point caches.
-        this._cachedMountPoints = new WeakMap();
-        this._pendingMountPoint = template.mount(values, updater);
-      } else {
-        this._pendingMountPoint =
-          this._cachedMountPoints.get(template) ??
-          template.mount(values, updater);
+    if (this._memoizedMountPoint !== null) {
+      if (this._currentHooks.length !== newHooks.length) {
+        throw new Error(
+          'Rendered different number of hooks than during the previous render.',
+        );
       }
 
-      // If the memoized mount point exists, the memoized template definitely
-      // exists.
-      this._cachedMountPoints.set(
-        this._memoizedTemplate!,
-        this._memoizedMountPoint,
-      );
+      if (this._memoizedTemplate !== template) {
+        // The new template is different from the previous one. The previous
+        // mount point is saved for future renders.
+        if (this._cachedMountPoints === null) {
+          // Since it is rare that different templates are returned, we defer
+          // creating mount point caches.
+          this._cachedMountPoints = new WeakMap();
+          this._pendingMountPoint = template.mount(values, updater);
+        } else {
+          this._pendingMountPoint =
+            this._cachedMountPoints.get(template) ??
+            template.mount(values, updater);
+        }
+
+        // If the memoized mount point exists, the memoized template definitely
+        // exists.
+        this._cachedMountPoints.set(
+          this._memoizedTemplate!,
+          this._memoizedMountPoint,
+        );
+      } else {
+        template.patch(
+          this._memoizedMountPoint.parts,
+          this._memoizedValues,
+          values,
+          updater,
+        );
+      }
     } else {
-      template.patch(
-        this._memoizedMountPoint.parts,
-        this._memoizedValues,
-        values,
-        updater,
-      );
+      this._pendingMountPoint = template.mount(values, updater);
     }
 
-    this._flags &= ~BlockFlag.DIRTY;
+    this._currentHooks = newHooks;
     this._memoizedProps = this._pendingProps;
-    this._memoizedValues = values;
     this._memoizedTemplate = template;
+    this._memoizedValues = values;
+    this._flags &= ~BlockFlag.DIRTY;
   }
 
   mount(part: ChildPart, _updater: Updater): void {
@@ -150,8 +160,8 @@ export class Block<TProps, TContext>
   }
 
   unmount(_part: ChildPart, updater: Updater): void {
-    for (let i = 0, l = this._hooks.length; i < l; i++) {
-      const hook = this._hooks[i]!;
+    for (let i = 0, l = this._currentHooks.length; i < l; i++) {
+      const hook = this._currentHooks[i]!;
       if (
         hook.type === HookType.EFFECT ||
         hook.type === HookType.LAYOUT_EFFECT

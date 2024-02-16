@@ -1,6 +1,6 @@
 export type Cleanup = () => void;
 
-export type EffectCallback = () => void | Cleanup;
+export type EffectCallback = () => Cleanup | void;
 
 export type Ref<T> = RefCallback<T> | RefObject<T>;
 
@@ -26,13 +26,13 @@ export interface LayoutEffectHook {
   dependencies: unknown[] | undefined;
 }
 
-export interface MemoHook<T = unknown> {
+export interface MemoHook<T = any> {
   type: HookType.MEMO;
   value: T;
   dependencies: unknown[] | undefined;
 }
 
-export interface ReducerHook<TState = unknown, TAction = unknown> {
+export interface ReducerHook<TState = any, TAction = any> {
   type: HookType.REDUCER;
   dispatch: (action: TAction) => void;
   state: TState;

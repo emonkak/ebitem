@@ -1,3 +1,4 @@
+import type { Hook } from './hook.js';
 import { ChildPart, ChildValue } from './parts.js';
 import type { ScopeInterface } from './scopeInterface.js';
 import type { MountPoint, TemplateInterface } from './templateInterface.js';
@@ -34,6 +35,10 @@ export class Fragment<TContext>
     this._pendingValues = values;
     this._memoizedValues = values;
     this._parent = parent;
+  }
+
+  get currentHooks(): Hook[] {
+    return [];
   }
 
   get endNode(): ChildNode | null {

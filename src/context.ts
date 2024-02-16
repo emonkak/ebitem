@@ -42,9 +42,28 @@ export class Context {
     this._scope = scope;
   }
 
+  getContextValue<T>(key: PropertyKey): T | undefined {
+    let renderable: Renderable<Context> | null = this._renderable;
+    do {
+      const value = this._scope.getVariable(key, renderable);
+      if (value !== undefined) {
+        return value as T;
+      }
+    } while ((renderable = renderable.parent));
+    return undefined;
+  }
+
   html(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
     const template = this._scope.createTemplate(strings, values);
     return new TemplateResult(template, values);
+  }
+
+  requestUpdate(): void {
+    this._renderable.forceUpdate(this._updater);
+  }
+
+  setContextValue(key: PropertyKey, value: unknown): void {
+    this._scope.setVariable(key, value, this._renderable);
   }
 
   useCallback<TCallback extends Function>(
@@ -55,30 +74,29 @@ export class Context {
   }
 
   useEffect(callback: EffectCallback, dependencies?: unknown[]): void {
-    const currentHook = this._hooks[this._hookIndex];
+    let currentHook = this._renderable.currentHooks[this._hookIndex];
 
-    if (currentHook) {
+    if (currentHook !== undefined) {
       ensureHookType<EffectHook>(HookType.EFFECT, currentHook);
-
-      currentHook.callback = callback;
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
         this._updater.pushPassiveEffect(new InvokeEffectHook(currentHook));
         currentHook.dependencies = dependencies;
       }
+
+      currentHook.callback = callback;
     } else {
-      const newHook: EffectHook = {
+      currentHook = {
         type: HookType.EFFECT,
         callback,
         dependencies,
         cleanup: undefined,
       };
 
-      this._hooks[this._hookIndex] = newHook;
-
-      this._updater.pushPassiveEffect(new InvokeEffectHook(newHook));
+      this._updater.pushPassiveEffect(new InvokeEffectHook(currentHook));
     }
 
+    this._hooks[this._hookIndex] = currentHook;
     this._hookIndex++;
   }
 
@@ -104,9 +122,9 @@ export class Context {
   }
 
   useLayoutEffect(callback: EffectCallback, dependencies?: unknown[]): void {
-    const currentHook = this._hooks[this._hookIndex];
+    let currentHook = this._renderable.currentHooks[this._hookIndex];
 
-    if (currentHook) {
+    if (currentHook !== undefined) {
       ensureHookType<LayoutEffectHook>(HookType.LAYOUT_EFFECT, currentHook);
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
@@ -116,25 +134,24 @@ export class Context {
 
       currentHook.callback = callback;
     } else {
-      const newHook: LayoutEffectHook = {
+      currentHook = {
         type: HookType.LAYOUT_EFFECT,
         callback,
         dependencies,
         cleanup: undefined,
       };
 
-      this._hooks[this._hookIndex] = newHook;
-
-      this._updater.pushLayoutEffect(new InvokeEffectHook(newHook));
+      this._updater.pushLayoutEffect(new InvokeEffectHook(currentHook));
     }
 
+    this._hooks[this._hookIndex] = currentHook;
     this._hookIndex++;
   }
 
   useMemo<TResult>(factory: () => TResult, dependencies: unknown[]): TResult {
-    let currentHook = this._hooks[this._hookIndex];
+    let currentHook = this._renderable.currentHooks[this._hookIndex];
 
-    if (currentHook) {
+    if (currentHook !== undefined) {
       ensureHookType<MemoHook>(HookType.MEMO, currentHook);
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
@@ -142,15 +159,14 @@ export class Context {
         currentHook.dependencies = dependencies;
       }
     } else {
-      const newHook: MemoHook = {
+      currentHook = {
         type: HookType.MEMO,
         value: factory(),
         dependencies,
       };
-
-      currentHook = this._hooks[this._hookIndex] = newHook;
     }
 
+    this._hooks[this._hookIndex] = currentHook;
     this._hookIndex++;
 
     return currentHook.value as TResult;
@@ -161,10 +177,13 @@ export class Context {
     initialState: ValueOrFunction<TState>,
   ): [TState, (action: TAction) => void] {
     const renderable = this._renderable;
-    let currentHook = this._hooks[this._hookIndex];
+    let currentHook = this._renderable.currentHooks[this._hookIndex];
 
-    if (currentHook) {
-      ensureHookType<ReducerHook>(HookType.REDUCER, currentHook);
+    if (currentHook !== undefined) {
+      ensureHookType<ReducerHook<TState, TAction>>(
+        HookType.REDUCER,
+        currentHook,
+      );
     } else {
       const newHook: ReducerHook<TState, TAction> = {
         type: HookType.REDUCER,
@@ -175,16 +194,13 @@ export class Context {
           renderable.forceUpdate(this._updater);
         },
       };
-
-      currentHook = this._hooks[this._hookIndex] = newHook as ReducerHook;
+      currentHook = newHook;
     }
 
+    this._hooks[this._hookIndex] = currentHook;
     this._hookIndex++;
 
-    return [
-      currentHook.state as TState,
-      currentHook.dispatch as (action: TAction) => void,
-    ];
+    return [currentHook.state, currentHook.dispatch];
   }
 
   useRef<T>(initialValue: T): RefObject<T> {
@@ -223,25 +239,6 @@ export class Context {
     }, [subscribe]);
     return getSnapshot();
   }
-
-  getContextValue<T>(key: PropertyKey): T | undefined {
-    let renderable: Renderable<Context> | null = this._renderable;
-    do {
-      const value = this._scope.getVariable(key, renderable);
-      if (value !== undefined) {
-        return value as T;
-      }
-    } while ((renderable = renderable.parent));
-    return undefined;
-  }
-
-  setContextValue(key: PropertyKey, value: unknown): void {
-    this._scope.setVariable(key, value, this._renderable);
-  }
-
-  requestUpdate(): void {
-    this._renderable.forceUpdate(this._updater);
-  }
 }
 
 class InvokeEffectHook implements Effect {
@@ -252,7 +249,7 @@ class InvokeEffectHook implements Effect {
   }
 
   commit(_updater: Updater): void {
-    if (this._hook.cleanup) {
+    if (this._hook.cleanup !== undefined) {
       this._hook.cleanup();
       this._hook.cleanup = undefined;
     }
