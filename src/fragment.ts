@@ -5,8 +5,7 @@ import type { Renderable, Updater } from './updater.js';
 
 const FragmentFlag = {
   DIRTY: 0b1,
-  UPDATING: 0b10,
-  MOUNTED: 0b100,
+  MOUNTED: 0b10,
 };
 
 export class Fragment<TContext>
@@ -66,21 +65,18 @@ export class Fragment<TContext>
   }
 
   setValues(newValues: unknown[]) {
-    if (newValues !== this._pendingValues) {
-      this._pendingValues = newValues;
-      this._flags |= FragmentFlag.DIRTY;
-    }
+    this._pendingValues = newValues;
   }
 
   forceUpdate(updater: Updater<TContext>): void {
     if (
       (this._flags & FragmentFlag.MOUNTED) === 0 ||
-      (this._flags & FragmentFlag.UPDATING) !== 0
+      (this._flags & FragmentFlag.DIRTY) !== 0
     ) {
       return;
     }
 
-    this._flags |= FragmentFlag.DIRTY | FragmentFlag.UPDATING;
+    this._flags |= FragmentFlag.DIRTY;
     updater.pushRenderable(this);
     updater.requestUpdate();
   }
@@ -99,7 +95,7 @@ export class Fragment<TContext>
     }
 
     this._memoizedValues = this._pendingValues;
-    this._flags &= ~(FragmentFlag.DIRTY | FragmentFlag.UPDATING);
+    this._flags &= ~FragmentFlag.DIRTY;
   }
 
   mount(part: ChildPart, _updater: Updater): void {

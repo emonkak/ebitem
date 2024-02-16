@@ -37,9 +37,7 @@ export class TemplateResult {
     if (value instanceof Fragment) {
       if (value.template === this._template) {
         value.setValues(this._values);
-        if (value.isDirty) {
-          value.forceUpdate(updater);
-        }
+        value.forceUpdate(updater);
       } else {
         needsMount = true;
       }

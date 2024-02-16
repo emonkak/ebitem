@@ -5,8 +5,7 @@ import type { Renderable, Updater } from './updater.js';
 
 const SlotFlag = {
   DIRTY: 0b1,
-  UPDATING: 0b10,
-  MOUNTED: 0b100,
+  MOUNTED: 0b10,
 };
 
 interface MountState {
@@ -78,12 +77,12 @@ export class Slot<TContext> extends ChildValue implements Renderable<TContext> {
   forceUpdate(updater: Updater<TContext>): void {
     if (
       (this._flags & SlotFlag.MOUNTED) === 0 ||
-      (this._flags & SlotFlag.UPDATING) !== 0
+      (this._flags & SlotFlag.DIRTY) !== 0
     ) {
       return;
     }
 
-    this._flags |= SlotFlag.DIRTY | SlotFlag.UPDATING;
+    this._flags |= SlotFlag.DIRTY;
     updater.pushRenderable(this);
     updater.requestUpdate();
   }
@@ -122,23 +121,17 @@ export class Slot<TContext> extends ChildValue implements Renderable<TContext> {
       };
     }
 
-    this._flags &= ~(SlotFlag.DIRTY | SlotFlag.UPDATING);
+    this._flags &= ~SlotFlag.DIRTY;
     this._memoizedProps = this._pendingProps;
     this._memoizedValue = this._pendingValue;
   }
 
   setProps(newProps: SpreadProps): void {
-    if (newProps !== this._pendingProps) {
-      this._pendingProps = newProps;
-      this._flags |= SlotFlag.DIRTY;
-    }
+    this._pendingProps = newProps;
   }
 
   setValue(newValue: unknown): void {
-    if (newValue !== this._pendingValue) {
-      this._pendingValue = newValue;
-      this._flags |= SlotFlag.DIRTY;
-    }
+    this._pendingValue = newValue;
   }
 
   unmount(_part: ChildPart, updater: Updater): void {

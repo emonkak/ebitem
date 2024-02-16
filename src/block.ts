@@ -7,8 +7,7 @@ import type { Renderable, Updater } from './updater.js';
 
 const BlockFlag = {
   DIRTY: 0b1,
-  UPDATING: 0b10,
-  MOUNTED: 0b100,
+  MOUNTED: 0b10,
 };
 
 export class Block<TProps, TContext>
@@ -83,21 +82,18 @@ export class Block<TProps, TContext>
   }
 
   setProps(newProps: TProps): void {
-    if (newProps !== this._pendingProps) {
-      this._pendingProps = newProps;
-      this._flags |= BlockFlag.DIRTY;
-    }
+    this._pendingProps = newProps;
   }
 
   forceUpdate(updater: Updater<TContext>): void {
     if (
       (this._flags & BlockFlag.MOUNTED) === 0 ||
-      (this._flags & BlockFlag.UPDATING) !== 0
+      (this._flags & BlockFlag.DIRTY) !== 0
     ) {
       return;
     }
 
-    this._flags |= BlockFlag.DIRTY | BlockFlag.UPDATING;
+    this._flags |= BlockFlag.DIRTY;
     updater.pushRenderable(this);
     updater.requestUpdate();
   }
@@ -138,7 +134,7 @@ export class Block<TProps, TContext>
       );
     }
 
-    this._flags &= ~(BlockFlag.DIRTY | BlockFlag.UPDATING);
+    this._flags &= ~BlockFlag.DIRTY;
     this._memoizedProps = this._pendingProps;
     this._memoizedValues = values;
     this._memoizedTemplate = template;

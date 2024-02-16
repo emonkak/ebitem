@@ -37,9 +37,7 @@ export class Block<TProps, TContext> implements Directive {
     if (value instanceof BlockChild) {
       if (value.type === this._type) {
         value.setProps(this._props);
-        if (value.isDirty) {
-          value.forceUpdate(updater);
-        }
+        value.forceUpdate(updater);
       } else {
         needsMount = true;
       }
