@@ -11,11 +11,9 @@ export class SpreadPart implements Part {
 
   private _pendingProps: SpreadProps = {};
 
-  private _committedProps: SpreadProps = {};
+  private _memoizedProps: SpreadProps = {};
 
-  private _pendingParts = new Map<string, Part>();
-
-  private _committedParts = new Map<string, Part>();
+  private _parts = new Map<string, Part>();
 
   constructor(element: Element) {
     this._element = element;
@@ -26,7 +24,7 @@ export class SpreadPart implements Part {
   }
 
   get value(): SpreadProps {
-    return this._committedProps;
+    return this._memoizedProps;
   }
 
   setValue(newProps: unknown, updater: Updater): void {
@@ -34,42 +32,43 @@ export class SpreadPart implements Part {
       throw new Error('The value of "SpreadPart" must be an object.');
     }
 
-    if (this._committedProps !== newProps) {
-      const oldProps = this._committedProps;
-      const newParts = new Map();
+    if (this._memoizedProps !== newProps) {
+      const oldProps = this._memoizedProps;
+      const oldKeys = Object.keys(oldProps);
       const newKeys = Object.keys(newProps);
 
       for (let i = 0, l = newKeys.length; i < l; i++) {
         const key = newKeys[i]!;
-        let part = this._committedParts.get(key);
-        if (part !== undefined) {
-          updatePart(part, oldProps[key], newProps[key], updater);
+        const exsistingPart = this._parts.get(key);
+        if (exsistingPart !== undefined) {
+          updatePart(exsistingPart, oldProps[key], newProps[key], updater);
         } else {
-          part = createPart(key, this._element);
-          mountPart(part, newProps[key], updater);
+          const newPart = createPart(key, this._element);
+          mountPart(newPart, newProps[key], updater);
+          this._parts.set(key, newPart);
         }
-        newParts.set(key, part);
       }
 
-      for (const [key, oldPart] of this._committedParts.entries()) {
-        if (!newParts.has(key)) {
+      for (let i = 0, l = oldKeys.length; i < l; i++) {
+        const key = oldKeys[i]!;
+        if (!Object.hasOwn(newProps, key)) {
+          const oldPart = this._parts.get(key)!;
+          this._parts.delete(key);
           updater.pushMutationEffect(new DisconnectPart(oldPart));
         }
       }
 
       this._pendingProps = newProps;
-      this._pendingParts = newParts;
     }
   }
 
   commit(_updater: Updater): void {
-    this._committedProps = this._pendingProps;
-    this._committedParts = this._pendingParts;
+    this._memoizedProps = this._pendingProps;
   }
 
   disconnect(updater: Updater): void {
-    this._committedParts.forEach((part) => part.disconnect(updater));
-    this._committedParts.clear();
+    this._parts.forEach((part) => part.disconnect(updater));
+    this._parts.clear();
   }
 }
 
