@@ -1,4 +1,4 @@
-import { Hook, HookType } from './hook.js';
+import { Hook } from './hook.js';
 import { ChildPart, ChildValue } from './parts.js';
 import type { ScopeInterface } from './scopeInterface.js';
 import type { MountPoint, TemplateInterface } from './templateInterface.js';
@@ -162,10 +162,7 @@ export class Block<TProps, TContext>
   unmount(_part: ChildPart, updater: Updater): void {
     for (let i = 0, l = this._currentHooks.length; i < l; i++) {
       const hook = this._currentHooks[i]!;
-      if (
-        hook.type === HookType.EFFECT ||
-        hook.type === HookType.LAYOUT_EFFECT
-      ) {
+      if (hook.type === 'effect' || hook.type === 'layoutEffect') {
         hook.cleanup?.();
       }
     }

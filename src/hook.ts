@@ -13,36 +13,29 @@ export interface RefObject<T> {
 export type Hook = EffectHook | LayoutEffectHook | MemoHook | ReducerHook;
 
 export interface EffectHook {
-  type: HookType.EFFECT;
+  type: 'effect';
   callback: EffectCallback;
   cleanup: Cleanup | void;
   dependencies: unknown[] | undefined;
 }
 
 export interface LayoutEffectHook {
-  type: HookType.LAYOUT_EFFECT;
+  type: 'layoutEffect';
   callback: EffectCallback;
   cleanup: Cleanup | void;
   dependencies: unknown[] | undefined;
 }
 
 export interface MemoHook<T = any> {
-  type: HookType.MEMO;
+  type: 'memo';
   value: T;
   dependencies: unknown[] | undefined;
 }
 
 export interface ReducerHook<TState = any, TAction = any> {
-  type: HookType.REDUCER;
+  type: 'reducer';
   dispatch: (action: TAction) => void;
   state: TState;
-}
-
-export enum HookType {
-  EFFECT = 'EFFECT',
-  LAYOUT_EFFECT = 'LAYOUT_EFFECT',
-  MEMO = 'MEMO',
-  REDUCER = 'REDUCER',
 }
 
 export function ensureHookType<TExpectedHook extends Hook>(

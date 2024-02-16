@@ -2,7 +2,6 @@ import {
   Cleanup,
   EffectCallback,
   EffectHook,
-  HookType,
   LayoutEffectHook,
   MemoHook,
   ReducerHook,
@@ -84,7 +83,7 @@ export class Context {
     let currentHook = this._renderable.currentHooks[this._hookIndex];
 
     if (currentHook !== undefined) {
-      ensureHookType<EffectHook>(HookType.EFFECT, currentHook);
+      ensureHookType<EffectHook>('effect', currentHook);
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
         this._updater.pushPassiveEffect(new InvokeEffectHook(currentHook));
@@ -94,7 +93,7 @@ export class Context {
       currentHook.callback = callback;
     } else {
       currentHook = {
-        type: HookType.EFFECT,
+        type: 'effect',
         callback,
         dependencies,
         cleanup: undefined,
@@ -132,7 +131,7 @@ export class Context {
     let currentHook = this._renderable.currentHooks[this._hookIndex];
 
     if (currentHook !== undefined) {
-      ensureHookType<LayoutEffectHook>(HookType.LAYOUT_EFFECT, currentHook);
+      ensureHookType<LayoutEffectHook>('layoutEffect', currentHook);
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
         this._updater.pushLayoutEffect(new InvokeEffectHook(currentHook));
@@ -142,7 +141,7 @@ export class Context {
       currentHook.callback = callback;
     } else {
       currentHook = {
-        type: HookType.LAYOUT_EFFECT,
+        type: 'layoutEffect',
         callback,
         dependencies,
         cleanup: undefined,
@@ -159,7 +158,7 @@ export class Context {
     let currentHook = this._renderable.currentHooks[this._hookIndex];
 
     if (currentHook !== undefined) {
-      ensureHookType<MemoHook>(HookType.MEMO, currentHook);
+      ensureHookType<MemoHook>('memo', currentHook);
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
         currentHook.value = factory();
@@ -167,7 +166,7 @@ export class Context {
       }
     } else {
       currentHook = {
-        type: HookType.MEMO,
+        type: 'memo',
         value: factory(),
         dependencies,
       };
@@ -187,13 +186,10 @@ export class Context {
     let currentHook = this._renderable.currentHooks[this._hookIndex];
 
     if (currentHook !== undefined) {
-      ensureHookType<ReducerHook<TState, TAction>>(
-        HookType.REDUCER,
-        currentHook,
-      );
+      ensureHookType<ReducerHook<TState, TAction>>('reducer', currentHook);
     } else {
       const newHook: ReducerHook<TState, TAction> = {
-        type: HookType.REDUCER,
+        type: 'reducer',
         state:
           typeof initialState === 'function' ? initialState() : initialState,
         dispatch: (action: TAction) => {
