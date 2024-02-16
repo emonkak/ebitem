@@ -11,13 +11,11 @@ import {
 } from './hook.js';
 import type { Hook } from './hook.js';
 import type { ScopeInterface } from './scopeInterface.js';
-import type { Signal } from './signal.js';
+import { AtomSignal, Signal } from './signal.js';
 import { TemplateResult } from './templateResult.js';
 import type { Effect, Renderable, Updater } from './updater.js';
 
-type ValueOrFunction<T> = T extends (...args: any[]) => any
-  ? never
-  : T | (() => T);
+type ValueOrFunction<T> = T extends Function ? never : T | (() => T);
 
 export class Context {
   private readonly _renderable: Renderable<Context>;
@@ -40,6 +38,15 @@ export class Context {
     this._hooks = hooks;
     this._updater = updater;
     this._scope = scope;
+  }
+
+  createSignal<T>(initialValue: ValueOrFunction<T>): AtomSignal<T> {
+    const signal = this.useMemo(() => {
+      return new AtomSignal(
+        typeof initialValue === 'function' ? initialValue() : initialValue,
+      );
+    }, []);
+    return this.useSignal(signal);
   }
 
   getContextValue<T>(key: PropertyKey): T | undefined {
