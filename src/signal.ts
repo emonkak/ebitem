@@ -20,7 +20,7 @@ export abstract class Signal<T> {
   map<TResult>(
     selector: (value: T) => TResult,
   ): ComputedSignal<TResult, [Signal<T>]> {
-    return ComputedSignal.fromValues(selector, [this as Signal<T>]);
+    return ComputedSignal.compose(selector, [this as Signal<T>]);
   }
 
   memoized(): MemoizedSignal<T> {
@@ -82,7 +82,7 @@ export class ComputedSignal<
 
   private readonly _dependencies: TDependencies;
 
-  static fromValues<TResult, TDependencies extends Signal<any>[]>(
+  static compose<TResult, TDependencies extends Signal<any>[]>(
     factory: (...args: UnwrapSignals<TDependencies>) => TResult,
     dependencies: TDependencies,
   ): ComputedSignal<TResult, TDependencies> {
