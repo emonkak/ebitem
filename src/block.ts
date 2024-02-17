@@ -30,7 +30,7 @@ export class Block<TProps, TContext>
 
   private _memoizedValues: unknown[] = [];
 
-  private _cachedMountPoints: WeakMap<TemplateInterface, MountPoint> | null =
+  private _memoizedMountPoints: WeakMap<TemplateInterface, MountPoint> | null =
     null;
 
   private _currentHooks: Hook[] = [];
@@ -114,20 +114,20 @@ export class Block<TProps, TContext>
       if (this._memoizedTemplate !== template) {
         // The new template is different from the previous one. The previous
         // mount point is saved for future renders.
-        if (this._cachedMountPoints === null) {
+        if (this._memoizedMountPoints !== null) {
           // Since it is rare that different templates are returned, we defer
           // creating mount point caches.
-          this._cachedMountPoints = new WeakMap();
-          this._pendingMountPoint = template.mount(values, updater);
-        } else {
           this._pendingMountPoint =
-            this._cachedMountPoints.get(template) ??
+            this._memoizedMountPoints.get(template) ??
             template.mount(values, updater);
+        } else {
+          this._memoizedMountPoints = new WeakMap();
+          this._pendingMountPoint = template.mount(values, updater);
         }
 
         // If the memoized mount point exists, the memoized template definitely
         // exists.
-        this._cachedMountPoints.set(
+        this._memoizedMountPoints.set(
           this._memoizedTemplate!,
           this._memoizedMountPoint,
         );
