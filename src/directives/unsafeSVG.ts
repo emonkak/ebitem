@@ -3,11 +3,11 @@ import type { Part } from '../part.js';
 import { ChildPart, ChildValue } from '../parts.js';
 import type { Updater } from '../updater.js';
 
-export function unsafeHTML(content: string): UnsafeHTML {
-  return new UnsafeHTML(content);
+export function unsafeSVG(content: string): UnsafeSVG {
+  return new UnsafeSVG(content);
 }
 
-export class UnsafeHTML implements Directive {
+export class UnsafeSVG implements Directive {
   private readonly _content: string;
 
   constructor(content: string) {
@@ -17,25 +17,25 @@ export class UnsafeHTML implements Directive {
   [directiveSymbol](part: Part, updater: Updater): void {
     if (!(part instanceof ChildPart)) {
       throw new Error(
-        '"UnsafeHTML" directive must be used in an arbitrary child.',
+        '"UnsafeSVG" directive must be used in an arbitrary child.',
       );
     }
 
     if (
-      part.value instanceof UnsafeHTMLChild &&
+      part.value instanceof UnsafeSVGChild &&
       part.value.content === this._content
     ) {
       // Skip the update if the same content is given.
       return;
     }
 
-    part.setValue(new UnsafeHTMLChild(this._content), updater);
+    part.setValue(new UnsafeSVG(this._content), updater);
 
     updater.pushMutationEffect(part);
   }
 }
 
-class UnsafeHTMLChild extends ChildValue {
+class UnsafeSVGChild extends ChildValue {
   private readonly _content: string;
 
   private _startNode: ChildNode | null = null;
@@ -62,10 +62,13 @@ class UnsafeHTMLChild extends ChildValue {
   mount(part: ChildPart, _updater: Updater): void {
     const { endNode } = part;
     const range = document.createRange();
-    const fragment = range.createContextualFragment(this._content);
+    const fragment = range.createContextualFragment(
+      `<svg>${this._content}</svg>`,
+    );
+    const svg = fragment.firstChild!;
 
-    this._startNode = fragment.firstChild;
-    this._endNode = fragment.lastChild;
+    this._startNode = svg.firstChild;
+    this._endNode = svg.lastChild;
 
     endNode.parentNode?.insertBefore(endNode, fragment);
   }
