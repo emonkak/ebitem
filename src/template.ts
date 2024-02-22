@@ -11,34 +11,29 @@ type Hole = AttributeHole | ChildHole | EventHole | PropertyHole | SpreadHole;
 
 interface AttributeHole {
   type: 'attribute';
-  path: number[];
   index: number;
   name: string;
 }
 
 interface ChildHole {
   type: 'child';
-  path: number[];
   index: number;
 }
 
 interface EventHole {
   type: 'event';
-  path: number[];
   index: number;
   name: string;
 }
 
 interface PropertyHole {
   type: 'property';
-  path: number[];
   index: number;
   name: string;
 }
 
 interface SpreadHole {
   type: 'spread';
-  path: number[];
   index: number;
 }
 
@@ -52,7 +47,7 @@ export class Template implements TemplateInterface {
     template.innerHTML = content;
     const walker = document.createTreeWalker(
       template.content,
-      NodeFilter.SHOW_ALL,
+      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT,
     );
     const holes = parseTemplate(walker, markerString);
     return new Template(template, holes);
@@ -69,7 +64,7 @@ export class Template implements TemplateInterface {
     svg.replaceWith(...svg.childNodes);
     const walker = document.createTreeWalker(
       template.content,
-      NodeFilter.SHOW_ALL,
+      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT,
     );
     const holes = parseTemplate(walker, markerString);
     return new Template(template, holes);
@@ -85,46 +80,65 @@ export class Template implements TemplateInterface {
   }
 
   mount(values: unknown[], updater: Updater): MountPoint {
-    const root = document.importNode(this._template.content, true);
-    const parts = new Array(this._holes.length);
+    const numHoles = this._holes.length;
+    const parts = new Array(numHoles);
+    const rootNode = document.importNode(this._template.content, true);
 
-    for (let i = 0, l = this._holes.length; i < l; i++) {
-      const hole = this._holes[i]!;
+    if (numHoles > 0) {
+      const walker = document.createTreeWalker(
+        rootNode,
+        NodeFilter.SHOW_ELEMENT |
+          NodeFilter.SHOW_TEXT |
+          NodeFilter.SHOW_COMMENT,
+      );
 
-      let child: Node = root;
+      let currentHole = this._holes[0]!;
+      let currentNode;
+      let holeIndex = 0;
+      let nodeIndex = 0;
 
-      for (let j = 0, m = hole.path.length; j < m; j++) {
-        child = child.childNodes[hole.path[j]!]!;
+      outer: while ((currentNode = walker.nextNode()) !== null) {
+        while (currentHole.index === nodeIndex) {
+          let part;
+
+          switch (currentHole.type) {
+            case 'attribute':
+              part = new AttributePart(
+                currentNode as Element,
+                currentHole.name,
+              );
+              break;
+            case 'event':
+              part = new EventPart(currentNode as Element, currentHole.name);
+              break;
+            case 'child':
+              part = new ChildPart(currentNode as ChildNode);
+              break;
+            case 'property':
+              part = new PropertyPart(currentNode as Element, currentHole.name);
+              break;
+            case 'spread':
+              part = new SpreadPart(currentNode as Element);
+              break;
+          }
+
+          mountPart(part, values[holeIndex], updater);
+
+          parts[holeIndex] = part;
+          holeIndex++;
+
+          if (holeIndex >= numHoles) {
+            break outer;
+          }
+
+          currentHole = this._holes[holeIndex]!;
+        }
+
+        nodeIndex++;
       }
-
-      child = child.childNodes[hole.index]!;
-
-      let part;
-
-      switch (hole.type) {
-        case 'attribute':
-          part = new AttributePart(child as Element, hole.name);
-          break;
-        case 'event':
-          part = new EventPart(child as Element, hole.name);
-          break;
-        case 'child':
-          part = new ChildPart(child as ChildNode);
-          break;
-        case 'property':
-          part = new PropertyPart(child as Element, hole.name);
-          break;
-        case 'spread':
-          part = new SpreadPart(child as Element);
-          break;
-      }
-
-      mountPart(part, values[i], updater);
-
-      parts[i] = part;
     }
 
-    return { children: Array.from(root.childNodes), parts };
+    return { children: [...rootNode.childNodes], parts };
   }
 
   patch(
@@ -143,7 +157,6 @@ function parseAttribtues(
   element: Element,
   markerString: string,
   holes: Hole[],
-  path: number[],
   index: number,
 ): void {
   // Persist element attributes since ones may be removed.
@@ -157,28 +170,24 @@ function parseAttribtues(
     if (name === markerString && value === '') {
       holes.push({
         type: 'spread',
-        path: path.slice(),
         index,
       });
     } else if (value === markerString) {
       if (name.length > 1 && name[0] === '@') {
         holes.push({
           type: 'event',
-          path: path.slice(),
           index,
           name: name.slice(1),
         });
       } else if (name.length > 1 && name[0] === '.') {
         holes.push({
           type: 'property',
-          path: path.slice(),
           index,
           name: name.slice(1),
         });
       } else {
         holes.push({
           type: 'attribute',
-          path: path.slice(),
           index,
           name,
         });
@@ -193,14 +202,13 @@ function parseAttribtues(
 
 function parseTemplate(walker: TreeWalker, markerString: string): Hole[] {
   const holes: Hole[] = [];
-  const path: number[] = [];
 
-  let current = walker.firstChild();
+  let current;
   let index = 0;
 
-  while (current !== null) {
+  while ((current = walker.nextNode()) !== null) {
     if (current.nodeType === Node.ELEMENT_NODE) {
-      parseAttribtues(current as Element, markerString, holes, path, index);
+      parseAttribtues(current as Element, markerString, holes, index);
     } else if (current.nodeType === Node.TEXT_NODE) {
       const components = current.textContent!.split(markerString);
       if (components.length > 1) {
@@ -217,7 +225,6 @@ function parseTemplate(walker: TreeWalker, markerString: string): Hole[] {
 
           holes.push({
             type: 'child',
-            path: path.slice(),
             index,
           });
           index++;
@@ -233,25 +240,7 @@ function parseTemplate(walker: TreeWalker, markerString: string): Hole[] {
         }
       }
     }
-
-    if ((current = walker.firstChild()) !== null) {
-      path.push(index);
-      index = 0;
-      continue;
-    }
-
-    if ((current = walker.nextSibling()) !== null) {
-      index++;
-      continue;
-    }
-
-    while (walker.parentNode() !== null) {
-      index = path.pop()!;
-      if ((current = walker.nextSibling()) !== null) {
-        index++;
-        break;
-      }
-    }
+    index++;
   }
 
   return holes;
