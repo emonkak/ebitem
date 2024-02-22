@@ -91,6 +91,28 @@ function App(_props: {}, context: Context): TemplateResult {
         context.html`<span>Hello World!</span>`,
       )}
     </div>
+    <svg width="100" height="100" viewBox="0 0 100 100">${block(Circle, {
+      cx: 50,
+      cy: 50,
+      r: 50,
+      fill: 'red',
+    })}</svg>
+  `;
+}
+
+interface CircleProps {
+  cx: number;
+  cy: number;
+  r: number;
+  fill: string;
+}
+
+function Circle(
+  { cx, cy, r, fill }: CircleProps,
+  context: Context,
+): TemplateResult {
+  return context.svg`
+    <circle cx=${cx} cy=${cy} r=${r} fill=${fill} />
   `;
 }
 

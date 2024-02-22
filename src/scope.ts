@@ -16,11 +16,11 @@ export class Scope implements ScopeInterface<Context> {
 
   private readonly _globalVariables: Varibales;
 
-  private readonly _templateMarker: string;
+  private readonly _markerString: string;
 
   constructor(globalVariables: Varibales = {}) {
     this._globalVariables = globalVariables;
-    this._templateMarker = '{{' + getUUID() + '}}';
+    this._markerString = '{{' + getUUID() + '}}';
   }
 
   getVariable(key: PropertyKey, renderable: Renderable<Context>): unknown {
@@ -57,7 +57,7 @@ export class Scope implements ScopeInterface<Context> {
     let template = this._templateCaches.get(strings);
 
     if (template === undefined) {
-      template = Template.parseHTML(strings, this._templateMarker);
+      template = Template.parseHTML(strings, this._markerString);
       this._templateCaches.set(strings, template);
     }
 
@@ -71,7 +71,7 @@ export class Scope implements ScopeInterface<Context> {
     let template = this._templateCaches.get(strings);
 
     if (template === undefined) {
-      template = Template.parseSVG(strings, this._templateMarker);
+      template = Template.parseSVG(strings, this._markerString);
       this._templateCaches.set(strings, template);
     }
 

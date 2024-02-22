@@ -42,14 +42,9 @@ export class Template implements TemplateInterface {
     strings: TemplateStringsArray,
     markerString: string,
   ): Template {
-    const content = strings.join(markerString).trim();
     const template = document.createElement('template');
-    template.innerHTML = content;
-    const walker = document.createTreeWalker(
-      template.content,
-      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT,
-    );
-    const holes = parseTemplate(walker, markerString);
+    template.innerHTML = strings.join(markerString).trim();
+    const holes = parseChildren(template.content, markerString);
     return new Template(template, holes);
   }
 
@@ -57,16 +52,12 @@ export class Template implements TemplateInterface {
     strings: TemplateStringsArray,
     markerString: string,
   ): Template {
-    const content = strings.join(markerString).trim();
     const template = document.createElement('template');
-    template.innerHTML = `<svg>${content}</svg>`;
-    const svg = template.content.firstChild!;
-    svg.replaceWith(...svg.childNodes);
-    const walker = document.createTreeWalker(
-      template.content,
-      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT,
+    template.innerHTML = '<svg>' + strings.join(markerString).trim() + '</svg>';
+    template.content.replaceChildren(
+      ...template.content.firstChild!.childNodes,
     );
-    const holes = parseTemplate(walker, markerString);
+    const holes = parseChildren(template.content, markerString);
     return new Template(template, holes);
   }
 
@@ -200,7 +191,11 @@ function parseAttribtues(
   }
 }
 
-function parseTemplate(walker: TreeWalker, markerString: string): Hole[] {
+function parseChildren(rootNode: Node, markerString: string): Hole[] {
+  const walker = document.createTreeWalker(
+    rootNode,
+    NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT,
+  );
   const holes: Hole[] = [];
 
   let current;
