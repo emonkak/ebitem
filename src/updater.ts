@@ -84,17 +84,19 @@ export class Updater<TContext = unknown> {
     }
     this._isUpdating = true;
     try {
-      await this._startLoop();
+      await this._runUpdateLoop();
     } finally {
       this._isUpdating = false;
     }
   }
 
-  async _startLoop(): Promise<void> {
+  async _runUpdateLoop(): Promise<void> {
     do {
       if (this._hasRenderable()) {
         await this._scheduler.postRenderingTask(async () => {
           console.time('Rendering phase');
+
+          let startTime = this._scheduler.getCurrentTime();
 
           do {
             const renderables = this._pendingRenderables;
@@ -106,8 +108,9 @@ export class Updater<TContext = unknown> {
               if (!renderable.isDirty || hasDirtyParent(renderable)) {
                 continue;
               }
-              if (navigator.scheduling.isInputPending()) {
-                await yieldToMain();
+              if (this._scheduler.shouldYieldToMain(startTime)) {
+                await this._scheduler.yieldToMain();
+                startTime = this._scheduler.getCurrentTime();
               }
               this._currentRenderable = renderable;
               try {
@@ -148,13 +151,16 @@ export class Updater<TContext = unknown> {
         await this._scheduler.postBackgroundTask(async () => {
           console.time('Background phase');
 
+          let startTime = this._scheduler.getCurrentTime();
+
           const passiveEffects = this._pendingPassiveEffects;
 
           this._pendingPassiveEffects = [];
 
           for (let i = 0, l = passiveEffects.length; i < l; i++) {
-            if (navigator.scheduling.isInputPending()) {
-              await yieldToMain();
+            if (this._scheduler.shouldYieldToMain(startTime)) {
+              await this._scheduler.yieldToMain();
+              startTime = this._scheduler.getCurrentTime();
             }
             passiveEffects[i]!.commit(this);
           }
@@ -193,14 +199,4 @@ function hasDirtyParent(renderable: Renderable<unknown>): boolean {
     }
   }
   return false;
-}
-
-function yieldToMain(): Promise<void> {
-  if ('scheduler' in globalThis && 'yield' in scheduler) {
-    return scheduler.yield();
-  } else {
-    return new Promise((resolve) => {
-      queueMicrotask(resolve);
-    });
-  }
 }

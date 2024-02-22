@@ -3,5 +3,9 @@ interface Navigator {
 }
 
 interface Scheduling {
-  isInputPending(): boolean;
+  isInputPending(options?: SchedulingisInputPendingOptions): boolean;
+}
+
+interface SchedulingisInputPendingOptions {
+  includeContinuous?: boolean;
 }
