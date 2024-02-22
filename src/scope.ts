@@ -50,14 +50,28 @@ export class Scope implements ScopeInterface<Context> {
     return new Context(renderable, hooks, updater, this);
   }
 
-  createTemplate(
+  createHTMLTemplate(
     strings: TemplateStringsArray,
     _values: unknown[],
   ): TemplateInterface {
     let template = this._templateCaches.get(strings);
 
     if (template === undefined) {
-      template = Template.parse(strings, this._templateMarker);
+      template = Template.parseHTML(strings, this._templateMarker);
+      this._templateCaches.set(strings, template);
+    }
+
+    return template;
+  }
+
+  createSVGTemplate(
+    strings: TemplateStringsArray,
+    _values: unknown[],
+  ): TemplateInterface {
+    let template = this._templateCaches.get(strings);
+
+    if (template === undefined) {
+      template = Template.parseSVG(strings, this._templateMarker);
       this._templateCaches.set(strings, template);
     }
 

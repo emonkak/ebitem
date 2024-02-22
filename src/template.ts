@@ -43,11 +43,35 @@ interface SpreadHole {
 }
 
 export class Template implements TemplateInterface {
-  static parse(strings: TemplateStringsArray, markerString: string): Template {
-    const html = strings.join(markerString).trim();
+  static parseHTML(
+    strings: TemplateStringsArray,
+    markerString: string,
+  ): Template {
+    const content = strings.join(markerString).trim();
     const template = document.createElement('template');
-    template.innerHTML = html;
-    const holes = parseTemplate(template, markerString);
+    template.innerHTML = content;
+    const walker = document.createTreeWalker(
+      template.content,
+      NodeFilter.SHOW_ALL,
+    );
+    const holes = parseTemplate(walker, markerString);
+    return new Template(template, holes);
+  }
+
+  static parseSVG(
+    strings: TemplateStringsArray,
+    markerString: string,
+  ): Template {
+    const content = strings.join(markerString).trim();
+    const template = document.createElement('template');
+    template.innerHTML = `<svg>${content}</svg>`;
+    const svg = template.content.firstChild!;
+    svg.replaceWith(...svg.childNodes);
+    const walker = document.createTreeWalker(
+      template.content,
+      NodeFilter.SHOW_ALL,
+    );
+    const holes = parseTemplate(walker, markerString);
     return new Template(template, holes);
   }
 
@@ -167,15 +191,7 @@ function parseAttribtues(
   }
 }
 
-function parseTemplate(
-  template: HTMLTemplateElement,
-  markerString: string,
-): Hole[] {
-  const walker = document.createTreeWalker(
-    template.content,
-    NodeFilter.SHOW_ALL,
-  );
-
+function parseTemplate(walker: TreeWalker, markerString: string): Hole[] {
   const holes: Hole[] = [];
   const path: number[] = [];
 

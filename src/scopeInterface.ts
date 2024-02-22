@@ -17,7 +17,12 @@ export interface ScopeInterface<TContext> {
     updater: Updater<TContext>,
   ): TContext;
 
-  createTemplate(
+  createHTMLTemplate(
+    strings: TemplateStringsArray,
+    values: unknown[],
+  ): TemplateInterface;
+
+  createSVGTemplate(
     strings: TemplateStringsArray,
     values: unknown[],
   ): TemplateInterface;

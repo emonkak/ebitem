@@ -60,7 +60,7 @@ export class Context {
   }
 
   html(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
-    const template = this._scope.createTemplate(strings, values);
+    const template = this._scope.createHTMLTemplate(strings, values);
     return new TemplateResult(template, values);
   }
 
@@ -70,6 +70,11 @@ export class Context {
 
   setContextValue(key: PropertyKey, value: unknown): void {
     this._scope.setVariable(key, value, this._renderable);
+  }
+
+  svg(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
+    const template = this._scope.createSVGTemplate(strings, values);
+    return new TemplateResult(template, values);
   }
 
   useCallback<TCallback extends Function>(
