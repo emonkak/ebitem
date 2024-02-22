@@ -43,32 +43,31 @@ interface SpreadHole {
 }
 
 export class Template implements TemplateInterface {
-  static parse(strings: TemplateStringsArray, marker: string): Template {
-    const html = strings.join(marker).trim();
+  static parse(strings: TemplateStringsArray, markerString: string): Template {
+    const html = strings.join(markerString).trim();
     const template = document.createElement('template');
     template.innerHTML = html;
-    const holes: Hole[] = [];
-    parseChildren(template.content, marker, holes, []);
+    const holes = parseTemplate(template, markerString);
     return new Template(template, holes);
   }
 
-  private _templateElement: HTMLTemplateElement;
+  private _template: HTMLTemplateElement;
 
   private _holes: Hole[];
 
-  constructor(templateElement: HTMLTemplateElement, holes: Hole[]) {
-    this._templateElement = templateElement;
+  constructor(template: HTMLTemplateElement, holes: Hole[]) {
+    this._template = template;
     this._holes = holes;
   }
 
   mount(values: unknown[], updater: Updater): MountPoint {
-    const root = this._templateElement.content.cloneNode(true);
+    const root = document.importNode(this._template.content, true);
     const parts = new Array(this._holes.length);
 
     for (let i = 0, l = this._holes.length; i < l; i++) {
       const hole = this._holes[i]!;
 
-      let child = root;
+      let child: Node = root;
 
       for (let j = 0, m = hole.path.length; j < m; j++) {
         child = child.childNodes[hole.path[j]!]!;
@@ -118,7 +117,7 @@ export class Template implements TemplateInterface {
 
 function parseAttribtues(
   element: Element,
-  marker: string,
+  markerString: string,
   holes: Hole[],
   path: number[],
   index: number,
@@ -131,31 +130,31 @@ function parseAttribtues(
     const name = attribute.name;
     const value = attribute.value;
 
-    if (name === marker && value === '') {
+    if (name === markerString && value === '') {
       holes.push({
         type: 'spread',
-        path,
+        path: path.slice(),
         index,
       });
-    } else if (value === marker) {
+    } else if (value === markerString) {
       if (name.length > 1 && name[0] === '@') {
         holes.push({
           type: 'event',
-          path,
+          path: path.slice(),
           index,
           name: name.slice(1),
         });
       } else if (name.length > 1 && name[0] === '.') {
         holes.push({
           type: 'property',
-          path,
+          path: path.slice(),
           index,
           name: name.slice(1),
         });
       } else {
         holes.push({
           type: 'attribute',
-          path,
+          path: path.slice(),
           index,
           name,
         });
@@ -168,61 +167,76 @@ function parseAttribtues(
   }
 }
 
-function parseChildren(
-  node: Node,
-  marker: string,
-  holes: Hole[],
-  path: number[],
-): void {
-  const { childNodes } = node;
+function parseTemplate(
+  template: HTMLTemplateElement,
+  markerString: string,
+): Hole[] {
+  const walker = document.createTreeWalker(
+    template.content,
+    NodeFilter.SHOW_ALL,
+  );
 
-  for (let i = 0, l = childNodes.length; i < l; i++) {
-    const child = childNodes[i]!;
-    switch (child.nodeType) {
-      case Node.ELEMENT_NODE:
-        parseAttribtues(child as Element, marker, holes, path, i);
-        if (child.childNodes.length > 0) {
-          parseChildren(child, marker, holes, [...path, i]);
-        }
-        break;
-      case Node.TEXT_NODE: {
-        const components = child.textContent!.split(marker);
-        if (components.length <= 1) {
-          continue;
-        }
+  const holes: Hole[] = [];
+  const path: number[] = [];
 
-        const componentEnd = components.length - 1;
-        for (let j = 0; j < componentEnd; j++) {
-          const component = components[j]!;
+  let current = walker.firstChild();
+  let index = 0;
+
+  while (current !== null) {
+    if (current.nodeType === Node.ELEMENT_NODE) {
+      parseAttribtues(current as Element, markerString, holes, path, index);
+    } else if (current.nodeType === Node.TEXT_NODE) {
+      const components = current.textContent!.split(markerString);
+      if (components.length > 1) {
+        const tailIndex = components.length - 1;
+        for (let i = 0; i < tailIndex; i++) {
+          const component = components[i]!;
           if (component !== '') {
             const text = document.createTextNode(component);
-            node.insertBefore(text, child);
-            i++;
-            l++;
+            current.parentNode!.insertBefore(text, current);
+            index++;
           }
+
+          current.parentNode!.insertBefore(document.createComment(''), current);
 
           holes.push({
             type: 'child',
-            path,
-            index: i,
+            path: path.slice(),
+            index,
           });
-
-          node.insertBefore(document.createComment(''), child);
-          i++;
-          l++;
+          index++;
         }
 
-        const endComponent = components[componentEnd]!;
-
-        if (endComponent !== '') {
-          child.textContent = endComponent;
+        const tailComponent = components[tailIndex]!;
+        if (tailComponent !== '') {
+          current.textContent = tailComponent;
         } else {
-          child.remove();
-          i--;
-          l--;
+          walker.currentNode = current.previousSibling!;
+          (current as Text).remove();
+          index--;
         }
+      }
+    }
+
+    if ((current = walker.firstChild()) !== null) {
+      path.push(index);
+      index = 0;
+      continue;
+    }
+
+    if ((current = walker.nextSibling()) !== null) {
+      index++;
+      continue;
+    }
+
+    while (walker.parentNode() !== null) {
+      index = path.pop()!;
+      if ((current = walker.nextSibling()) !== null) {
+        index++;
         break;
       }
     }
   }
+
+  return holes;
 }
