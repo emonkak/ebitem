@@ -34,7 +34,7 @@ export class Updater<TContext = unknown> {
 
   private _pendingRenderables: Renderable<TContext>[] = [];
 
-  private _isUpdating = false;
+  private _runningUpdateLoop: Promise<void> | null = null;
 
   constructor(
     scope: ScopeInterface<TContext>,
@@ -48,7 +48,7 @@ export class Updater<TContext = unknown> {
     return this._currentRenderable;
   }
 
-  mount(renderable: Renderable<TContext>, container: Node): void {
+  mount(renderable: Renderable<TContext>, container: Node): Promise<void> {
     this.pushRenderable(renderable);
     this.pushLayoutEffect({
       commit(updater: Updater<TContext>) {
@@ -59,7 +59,7 @@ export class Updater<TContext = unknown> {
         part.commit(updater);
       },
     });
-    this.requestUpdate();
+    return this.requestUpdate();
   }
 
   pushLayoutEffect(effect: Effect): void {
@@ -79,14 +79,13 @@ export class Updater<TContext = unknown> {
   }
 
   async requestUpdate(): Promise<void> {
-    if (this._isUpdating) {
-      return;
+    if (this._runningUpdateLoop !== null) {
+      return await this._runningUpdateLoop;
     }
-    this._isUpdating = true;
     try {
-      await this._runUpdateLoop();
+      await (this._runningUpdateLoop = this._runUpdateLoop());
     } finally {
-      this._isUpdating = false;
+      this._runningUpdateLoop = null;
     }
   }
 
