@@ -5,11 +5,6 @@ import type { MountPoint, TemplateInterface } from './templateInterface.js';
 import type { TemplateResult } from './templateResult.js';
 import type { Renderable, Updater } from './updater.js';
 
-const BlockFlag = {
-  DIRTY: 0b1,
-  MOUNTED: 0b10,
-};
-
 export class Block<TProps, TContext>
   extends ChildValue
   implements Renderable<TContext>
@@ -33,9 +28,11 @@ export class Block<TProps, TContext>
   private _memoizedMountPoints: WeakMap<TemplateInterface, MountPoint> | null =
     null;
 
+  private _mountPart: ChildPart | null = null;
+
   private _currentHooks: Hook[] = [];
 
-  private _flags: number = BlockFlag.DIRTY;
+  private _dirty = true;
 
   constructor(
     type: (props: TProps, context: TContext) => TemplateResult,
@@ -78,7 +75,7 @@ export class Block<TProps, TContext>
   }
 
   get isDirty(): boolean {
-    return (this._flags & BlockFlag.DIRTY) !== 0;
+    return this._dirty;
   }
 
   setProps(newProps: TProps): void {
@@ -86,14 +83,12 @@ export class Block<TProps, TContext>
   }
 
   forceUpdate(updater: Updater<TContext>): void {
-    if (
-      (this._flags & BlockFlag.MOUNTED) === 0 ||
-      (this._flags & BlockFlag.DIRTY) !== 0
-    ) {
+    if (this._dirty || this._mountPart === null) {
       return;
     }
 
-    this._flags |= BlockFlag.DIRTY;
+    this._dirty = true;
+
     updater.pushRenderable(this);
     updater.requestUpdate();
   }
@@ -131,6 +126,10 @@ export class Block<TProps, TContext>
           this._memoizedTemplate!,
           this._memoizedMountPoint,
         );
+
+        // The mount point has been changed, so reconnect to the part.
+        this._mountPart!.setValue(this, updater);
+        updater.pushMutationEffect(this._mountPart!);
       } else {
         template.patch(
           this._memoizedMountPoint.parts,
@@ -147,7 +146,7 @@ export class Block<TProps, TContext>
     this._memoizedProps = this._pendingProps;
     this._memoizedTemplate = template;
     this._memoizedValues = values;
-    this._flags &= ~BlockFlag.DIRTY;
+    this._dirty = false;
   }
 
   mount(part: ChildPart, _updater: Updater): void {
@@ -155,8 +154,8 @@ export class Block<TProps, TContext>
       connectMountPoint(this._pendingMountPoint, part);
     }
 
-    this._flags |= BlockFlag.MOUNTED;
     this._memoizedMountPoint = this._pendingMountPoint;
+    this._mountPart = part;
   }
 
   unmount(_part: ChildPart, updater: Updater): void {
@@ -171,7 +170,7 @@ export class Block<TProps, TContext>
       disconnectMountPoint(this._memoizedMountPoint, updater);
     }
 
-    this._flags &= ~BlockFlag.MOUNTED;
+    this._mountPart = null;
   }
 
   update(part: ChildPart, updater: Updater): void {
