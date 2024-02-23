@@ -158,6 +158,7 @@ export class SignalAttribute<T> extends AttributeValue {
 
   mount(part: AttributePart, updater: Updater): void {
     this._subscription = this._signal.subscribe(() => {
+      part.setValue(this, updater);
       updater.pushMutationEffect(part);
       updater.requestUpdate();
     });

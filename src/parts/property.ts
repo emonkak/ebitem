@@ -139,6 +139,7 @@ export class SignalProperty<T> extends PropertyValue {
 
   mount(part: PropertyPart, updater: Updater): void {
     this._subscription = this._signal.subscribe(() => {
+      part.setValue(this, updater);
       updater.pushMutationEffect(part);
       updater.requestUpdate();
     });
