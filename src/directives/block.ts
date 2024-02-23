@@ -32,20 +32,10 @@ export class Block<TProps, TContext> implements Directive {
 
     const value = part.value;
 
-    let needsMount = false;
-
-    if (value instanceof BlockChild) {
-      if (value.type === this._type) {
-        value.setProps(this._props);
-        value.forceUpdate(updater);
-      } else {
-        needsMount = true;
-      }
+    if (value instanceof BlockChild && value.type === this._type) {
+      value.setProps(this._props);
+      value.forceUpdate(updater);
     } else {
-      needsMount = true;
-    }
-
-    if (needsMount) {
       const newBlock = new BlockChild(
         this._type,
         this._props,

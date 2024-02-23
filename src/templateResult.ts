@@ -32,20 +32,10 @@ export class TemplateResult {
 
     const value = part.value;
 
-    let needsMount = false;
-
-    if (value instanceof Fragment) {
-      if (value.template === this._template) {
-        value.setValues(this._values);
-        value.forceUpdate(updater);
-      } else {
-        needsMount = true;
-      }
+    if (value instanceof Fragment && value.template === this._template) {
+      value.setValues(this._values);
+      value.forceUpdate(updater);
     } else {
-      needsMount = true;
-    }
-
-    if (needsMount) {
       const newFragment = new Fragment(
         this._template,
         this._values,

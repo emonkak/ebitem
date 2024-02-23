@@ -28,21 +28,11 @@ export class Slot implements Directive {
 
     const value = part.value;
 
-    let needsMount = false;
-
-    if (value instanceof SlotChild) {
-      if (value.type === this._type) {
-        value.setProps(this._props);
-        value.setValue(this._value);
-        value.forceUpdate(updater);
-      } else {
-        needsMount = true;
-      }
+    if (value instanceof SlotChild && value.type === this._type) {
+      value.setProps(this._props);
+      value.setValue(this._value);
+      value.forceUpdate(updater);
     } else {
-      needsMount = true;
-    }
-
-    if (needsMount) {
       const newSlot = new SlotChild(
         this._type,
         this._props,
