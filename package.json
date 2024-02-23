@@ -8,12 +8,15 @@
   "scripts": {
     "build": "tsc --build",
     "clean": "tsc --build --clean",
-    "test": "node --import tsx/esm --test test/**/*.ts",
+    "test": "NODE_OPTIONS=--no-deprecation web-test-runner",
     "watch": "tsc --build --watch"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.5.3",
-    "@types/node": "^20.11.16",
+    "@types/mocha": "^10.0.6",
+    "@web/dev-server-esbuild": "^1.0.2",
+    "@web/test-runner": "^0.18.0",
+    "chai": "^5.1.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
   }

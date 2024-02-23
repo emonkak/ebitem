@@ -1,5 +1,4 @@
-import { strict as assert } from 'node:assert';
-import test from 'node:test';
+import { assert } from 'chai';
 
 import { LinkedList } from '../src/linkedList.js';
 
