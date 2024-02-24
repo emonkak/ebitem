@@ -89,7 +89,7 @@ export class Block<TProps, TContext>
 
     this._dirty = true;
 
-    updater.pushRenderable(this);
+    updater.enqueueRenderable(this);
     updater.requestUpdate();
   }
 
@@ -129,7 +129,7 @@ export class Block<TProps, TContext>
 
         // The mount point has been changed, so reconnect to the part.
         this._mountPart!.setValue(this, updater);
-        updater.pushMutationEffect(this._mountPart!);
+        updater.enqueueMutationEffect(this._mountPart!);
       } else {
         template.patch(
           this._memoizedMountPoint.parts,

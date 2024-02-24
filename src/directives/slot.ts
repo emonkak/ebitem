@@ -42,8 +42,8 @@ export class Slot implements Directive {
 
       part.setValue(newSlot, updater);
 
-      updater.pushRenderable(newSlot);
-      updater.pushMutationEffect(part);
+      updater.enqueueRenderable(newSlot);
+      updater.enqueueMutationEffect(part);
       updater.requestUpdate();
     }
   }

@@ -25,7 +25,7 @@ export class ElementRef implements Directive {
     if (!(part.value instanceof RefAttribute) || part.value.ref !== this._ref) {
       part.setValue(new RefAttribute(this._ref), updater);
 
-      updater.pushMutationEffect(part);
+      updater.enqueueMutationEffect(part);
     }
   }
 }

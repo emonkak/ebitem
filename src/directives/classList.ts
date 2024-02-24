@@ -25,7 +25,7 @@ export class ClassList implements Directive {
       );
     }
 
-    updater.pushMutationEffect(
+    updater.enqueueMutationEffect(
       new UpdateClassList(part, this._classSpecifiers),
     );
   }

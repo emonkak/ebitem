@@ -31,7 +31,7 @@ export class UnsafeHTML implements Directive {
 
     part.setValue(new UnsafeHTMLChild(this._content), updater);
 
-    updater.pushMutationEffect(part);
+    updater.enqueueMutationEffect(part);
   }
 }
 

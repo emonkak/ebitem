@@ -31,7 +31,7 @@ export class UnsafeSVG implements Directive {
 
     part.setValue(new UnsafeSVG(this._content), updater);
 
-    updater.pushMutationEffect(part);
+    updater.enqueueMutationEffect(part);
   }
 }
 

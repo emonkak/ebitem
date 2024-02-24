@@ -1,15 +1,16 @@
 import {
+  AsyncUpdater,
   AtomSignal,
   Block,
   Context,
   Scope,
   Signal,
   TemplateResult,
-  Updater,
   block,
   classList,
   elementRef,
   list,
+  mount,
   slot,
 } from '@emonkak/tempura';
 
@@ -175,6 +176,6 @@ function shuffle<T>(elements: T[]): T[] {
   return elements;
 }
 
-const updater = new Updater(new Scope());
+const updater = new AsyncUpdater(new Scope());
 
-updater.mount(new Block(App, {}), document.body);
+mount(updater, new Block(App, {}), document.body);

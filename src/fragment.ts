@@ -82,7 +82,7 @@ export class Fragment<TContext>
     }
 
     this._flags |= FragmentFlag.DIRTY;
-    updater.pushRenderable(this);
+    updater.enqueueRenderable(this);
     updater.requestUpdate();
   }
 

@@ -91,7 +91,7 @@ export class Context {
       ensureHookType<EffectHook>('effect', currentHook);
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
-        this._updater.pushPassiveEffect(new InvokeEffectHook(currentHook));
+        this._updater.enqueuePassiveEffect(new InvokeEffectHook(currentHook));
         currentHook.dependencies = dependencies;
       }
 
@@ -104,7 +104,7 @@ export class Context {
         cleanup: undefined,
       };
 
-      this._updater.pushPassiveEffect(new InvokeEffectHook(currentHook));
+      this._updater.enqueuePassiveEffect(new InvokeEffectHook(currentHook));
     }
 
     this._hooks[this._hookIndex] = currentHook;
@@ -139,7 +139,7 @@ export class Context {
       ensureHookType<LayoutEffectHook>('layoutEffect', currentHook);
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
-        this._updater.pushLayoutEffect(new InvokeEffectHook(currentHook));
+        this._updater.enqueueLayoutEffect(new InvokeEffectHook(currentHook));
         currentHook.dependencies = dependencies;
       }
 
@@ -152,7 +152,7 @@ export class Context {
         cleanup: undefined,
       };
 
-      this._updater.pushLayoutEffect(new InvokeEffectHook(currentHook));
+      this._updater.enqueueLayoutEffect(new InvokeEffectHook(currentHook));
     }
 
     this._hooks[this._hookIndex] = currentHook;

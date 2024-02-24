@@ -24,7 +24,7 @@ export function mountPart(part: Part, value: unknown, updater: Updater): void {
     value[directiveSymbol](part, updater);
   } else {
     part.setValue(value, updater);
-    updater.pushMutationEffect(part);
+    updater.enqueueMutationEffect(part);
   }
 }
 
@@ -41,6 +41,6 @@ export function updatePart(
     newValue[directiveSymbol](part, updater);
   } else {
     part.setValue(newValue, updater);
-    updater.pushMutationEffect(part);
+    updater.enqueueMutationEffect(part);
   }
 }

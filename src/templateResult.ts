@@ -44,8 +44,8 @@ export class TemplateResult {
 
       part.setValue(newFragment, updater);
 
-      updater.pushRenderable(newFragment);
-      updater.pushMutationEffect(part);
+      updater.enqueueRenderable(newFragment);
+      updater.enqueueMutationEffect(part);
       updater.requestUpdate();
     }
   }

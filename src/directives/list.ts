@@ -69,7 +69,7 @@ export class List<TItem, TValue, TKey> implements Directive {
       part.setValue(list, updater);
     }
 
-    updater.pushMutationEffect(part);
+    updater.enqueueMutationEffect(part);
   }
 }
 
@@ -190,7 +190,7 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
       } else if (oldKeys[oldHead] === newKeys[newTail]) {
         // Old tail matches new head; update and move to new head
         const part = oldParts[oldHead]!;
-        updater.pushMutationEffect(
+        updater.enqueueMutationEffect(
           new ReorderItemPart(part, newParts[newTail + 1] ?? null),
         );
         updatePart(part, oldValues[oldHead], newValues[newTail], updater);
@@ -200,7 +200,7 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
       } else if (oldKeys[oldTail] === newKeys[newHead]) {
         // Old tail matches new head; update and move to new head
         const part = oldParts[oldTail]!;
-        updater.pushMutationEffect(
+        updater.enqueueMutationEffect(
           new ReorderItemPart(part, oldParts[oldHead] ?? null),
         );
         updatePart(part, oldValues[oldTail], newValues[newHead], updater);
@@ -217,12 +217,12 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
         if (!newKeyToIndexMap.has(oldKeys[oldHead]!)) {
           // Old head is no longer in new list; remove
           const part = oldParts[oldHead]!;
-          updater.pushMutationEffect(new DisconnectPart(part));
+          updater.enqueueMutationEffect(new DisconnectPart(part));
           oldHead++;
         } else if (!newKeyToIndexMap.has(oldKeys[oldTail]!)) {
           // Old tail is no longer in new list; remove
           const part = oldParts[oldTail]!;
-          updater.pushMutationEffect(new DisconnectPart(part));
+          updater.enqueueMutationEffect(new DisconnectPart(part));
           oldTail--;
         } else {
           // Any mismatches at this point are due to additions or
@@ -232,7 +232,7 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
           if (oldIndex !== undefined) {
             // Reuse old part
             const oldPart = oldParts[oldIndex]!;
-            updater.pushMutationEffect(
+            updater.enqueueMutationEffect(
               new ReorderItemPart(oldPart, oldParts[oldHead] ?? null),
             );
             updatePart(
@@ -277,7 +277,7 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
     while (oldHead <= oldTail) {
       const oldPart = oldParts[oldHead];
       if (oldPart) {
-        updater.pushMutationEffect(new DisconnectPart(oldPart));
+        updater.enqueueMutationEffect(new DisconnectPart(oldPart));
       }
       oldHead++;
     }

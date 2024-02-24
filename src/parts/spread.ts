@@ -54,7 +54,7 @@ export class SpreadPart implements Part {
         if (!Object.hasOwn(newProps, key)) {
           const oldPart = this._parts.get(key)!;
           this._parts.delete(key);
-          updater.pushMutationEffect(new DisconnectPart(oldPart));
+          updater.enqueueMutationEffect(new DisconnectPart(oldPart));
         }
       }
 

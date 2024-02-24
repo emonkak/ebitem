@@ -29,7 +29,9 @@ export class Style implements Directive {
       );
     }
 
-    updater.pushMutationEffect(new UpdateStyle(part, this._styleDeclaration));
+    updater.enqueueMutationEffect(
+      new UpdateStyle(part, this._styleDeclaration),
+    );
   }
 }
 

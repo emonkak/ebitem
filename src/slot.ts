@@ -88,7 +88,7 @@ export class Slot<TContext> extends ChildValue implements Renderable<TContext> {
     }
 
     this._flags |= SlotFlag.DIRTY;
-    updater.pushRenderable(this);
+    updater.enqueueRenderable(this);
     updater.requestUpdate();
   }
 
