@@ -85,7 +85,7 @@ export class Context {
   }
 
   useEffect(callback: EffectCallback, dependencies?: unknown[]): void {
-    let currentHook = this._renderable.currentHooks[this._hookIndex];
+    const currentHook = this._hooks[this._hookIndex];
 
     if (currentHook !== undefined) {
       ensureHookType<EffectHook>('effect', currentHook);
@@ -97,17 +97,16 @@ export class Context {
 
       currentHook.callback = callback;
     } else {
-      currentHook = {
+      const newHook: EffectHook = {
         type: 'effect',
         callback,
         dependencies,
         cleanup: undefined,
       };
-
-      this._updater.enqueuePassiveEffect(new InvokeEffectHook(currentHook));
+      this._hooks.push(newHook);
+      this._updater.enqueuePassiveEffect(new InvokeEffectHook(newHook));
     }
 
-    this._hooks[this._hookIndex] = currentHook;
     this._hookIndex++;
   }
 
@@ -133,7 +132,7 @@ export class Context {
   }
 
   useLayoutEffect(callback: EffectCallback, dependencies?: unknown[]): void {
-    let currentHook = this._renderable.currentHooks[this._hookIndex];
+    const currentHook = this._hooks[this._hookIndex];
 
     if (currentHook !== undefined) {
       ensureHookType<LayoutEffectHook>('layoutEffect', currentHook);
@@ -145,22 +144,21 @@ export class Context {
 
       currentHook.callback = callback;
     } else {
-      currentHook = {
+      const newHook: LayoutEffectHook = {
         type: 'layoutEffect',
         callback,
         dependencies,
         cleanup: undefined,
       };
-
-      this._updater.enqueueLayoutEffect(new InvokeEffectHook(currentHook));
+      this._hooks.push(newHook);
+      this._updater.enqueueLayoutEffect(new InvokeEffectHook(newHook));
     }
 
-    this._hooks[this._hookIndex] = currentHook;
     this._hookIndex++;
   }
 
   useMemo<TResult>(factory: () => TResult, dependencies: unknown[]): TResult {
-    let currentHook = this._renderable.currentHooks[this._hookIndex];
+    let currentHook = this._hooks[this._hookIndex];
 
     if (currentHook !== undefined) {
       ensureHookType<MemoHook>('memo', currentHook);
@@ -175,12 +173,12 @@ export class Context {
         value: factory(),
         dependencies,
       };
+      this._hooks.push(currentHook);
     }
 
-    this._hooks[this._hookIndex] = currentHook;
     this._hookIndex++;
 
-    return currentHook.value as TResult;
+    return currentHook.value;
   }
 
   useReducer<TState, TAction>(
@@ -188,7 +186,7 @@ export class Context {
     initialState: ValueOrFunction<TState>,
   ): [TState, (action: TAction) => void] {
     const renderable = this._renderable;
-    let currentHook = this._renderable.currentHooks[this._hookIndex];
+    let currentHook = this._hooks[this._hookIndex];
 
     if (currentHook !== undefined) {
       ensureHookType<ReducerHook<TState, TAction>>('reducer', currentHook);
@@ -203,9 +201,9 @@ export class Context {
         },
       };
       currentHook = newHook;
+      this._hooks.push(newHook);
     }
 
-    this._hooks[this._hookIndex] = currentHook;
     this._hookIndex++;
 
     return [currentHook.state, currentHook.dispatch];

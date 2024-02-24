@@ -1,4 +1,3 @@
-import type { Hook } from './hook.js';
 import { ChildPart } from './parts/child.js';
 import { Scheduler, getDefaultScheduler } from './scheduler.js';
 import type { ScopeInterface } from './scopeInterface.js';
@@ -18,7 +17,6 @@ export interface Effect<TContext = unknown> {
 }
 
 export interface Renderable<TContext> {
-  get currentHooks(): Hook[];
   get isDirty(): boolean;
   get parent(): Renderable<TContext> | null;
   forceUpdate(updater: Updater<TContext>): void;

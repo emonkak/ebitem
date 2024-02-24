@@ -1,4 +1,3 @@
-import type { Hook } from './hook.js';
 import { mountPart, updatePart } from './part.js';
 import { ChildPart, ChildValue, SpreadPart, SpreadProps } from './parts.js';
 import type { ScopeInterface } from './scopeInterface.js';
@@ -45,10 +44,6 @@ export class Slot<TContext> extends ChildValue implements Renderable<TContext> {
     this._pendingProps = props;
     this._pendingValue = value;
     this._parent = parent;
-  }
-
-  get currentHooks(): Hook[] {
-    return [];
   }
 
   get endNode(): ChildNode | null {

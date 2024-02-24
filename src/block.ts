@@ -30,7 +30,7 @@ export class Block<TProps, TContext>
 
   private _mountPart: ChildPart | null = null;
 
-  private _currentHooks: Hook[] = [];
+  private _hooks: Hook[] = [];
 
   private _dirty = true;
 
@@ -70,8 +70,8 @@ export class Block<TProps, TContext>
     return this._parent;
   }
 
-  get currentHooks(): Hook[] {
-    return this._currentHooks;
+  get hooks(): Hook[] {
+    return this._hooks;
   }
 
   get isDirty(): boolean {
@@ -94,13 +94,13 @@ export class Block<TProps, TContext>
   }
 
   render(updater: Updater<TContext>, scope: ScopeInterface<TContext>): void {
-    const newHooks = new Array(this._currentHooks.length);
+    const previousNumberOfHooks = this._hooks.length;
     const render = this._type;
-    const context = scope.createContext(this, newHooks, updater);
+    const context = scope.createContext(this, this._hooks, updater);
     const { template, values } = render(this._pendingProps, context);
 
     if (this._memoizedMountPoint !== null) {
-      if (this._currentHooks.length !== newHooks.length) {
+      if (this._hooks.length !== previousNumberOfHooks) {
         throw new Error(
           'Rendered different number of hooks than during the previous render.',
         );
@@ -142,7 +142,6 @@ export class Block<TProps, TContext>
       this._pendingMountPoint = template.mount(values, updater);
     }
 
-    this._currentHooks = newHooks;
     this._memoizedProps = this._pendingProps;
     this._memoizedTemplate = template;
     this._memoizedValues = values;
@@ -159,8 +158,8 @@ export class Block<TProps, TContext>
   }
 
   unmount(_part: ChildPart, updater: Updater): void {
-    for (let i = 0, l = this._currentHooks.length; i < l; i++) {
-      const hook = this._currentHooks[i]!;
+    for (let i = 0, l = this._hooks.length; i < l; i++) {
+      const hook = this._hooks[i]!;
       if (hook.type === 'effect' || hook.type === 'layoutEffect') {
         hook.cleanup?.();
       }
