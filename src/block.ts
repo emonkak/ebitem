@@ -167,6 +167,7 @@ export class Block<TProps, TContext>
 
     if (this._memoizedMountPoint !== null) {
       disconnectMountPoint(this._memoizedMountPoint, updater);
+      this._memoizedMountPoint = null;
     }
 
     this._mountPart = null;
@@ -176,7 +177,7 @@ export class Block<TProps, TContext>
     const oldMountPoint = this._memoizedMountPoint;
     const newMountPoint = this._pendingMountPoint;
 
-    if (newMountPoint !== oldMountPoint) {
+    if (oldMountPoint !== newMountPoint) {
       if (oldMountPoint !== null) {
         disconnectMountPoint(oldMountPoint, updater);
       }
