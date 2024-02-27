@@ -40,12 +40,13 @@ export class Context {
   }
 
   createSignal<T>(initialValue: ValueOrFunction<T>): AtomSignal<T> {
-    const signal = this.useMemo(() => {
-      return new AtomSignal(
-        typeof initialValue === 'function' ? initialValue() : initialValue,
-      );
-    }, []);
-    return this.useSignal(signal);
+    return this.useMemo(
+      () =>
+        new AtomSignal(
+          typeof initialValue === 'function' ? initialValue() : initialValue,
+        ),
+      [],
+    );
   }
 
   getContextValue<T>(key: PropertyKey): T | undefined {
@@ -185,19 +186,20 @@ export class Context {
     reducer: (state: TState, action: TAction) => TState,
     initialState: ValueOrFunction<TState>,
   ): [TState, (action: TAction) => void] {
-    const renderable = this._renderable;
     let currentHook = this._hooks[this._hookIndex];
 
     if (currentHook !== undefined) {
       ensureHookType<ReducerHook<TState, TAction>>('reducer', currentHook);
     } else {
+      const renderable = this._renderable;
+      const updater = this._updater;
       const newHook: ReducerHook<TState, TAction> = {
         type: 'reducer',
         state:
           typeof initialState === 'function' ? initialState() : initialState,
         dispatch: (action: TAction) => {
           newHook.state = reducer(newHook.state, action);
-          renderable.forceUpdate(this._updater);
+          renderable.forceUpdate(updater);
         },
       };
       currentHook = newHook;
@@ -215,11 +217,14 @@ export class Context {
 
   useSignal<TSignal extends Signal<any>>(signal: TSignal): TSignal {
     const renderable = this._renderable;
-    this.useEffect(() => {
-      return signal.subscribe(() => {
-        renderable.forceUpdate(this._updater);
-      });
-    }, [signal]);
+    const updater = this._updater;
+    this.useEffect(
+      () =>
+        signal.subscribe(() => {
+          renderable.forceUpdate(updater);
+        }),
+      [signal],
+    );
     return signal;
   }
 
@@ -238,11 +243,14 @@ export class Context {
     getSnapshot: () => T,
   ): T {
     const renderable = this._renderable;
-    this.useEffect(() => {
-      return subscribe(() => {
-        renderable.forceUpdate(this._updater);
-      });
-    }, [subscribe]);
+    const updater = this._updater;
+    this.useEffect(
+      () =>
+        subscribe(() => {
+          renderable.forceUpdate(updater);
+        }),
+      [subscribe],
+    );
     return getSnapshot();
   }
 }
