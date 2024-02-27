@@ -11,7 +11,6 @@ export * from './scope.js';
 export * from './scopeInterface.js';
 export * from './signal.js';
 export * from './signals.js';
-export * from './slot.js';
 export * from './template.js';
 export * from './templateInterface.js';
 export * from './templateResult.js';

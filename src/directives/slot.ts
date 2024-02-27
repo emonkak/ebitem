@@ -1,7 +1,6 @@
 import { Directive, directiveSymbol } from '../directive.js';
-import { Part } from '../part.js';
-import { ChildPart, SpreadProps } from '../parts.js';
-import { Slot as SlotChild } from '../slot.js';
+import { Part, mountPart, updatePart } from '../part.js';
+import { ChildPart, ChildValue, SpreadPart, SpreadProps } from '../parts.js';
 import type { Updater } from '../updater.js';
 
 export function slot(type: string, props: SpreadProps, value: unknown): Slot {
@@ -29,22 +28,108 @@ export class Slot implements Directive {
     const value = part.value;
 
     if (value instanceof SlotChild && value.type === this._type) {
-      value.setProps(this._props);
-      value.setValue(this._value);
-      value.forceUpdate(updater);
+      value.update(this._props, this._value, updater);
     } else {
       const newSlot = new SlotChild(
         this._type,
         this._props,
         this._value,
-        updater.currentRenderable,
+        updater,
       );
 
       part.setValue(newSlot, updater);
 
-      updater.enqueueRenderable(newSlot);
       updater.enqueueMutationEffect(part);
       updater.requestUpdate();
     }
+  }
+}
+
+export class SlotChild<TContext> extends ChildValue {
+  private readonly _element: Element;
+
+  private readonly _spreadPart: SpreadPart;
+
+  private readonly _childPart: ChildPart;
+
+  private _memoizedProps: SpreadProps;
+
+  private _memoizedValue: unknown;
+
+  private _pendingProps: SpreadProps;
+
+  private _pendingValue: unknown;
+
+  constructor(
+    type: string,
+    props: SpreadProps,
+    value: unknown,
+    updater: Updater,
+  ) {
+    super();
+
+    const element = document.createElement(type);
+    const marker = document.createComment('');
+    const childPart = new ChildPart(marker);
+    const spreadPart = new SpreadPart(element);
+
+    element.appendChild(marker);
+
+    mountPart(spreadPart, props, updater);
+    mountPart(childPart, value, updater);
+
+    this._element = element;
+    this._spreadPart = spreadPart;
+    this._childPart = childPart;
+    this._memoizedProps = props;
+    this._memoizedValue = value;
+    this._pendingProps = props;
+    this._pendingValue = value;
+  }
+
+  get endNode(): ChildNode | null {
+    return this._element;
+  }
+
+  get props(): SpreadProps {
+    return this._memoizedProps;
+  }
+
+  get startNode(): ChildNode | null {
+    return this._element;
+  }
+
+  get type(): string {
+    return this._element.tagName;
+  }
+
+  get value(): unknown {
+    return this._memoizedValue;
+  }
+
+  update(
+    newProps: SpreadProps,
+    newValue: unknown,
+    updater: Updater<TContext>,
+  ): void {
+    updatePart(this._spreadPart, newProps, this._memoizedProps, updater);
+    updatePart(this._childPart, newValue, this._memoizedValue, updater);
+    this._pendingProps = newProps;
+    this._pendingValue = newValue;
+  }
+
+  onMount(part: ChildPart, _updater: Updater): void {
+    part.endNode.parentNode?.insertBefore(this._element, part.endNode);
+  }
+
+  onUnmount(_part: ChildPart, updater: Updater): void {
+    this._childPart.disconnect(updater);
+    this._spreadPart.disconnect(updater);
+    this._element.remove();
+  }
+
+  onUpdate(_part: ChildPart, _updater: Updater): void {
+    this._memoizedProps = this._pendingProps;
+    this._memoizedValue = this._pendingValue;
   }
 }
