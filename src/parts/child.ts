@@ -99,29 +99,21 @@ export abstract class ChildValue {
 }
 
 export class NullChild extends ChildValue {
-  private readonly _node: Comment;
-
   constructor() {
     super();
-    this._node = document.createComment('');
   }
 
-  get startNode(): ChildNode {
-    return this._node;
+  get startNode(): ChildNode | null {
+    return null;
   }
 
-  get endNode(): ChildNode {
-    return this._node;
+  get endNode(): ChildNode | null {
+    return null;
   }
 
-  onMount(part: ChildPart, _updater: Updater): void {
-    const reference = part.endNode;
-    reference.parentNode!.insertBefore(this._node, reference);
-  }
+  onMount(_part: ChildPart, _updater: Updater): void {}
 
-  onUnmount(_part: ChildPart, _updater: Updater): void {
-    this._node.remove();
-  }
+  onUnmount(_part: ChildPart, _updater: Updater): void {}
 
   onUpdate(_part: ChildPart, _updater: Updater): void {}
 }
