@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "esnext"],
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "noFallthroughCasesInSwitch": true,
@@ -12,6 +13,6 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "strict": true,
-    "target": "es2022"
+    "target": "esnext"
   }
 }

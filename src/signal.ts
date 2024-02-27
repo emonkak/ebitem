@@ -4,25 +4,25 @@ export type Subscriber = () => void;
 
 export type Subscription = () => void;
 
-type UnwrapSignals<T> = T extends Array<any>
+type UnwrapSignals<T> = T extends { [P in keyof T]: Signal<any> }
   ? { [P in keyof T]: UnwrapSignal<T[P]> }
   : never;
 
 type UnwrapSignal<T> = T extends Signal<infer V> ? V : never;
 
-const MUTABLE_ARRAY_METHODS: {
-  [P in keyof Omit<Array<any>, keyof ReadonlyArray<any>>]: P;
-} = {
-  copyWithin: 'copyWithin',
-  fill: 'fill',
-  pop: 'pop',
-  push: 'push',
-  reverse: 'reverse',
-  shift: 'shift',
-  sort: 'sort',
-  splice: 'splice',
-  unshift: 'unshift',
-};
+export function array<T>(elements: T[]): ArraySignal<T> {
+  return new ArraySignal(elements);
+}
+
+export function atom<T>(value: T): AtomSignal<T> {
+  return new AtomSignal(value);
+}
+
+export function struct<TStruct extends { [P in keyof TStruct]: Signal<any> }>(
+  struct: TStruct,
+): StructSignal<TStruct> {
+  return new StructSignal(struct);
+}
 
 export abstract class Signal<T> {
   abstract get value(): T;
@@ -46,61 +46,24 @@ export abstract class Signal<T> {
   }
 }
 
-export class ArraySignal<T> extends Signal<T[]> {
+export class ArraySignal<T> extends Signal<ReadonlyArray<T>> {
   private readonly _subscribers = new LinkedList<Subscriber>();
 
-  private _values: T[];
+  private _elements: T[];
 
   private _version = 1;
 
-  private _isMutating = false;
-
-  constructor(initialValues: T[]) {
+  constructor(initialElements: T[]) {
     super();
-    this._values = initialValues;
+    this._elements = initialElements;
   }
 
-  get value(): T[] {
-    return new Proxy(this._values, {
-      get: (target: T[], p: string | symbol, _receiver: any): any => {
-        if (p in MUTABLE_ARRAY_METHODS) {
-          return (...args: any[]): any => {
-            this._isMutating = true;
-            try {
-              const result = (target[p as any] as Function)(...args);
-              this._notifyChange();
-              return result;
-            } finally {
-              this._isMutating = false;
-            }
-          };
-        }
-        return target[p as keyof T[]];
-      },
-      set: (
-        target: T[],
-        p: string | symbol,
-        newValue: any,
-        _receiver: any,
-      ): boolean => {
-        target[p as any] = newValue;
-        if (!this._isMutating) {
-          this._notifyChange();
-        }
-        return true;
-      },
-      deleteProperty: (target: T[], p: string | symbol): boolean => {
-        delete target[p as keyof T[]];
-        if (!this._isMutating) {
-          this._notifyChange();
-        }
-        return true;
-      },
-    });
+  get value(): ReadonlyArray<T> {
+    return this._elements;
   }
 
-  set value(newValues: T[]) {
-    this._values = newValues;
+  set value(newElements: T[]) {
+    this._elements = newElements;
     this._notifyChange();
   }
 
@@ -108,8 +71,31 @@ export class ArraySignal<T> extends Signal<T[]> {
     return this._version;
   }
 
-  batch(update: (values: T[]) => boolean): void {
-    if (update(this._values)) {
+  mutate(mutateFn: (elements: T[]) => boolean | void): void {
+    let hasChanged = false;
+    const proxy = new Proxy(this._elements, {
+      set(
+        target: T[],
+        property: string | symbol,
+        value: any,
+        receiver: any,
+      ): boolean {
+        const result = Reflect.set(target, property, value, receiver);
+        if (result) {
+          hasChanged = true;
+        }
+        return result;
+      },
+      deleteProperty(target: T[], property: string | symbol): boolean {
+        const result = Reflect.deleteProperty(target, property);
+        if (result) {
+          hasChanged = true;
+        }
+        return result;
+      },
+    });
+    const result = mutateFn(proxy);
+    if (result ?? hasChanged) {
       this._notifyChange();
     }
   }
@@ -186,14 +172,14 @@ export class ComputedSignal<
   private readonly _dependencies: TDependencies;
 
   static compose<TResult, TDependencies extends Signal<any>[]>(
-    factory: (...args: UnwrapSignals<TDependencies>) => TResult,
+    factory: (...values: UnwrapSignals<TDependencies>) => TResult,
     dependencies: TDependencies,
   ): ComputedSignal<TResult, TDependencies> {
-    return new ComputedSignal((...signals) => {
-      const args = signals.map(
-        (signal) => signal.value,
+    return new ComputedSignal((...dependencies) => {
+      const values = dependencies.map(
+        (dependency) => dependency.value,
       ) as UnwrapSignals<TDependencies>;
-      return factory(...args);
+      return factory(...values);
     }, dependencies);
   }
 
@@ -238,28 +224,28 @@ export class ComputedSignal<
 export class MemoizedSignal<T> extends Signal<T> {
   private readonly _signal: Signal<T>;
 
-  private _memoizedResult: T | null;
+  private _memoizedValue: T | null;
 
   private _memoizedVersion = 0; // 0 is indicated an uninitialized signal.
 
   constructor(
     signal: Signal<T>,
-    initialResult: T | null = null,
+    initialValue: T | null = null,
     initialVersion = 0,
   ) {
     super();
     this._signal = signal;
-    this._memoizedResult = initialResult;
+    this._memoizedValue = initialValue;
     this._memoizedVersion = initialVersion;
   }
 
   get value(): T {
     const newVersion = this._signal.version;
     if (this._memoizedVersion < newVersion) {
-      this._memoizedResult = this._signal.value;
+      this._memoizedValue = this._signal.value;
       this._memoizedVersion = newVersion;
     }
-    return this._memoizedResult!;
+    return this._memoizedValue!;
   }
 
   get version(): number {
@@ -272,40 +258,52 @@ export class MemoizedSignal<T> extends Signal<T> {
 }
 
 export class StructSignal<
-  T extends { [P in keyof T]: Signal<any> },
-> extends Signal<T> {
-  private readonly _value: T;
+  TStruct extends { [P in keyof TStruct]: Signal<any> },
+> extends Signal<TStruct> {
+  private readonly _struct: TStruct;
 
-  constructor(value: T) {
+  constructor(struct: TStruct) {
     super();
-    this._value = value;
+    this._struct = struct;
   }
 
-  get value(): T {
-    return this._value;
+  get value(): Readonly<TStruct> {
+    return this._struct;
   }
 
   get version(): number {
-    const value = this._value;
-    const keys = Object.keys(value) as (keyof T)[];
+    const struct = this._struct;
+    const keys = Object.keys(struct) as (keyof TStruct)[];
 
     let version = 1;
 
     for (let i = 0, l = keys.length; i < l; i++) {
-      version += value[keys[i]!].version - 1;
+      version += struct[keys[i]!].version - 1;
     }
 
     return version;
   }
 
+  flatten(): UnwrapSignals<TStruct> {
+    const flattenStruct = {} as UnwrapSignals<TStruct>;
+    const keys = Object.keys(this._struct) as (keyof TStruct)[];
+
+    for (let i = 0, l = keys.length; i < l; i++) {
+      const key = keys[i]!;
+      flattenStruct[key] = this._struct[key].value;
+    }
+
+    return flattenStruct;
+  }
+
   subscribe(subscriber: Subscriber): Subscription {
-    const value = this._value;
-    const keys = Object.keys(value) as (keyof T)[];
+    const struct = this._struct;
+    const keys = Object.keys(struct) as (keyof TStruct)[];
     const subscriptions = new Array(keys.length);
 
     for (let i = 0, l = keys.length; i < l; i++) {
       const key = keys[i]!;
-      subscriptions[i] = value[key].subscribe(subscriber);
+      subscriptions[i] = struct[key].subscribe(subscriber);
     }
 
     return () => {
@@ -318,18 +316,18 @@ export class StructSignal<
 
 export class TrackingSignal<
   TResult,
-  TObject extends object,
+  TState extends object,
 > extends Signal<TResult> {
-  private readonly _factory: (source: TObject) => TResult;
+  private readonly _factory: (source: TState) => TResult;
 
-  private readonly _object: TObject;
+  private readonly _state: TState;
 
   private _signal: MemoizedSignal<TResult> | null = null;
 
-  constructor(factory: (object: TObject) => TResult, object: TObject) {
+  constructor(factory: (state: TState) => TResult, state: TState) {
     super();
     this._factory = factory;
-    this._object = object;
+    this._state = state;
   }
 
   get value(): TResult {
@@ -356,8 +354,8 @@ export class TrackingSignal<
   private _initSignal(): MemoizedSignal<TResult> {
     const dependencies = new Set<Signal<unknown>>();
     const handler: ProxyHandler<any> = {
-      get(target, property, _receiver) {
-        const value = target[property];
+      get(target, property, receiver) {
+        const value = Reflect.get(target, property, receiver);
         if (value instanceof Signal) {
           // Do not analyze nested signals.
           dependencies.add(value);
@@ -366,12 +364,12 @@ export class TrackingSignal<
         return typeof value === 'object' ? new Proxy(value, handler) : value;
       },
     };
-    const object = new Proxy(this._object, handler);
-    const initialResult = this._factory(object);
-    const innerSignal = new ComputedSignal<TResult, Signal<unknown>[]>(
-      () => this._factory(this._object),
+    const proxy = new Proxy(this._state, handler);
+    const initialResult = this._factory(proxy);
+    const signal = new ComputedSignal<TResult, Signal<unknown>[]>(
+      () => this._factory(this._state),
       Array.from(dependencies),
     );
-    return new MemoizedSignal(innerSignal, initialResult, innerSignal.version);
+    return new MemoizedSignal(signal, initialResult, signal.version);
   }
 }
