@@ -60,14 +60,14 @@ class UnsafeHTMLChild extends ChildValue {
   }
 
   onMount(part: ChildPart, _updater: Updater): void {
-    const { endNode } = part;
     const range = document.createRange();
     const fragment = range.createContextualFragment(this._content);
+    const reference = part.endNode;
 
     this._startNode = fragment.firstChild;
     this._endNode = fragment.lastChild;
 
-    endNode.parentNode?.insertBefore(endNode, fragment);
+    reference.parentNode!.insertBefore(reference, fragment);
   }
 
   onUnmount(_part: ChildPart, _updater: Updater): void {

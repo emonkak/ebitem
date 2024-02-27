@@ -119,7 +119,8 @@ export class SlotChild<TContext> extends ChildValue {
   }
 
   onMount(part: ChildPart, _updater: Updater): void {
-    part.endNode.parentNode?.insertBefore(this._element, part.endNode);
+    const reference = part.endNode;
+    reference.parentNode!.insertBefore(this._element, part.endNode);
   }
 
   onUnmount(_part: ChildPart, updater: Updater): void {

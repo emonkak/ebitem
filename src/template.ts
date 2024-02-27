@@ -210,13 +210,15 @@ function parseChildren(rootNode: Node, markerString: string): Hole[] {
         const tailIndex = components.length - 1;
         for (let i = 0; i < tailIndex; i++) {
           const component = components[i]!;
+          const parent = current.parentNode!;
+
           if (component !== '') {
             const text = document.createTextNode(component);
-            current.parentNode!.insertBefore(text, current);
+            parent.insertBefore(text, current);
             index++;
           }
 
-          current.parentNode!.insertBefore(document.createComment(''), current);
+          parent.insertBefore(document.createComment(''), current);
 
           holes.push({
             type: 'child',

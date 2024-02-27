@@ -315,7 +315,7 @@ export class ItemPart extends ChildPart implements Part {
       ? referencePart.startNode
       : this._containerPart.endNode;
 
-    reference.parentNode?.insertBefore(this._node, reference);
+    reference.parentNode!.insertBefore(this._node, reference);
 
     this._committedValue?.onMount(this, updater);
   }

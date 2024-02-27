@@ -60,17 +60,17 @@ class UnsafeSVGChild extends ChildValue {
   }
 
   onMount(part: ChildPart, _updater: Updater): void {
-    const { endNode } = part;
     const range = document.createRange();
     const fragment = range.createContextualFragment(
       `<svg>${this._content}</svg>`,
     );
     const svg = fragment.firstChild!;
+    const reference = part.endNode;
 
     this._startNode = svg.firstChild;
     this._endNode = svg.lastChild;
 
-    endNode.parentNode?.insertBefore(endNode, fragment);
+    reference.parentNode?.insertBefore(reference, fragment);
   }
 
   onUnmount(_part: ChildPart, _updater: Updater): void {
