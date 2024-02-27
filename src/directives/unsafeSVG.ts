@@ -59,7 +59,7 @@ class UnsafeSVGChild extends ChildValue {
     return this._endNode;
   }
 
-  mount(part: ChildPart, _updater: Updater): void {
+  onMount(part: ChildPart, _updater: Updater): void {
     const { endNode } = part;
     const range = document.createRange();
     const fragment = range.createContextualFragment(
@@ -73,7 +73,7 @@ class UnsafeSVGChild extends ChildValue {
     endNode.parentNode?.insertBefore(endNode, fragment);
   }
 
-  unmount(_part: ChildPart, _updater: Updater): void {
+  onUnmount(_part: ChildPart, _updater: Updater): void {
     let node = this._startNode;
 
     while (node !== null) {
@@ -88,5 +88,5 @@ class UnsafeSVGChild extends ChildValue {
     this._endNode = null;
   }
 
-  update(_part: ChildPart, _updater: Updater): void {}
+  onUpdate(_part: ChildPart, _updater: Updater): void {}
 }

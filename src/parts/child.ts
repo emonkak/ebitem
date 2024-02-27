@@ -32,7 +32,7 @@ export class ChildPart implements Part {
   }
 
   setValue(newValue: unknown, _updater: Updater): void {
-    this._pendingValue = ChildValue.upgrade(newValue, this._committedValue);
+    this._pendingValue = ChildValue.lift(newValue, this._committedValue);
   }
 
   commit(updater: Updater): void {
@@ -41,16 +41,16 @@ export class ChildPart implements Part {
 
     if (oldValue !== newValue) {
       if (oldValue !== null) {
-        oldValue.unmount(this, updater);
+        oldValue.onUnmount(this, updater);
       }
 
       if (newValue !== null) {
-        newValue.mount(this, updater);
+        newValue.onMount(this, updater);
       }
     }
 
     if (newValue !== null) {
-      newValue.update(this, updater);
+      newValue.onUpdate(this, updater);
     }
 
     this._committedValue = newValue;
@@ -58,14 +58,14 @@ export class ChildPart implements Part {
 
   disconnect(updater: Updater): void {
     if (this._committedValue !== null) {
-      this._committedValue.unmount(this, updater);
+      this._committedValue.onUnmount(this, updater);
       this._committedValue = null;
     }
   }
 }
 
 export abstract class ChildValue {
-  static upgrade(newValue: unknown, oldValue: ChildValue | null): ChildValue {
+  static lift(newValue: unknown, oldValue: ChildValue | null): ChildValue {
     if (newValue instanceof ChildValue) {
       return newValue;
     } else if (newValue instanceof Signal) {
@@ -91,11 +91,11 @@ export abstract class ChildValue {
 
   abstract get endNode(): ChildNode | null;
 
-  abstract mount(_part: ChildPart, _updater: Updater): void;
+  abstract onMount(_part: ChildPart, _updater: Updater): void;
 
-  abstract unmount(_part: ChildPart, _updater: Updater): void;
+  abstract onUnmount(_part: ChildPart, _updater: Updater): void;
 
-  abstract update(_part: ChildPart, _updater: Updater): void;
+  abstract onUpdate(_part: ChildPart, _updater: Updater): void;
 }
 
 export class NullChild extends ChildValue {
@@ -114,24 +114,24 @@ export class NullChild extends ChildValue {
     return this._node;
   }
 
-  mount(part: ChildPart, _updater: Updater): void {
+  onMount(part: ChildPart, _updater: Updater): void {
     const reference = part.endNode;
     reference.parentNode!.insertBefore(this._node, reference);
   }
 
-  unmount(_part: ChildPart, _updater: Updater): void {
+  onUnmount(_part: ChildPart, _updater: Updater): void {
     this._node.remove();
   }
 
-  update(_part: ChildPart, _updater: Updater): void {}
+  onUpdate(_part: ChildPart, _updater: Updater): void {}
 }
 
 export class SignalChild<T> extends ChildValue {
   private readonly _signal: Signal<T>;
 
-  private _memoizedValue: ChildValue | null = null;
+  private _mountedValue: ChildValue | null = null;
 
-  private _memoizedVersion = 0;
+  private _mountedVersion = 0;
 
   private _subscription: Subscription | null = null;
 
@@ -145,54 +145,55 @@ export class SignalChild<T> extends ChildValue {
   }
 
   get startNode(): ChildNode | null {
-    return this._memoizedValue?.startNode ?? null;
+    return this._mountedValue?.startNode ?? null;
   }
 
   get endNode(): ChildNode | null {
-    return this._memoizedValue?.endNode ?? null;
+    return this._mountedValue?.endNode ?? null;
   }
 
-  mount(part: ChildPart, updater: Updater): void {
+  onMount(part: ChildPart, updater: Updater): void {
+    this._mountedValue = ChildValue.lift(this._signal.value, null);
+    this._mountedVersion = this._signal.version;
+    this._mountedValue.onMount(part, updater);
+
     this._subscription = this._signal.subscribe(() => {
       updater.enqueueMutationEffect(part);
       updater.requestUpdate();
     });
-    this._memoizedValue = ChildValue.upgrade(this._signal.value, null);
-    this._memoizedVersion = this._signal.version;
-    this._memoizedValue.mount(part, updater);
   }
 
-  unmount(part: ChildPart, updater: Updater): void {
+  onUnmount(part: ChildPart, updater: Updater): void {
     if (this._subscription !== null) {
       this._subscription();
       this._subscription = null;
     }
-    if (this._memoizedValue !== null) {
-      this._memoizedValue.unmount(part, updater);
-      this._memoizedValue = null;
-      this._memoizedVersion = 0;
+
+    if (this._mountedValue !== null) {
+      this._mountedValue.onUnmount(part, updater);
+      this._mountedValue = null;
+      this._mountedVersion = 0;
     }
   }
 
-  update(part: ChildPart, updater: Updater): void {
+  onUpdate(part: ChildPart, updater: Updater): void {
     const newVersion = this._signal.version;
 
-    if (this._memoizedVersion < newVersion) {
-      const oldValue = this._memoizedValue;
+    if (this._mountedVersion < newVersion) {
+      const oldValue = this._mountedValue;
+      const newValue = ChildValue.lift(this._signal.value, oldValue);
 
       if (oldValue !== null) {
-        oldValue.unmount(part, updater);
+        oldValue.onUnmount(part, updater);
       }
 
-      const newValue = ChildValue.upgrade(this._signal.value, oldValue);
+      newValue.onMount(part, updater);
 
-      newValue.mount(part, updater);
-
-      this._memoizedValue = newValue;
-      this._memoizedVersion = newVersion;
+      this._mountedValue = newValue;
+      this._mountedVersion = newVersion;
     }
 
-    this._memoizedValue!.update(part, updater);
+    this._mountedValue!.onUpdate(part, updater);
   }
 }
 
@@ -226,16 +227,16 @@ export class TextChild extends ChildValue {
     this._dirty = true;
   }
 
-  mount(part: ChildPart, _updater: Updater): void {
+  onMount(part: ChildPart, _updater: Updater): void {
     const reference = part.endNode;
     reference.parentNode!.insertBefore(this._node, reference);
   }
 
-  unmount(_part: ChildPart, _updater: Updater): void {
+  onUnmount(_part: ChildPart, _updater: Updater): void {
     this._node.remove();
   }
 
-  update(_part: ChildPart, _updater: Updater): void {
+  onUpdate(_part: ChildPart, _updater: Updater): void {
     if (this._dirty) {
       this._node.textContent = this._value;
       this._dirty = false;

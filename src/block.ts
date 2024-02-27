@@ -147,7 +147,7 @@ export class Block<TProps, TContext>
     this._dirty = false;
   }
 
-  mount(part: ChildPart, _updater: Updater): void {
+  onMount(part: ChildPart, _updater: Updater): void {
     if (this._pendingMountPoint !== null) {
       connectMountPoint(this._pendingMountPoint, part);
     }
@@ -156,7 +156,7 @@ export class Block<TProps, TContext>
     this._mountPart = part;
   }
 
-  unmount(_part: ChildPart, updater: Updater): void {
+  onUnmount(_part: ChildPart, updater: Updater): void {
     for (let i = 0, l = this._hooks.length; i < l; i++) {
       const hook = this._hooks[i]!;
       if (hook.type === 'effect' || hook.type === 'layoutEffect') {
@@ -172,7 +172,7 @@ export class Block<TProps, TContext>
     this._mountPart = null;
   }
 
-  update(part: ChildPart, updater: Updater): void {
+  onUpdate(part: ChildPart, updater: Updater): void {
     const oldMountPoint = this._memoizedMountPoint;
     const newMountPoint = this._pendingMountPoint;
 

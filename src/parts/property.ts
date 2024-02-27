@@ -29,7 +29,7 @@ export class PropertyPart implements Part {
   }
 
   setValue(newValue: unknown, _updater: Updater): void {
-    this._pendingValue = PropertyValue.upgrade(newValue, this._committedValue);
+    this._pendingValue = PropertyValue.lift(newValue, this._committedValue);
   }
 
   commit(updater: Updater): void {
@@ -38,16 +38,16 @@ export class PropertyPart implements Part {
 
     if (oldValue !== newValue) {
       if (oldValue !== null) {
-        oldValue.unmount(this, updater);
+        oldValue.onUnmount(this, updater);
       }
 
       if (newValue !== null) {
-        newValue.mount(this, updater);
+        newValue.onMount(this, updater);
       }
     }
 
     if (newValue !== null) {
-      newValue.update(this, updater);
+      newValue.onUpdate(this, updater);
     }
 
     this._committedValue = newValue;
@@ -55,14 +55,14 @@ export class PropertyPart implements Part {
 
   disconnect(updater: Updater): void {
     if (this._committedValue !== null) {
-      this._committedValue.unmount(this, updater);
+      this._committedValue.onUnmount(this, updater);
       this._committedValue = null;
     }
   }
 }
 
 export abstract class PropertyValue {
-  static upgrade(newValue: unknown, oldValue: PropertyValue | null) {
+  static lift(newValue: unknown, oldValue: PropertyValue | null) {
     if (newValue instanceof PropertyValue) {
       return newValue;
     } else if (newValue instanceof Signal) {
@@ -79,11 +79,11 @@ export abstract class PropertyValue {
     }
   }
 
-  abstract mount(_part: PropertyPart, _updater: Updater): void;
+  abstract onMount(_part: PropertyPart, _updater: Updater): void;
 
-  abstract unmount(_part: PropertyPart, _updater: Updater): void;
+  abstract onUnmount(_part: PropertyPart, _updater: Updater): void;
 
-  abstract update(_part: PropertyPart, _updater: Updater): void;
+  abstract onUpdate(_part: PropertyPart, _updater: Updater): void;
 }
 
 export class ValueProperty<T> extends PropertyValue {
@@ -105,11 +105,11 @@ export class ValueProperty<T> extends PropertyValue {
     this._dirty = true;
   }
 
-  mount(_part: PropertyPart, _updater: Updater): void {}
+  onMount(_part: PropertyPart, _updater: Updater): void {}
 
-  unmount(_part: PropertyPart, _updater: Updater): void {}
+  onUnmount(_part: PropertyPart, _updater: Updater): void {}
 
-  update(part: PropertyPart, _updater: Updater): void {
+  onUpdate(part: PropertyPart, _updater: Updater): void {
     if (this._dirty) {
       (part.node as any)[part.name] = this._value;
       this._dirty = false;
@@ -120,9 +120,9 @@ export class ValueProperty<T> extends PropertyValue {
 export class SignalProperty<T> extends PropertyValue {
   private readonly _signal: Signal<T>;
 
-  private _memoizedValue: PropertyValue | null = null;
+  private _mountedValue: PropertyValue | null = null;
 
-  private _memoizedVersion = 0;
+  private _mountedVersion = 0;
 
   private _subscription: Subscription | null = null;
 
@@ -135,46 +135,47 @@ export class SignalProperty<T> extends PropertyValue {
     return this._signal;
   }
 
-  mount(part: PropertyPart, updater: Updater): void {
+  onMount(part: PropertyPart, updater: Updater): void {
+    this._mountedValue = PropertyValue.lift(this._signal.value, null);
+    this._mountedVersion = this._signal.version;
+    this._mountedValue.onMount(part, updater);
+
     this._subscription = this._signal.subscribe(() => {
       updater.enqueueMutationEffect(part);
       updater.requestUpdate();
     });
-    this._memoizedValue = PropertyValue.upgrade(this._signal.value, null);
-    this._memoizedVersion = this._signal.version;
-    this._memoizedValue.mount(part, updater);
   }
 
-  unmount(part: PropertyPart, updater: Updater): void {
+  onUnmount(part: PropertyPart, updater: Updater): void {
     if (this._subscription !== null) {
       this._subscription();
       this._subscription = null;
     }
-    if (this._memoizedValue !== null) {
-      this._memoizedValue.unmount(part, updater);
-      this._memoizedValue = null;
-      this._memoizedVersion = 0;
+
+    if (this._mountedValue !== null) {
+      this._mountedValue.onUnmount(part, updater);
+      this._mountedValue = null;
+      this._mountedVersion = 0;
     }
   }
 
-  update(part: PropertyPart, updater: Updater): void {
+  onUpdate(part: PropertyPart, updater: Updater): void {
     const newVersion = this._signal.version;
 
-    if (this._memoizedVersion < newVersion) {
-      const oldValue = this._memoizedValue;
+    if (this._mountedVersion < newVersion) {
+      const oldValue = this._mountedValue;
+      const newValue = PropertyValue.lift(this._signal.value, oldValue);
 
       if (oldValue !== null) {
-        oldValue.unmount(part, updater);
+        oldValue.onUnmount(part, updater);
       }
 
-      const newValue = PropertyValue.upgrade(this._signal.value, oldValue);
+      newValue.onMount(part, updater);
 
-      newValue.mount(part, updater);
-
-      this._memoizedValue = newValue;
-      this._memoizedVersion = newVersion;
+      this._mountedValue = newValue;
+      this._mountedVersion = newVersion;
     }
 
-    this._memoizedValue!.update(part, updater);
+    this._mountedValue!.onUpdate(part, updater);
   }
 }

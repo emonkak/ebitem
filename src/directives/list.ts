@@ -52,7 +52,7 @@ export class List<TItem, TValue, TKey> implements Directive {
     const value = part.value;
 
     if (value instanceof ListChild) {
-      value.updateItems(
+      value.update(
         this._items,
         this._valueSelector,
         this._keySelector,
@@ -128,21 +128,21 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
     return parts.length > 0 ? parts[parts.length - 1]!.endNode : null;
   }
 
-  mount(_part: Part, _updater: Updater): void {}
+  onMount(_part: Part, _updater: Updater): void {}
 
-  unmount(_part: Part, updater: Updater): void {
+  onUnmount(_part: Part, updater: Updater): void {
     for (let i = 0, l = this._commitedParts.length; i < l; i++) {
       this._commitedParts[i]!.disconnect(updater);
     }
   }
 
-  update(_part: ChildPart, _updater: Updater): void {
+  onUpdate(_part: ChildPart, _updater: Updater): void {
     this._commitedParts = this._pendingParts;
     this._commitedValues = this._pendingValues;
     this._commitedKeys = this._pendingKeys;
   }
 
-  updateItems(
+  update(
     newItems: TItem[],
     valueSelector: (item: TItem, index: number) => TValue,
     keySelector: (item: TItem, index: number) => TKey,
@@ -317,7 +317,7 @@ export class ItemPart extends ChildPart implements Part {
 
     reference.parentNode?.insertBefore(this._node, reference);
 
-    this._committedValue?.mount(this, updater);
+    this._committedValue?.onMount(this, updater);
   }
 }
 

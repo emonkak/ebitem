@@ -42,7 +42,7 @@ export class RefAttribute extends AttributeValue {
     return this._ref;
   }
 
-  mount(part: AttributePart, _updater: Updater): void {
+  onMount(part: AttributePart, _updater: Updater): void {
     if (typeof this._ref === 'function') {
       this._ref(part.node);
     } else {
@@ -50,7 +50,7 @@ export class RefAttribute extends AttributeValue {
     }
   }
 
-  unmount(_part: AttributePart, _updater: Updater): void {
+  onUnmount(_part: AttributePart, _updater: Updater): void {
     if (typeof this._ref === 'function') {
       this._ref(null);
     } else {
@@ -58,5 +58,5 @@ export class RefAttribute extends AttributeValue {
     }
   }
 
-  update(_part: AttributePart, _updater: Updater): void {}
+  onUpdate(_part: AttributePart, _updater: Updater): void {}
 }

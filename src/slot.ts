@@ -123,7 +123,7 @@ export class Slot<TContext> extends ChildValue implements Renderable<TContext> {
     this._memoizedValue = this._pendingValue;
   }
 
-  mount(part: ChildPart, _updater: Updater): void {
+  onMount(part: ChildPart, _updater: Updater): void {
     if (this._mountState !== null) {
       part.endNode.parentNode?.insertBefore(
         this._mountState.element,
@@ -134,7 +134,7 @@ export class Slot<TContext> extends ChildValue implements Renderable<TContext> {
     this._flags |= SlotFlag.MOUNTED;
   }
 
-  unmount(_part: ChildPart, updater: Updater): void {
+  onUnmount(_part: ChildPart, updater: Updater): void {
     if (this._mountState !== null) {
       const { spreadPart, childPart, element } = this._mountState;
       childPart.disconnect(updater);
@@ -146,5 +146,5 @@ export class Slot<TContext> extends ChildValue implements Renderable<TContext> {
     this._flags &= ~SlotFlag.MOUNTED;
   }
 
-  update(_part: ChildPart, _updater: Updater): void {}
+  onUpdate(_part: ChildPart, _updater: Updater): void {}
 }

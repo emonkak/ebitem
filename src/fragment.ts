@@ -98,7 +98,7 @@ export class Fragment<TContext>
     this._flags &= ~FragmentFlag.DIRTY;
   }
 
-  mount(part: ChildPart, _updater: Updater): void {
+  onMount(part: ChildPart, _updater: Updater): void {
     if (this._mountPoint !== null) {
       const { children } = this._mountPoint;
       const reference = part.endNode;
@@ -114,7 +114,7 @@ export class Fragment<TContext>
     this._flags |= FragmentFlag.MOUNTED;
   }
 
-  unmount(_part: ChildPart, updater: Updater): void {
+  onUnmount(_part: ChildPart, updater: Updater): void {
     if (this._mountPoint !== null) {
       const { children, parts } = this._mountPoint;
       for (let i = 0, l = children.length; i < l; i++) {
@@ -133,5 +133,5 @@ export class Fragment<TContext>
     this._flags &= ~FragmentFlag.MOUNTED;
   }
 
-  update(_part: ChildPart, _updater: Updater): void {}
+  onUpdate(_part: ChildPart, _updater: Updater): void {}
 }
