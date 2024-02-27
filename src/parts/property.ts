@@ -11,8 +11,6 @@ export class PropertyPart implements Part {
 
   private _pendingValue: PropertyValue | null = null;
 
-  private _dirty = false;
-
   constructor(element: Element, name: string) {
     this._element = element;
     this._name = name;
@@ -32,14 +30,9 @@ export class PropertyPart implements Part {
 
   setValue(newValue: unknown, _updater: Updater): void {
     this._pendingValue = PropertyValue.upgrade(newValue, this._committedValue);
-    this._dirty = true;
   }
 
   commit(updater: Updater): void {
-    if (!this._dirty) {
-      return;
-    }
-
     const oldValue = this._committedValue;
     const newValue = this._pendingValue;
 
@@ -58,7 +51,6 @@ export class PropertyPart implements Part {
     }
 
     this._committedValue = newValue;
-    this._dirty = false;
   }
 
   disconnect(updater: Updater): void {
@@ -97,6 +89,8 @@ export abstract class PropertyValue {
 export class ValueProperty<T> extends PropertyValue {
   private _value: T;
 
+  private _dirty = true;
+
   constructor(value: T) {
     super();
     this._value = value;
@@ -108,6 +102,7 @@ export class ValueProperty<T> extends PropertyValue {
 
   set value(newValue: T) {
     this._value = newValue;
+    this._dirty = true;
   }
 
   mount(_part: PropertyPart, _updater: Updater): void {}
@@ -115,7 +110,10 @@ export class ValueProperty<T> extends PropertyValue {
   unmount(_part: PropertyPart, _updater: Updater): void {}
 
   update(part: PropertyPart, _updater: Updater): void {
-    (part.node as any)[part.name] = this._value;
+    if (this._dirty) {
+      (part.node as any)[part.name] = this._value;
+      this._dirty = false;
+    }
   }
 }
 
@@ -139,28 +137,42 @@ export class SignalProperty<T> extends PropertyValue {
 
   mount(part: PropertyPart, updater: Updater): void {
     this._subscription = this._signal.subscribe(() => {
-      part.setValue(this, updater);
       updater.enqueueMutationEffect(part);
       updater.requestUpdate();
     });
+    this._memoizedValue = PropertyValue.upgrade(this._signal.value, null);
+    this._memoizedVersion = this._signal.version;
+    this._memoizedValue.mount(part, updater);
   }
 
-  unmount(_part: PropertyPart, _updater: Updater): void {
+  unmount(part: PropertyPart, updater: Updater): void {
     if (this._subscription !== null) {
       this._subscription();
       this._subscription = null;
     }
+    if (this._memoizedValue !== null) {
+      this._memoizedValue.unmount(part, updater);
+      this._memoizedValue = null;
+      this._memoizedVersion = 0;
+    }
   }
 
   update(part: PropertyPart, updater: Updater): void {
-    const { version } = this._signal;
+    const newVersion = this._signal.version;
 
-    if (this._memoizedVersion < version) {
-      this._memoizedValue = PropertyValue.upgrade(
-        this._signal.value,
-        this._memoizedValue,
-      );
-      this._memoizedVersion = version;
+    if (this._memoizedVersion < newVersion) {
+      const oldValue = this._memoizedValue;
+
+      if (oldValue !== null) {
+        oldValue.unmount(part, updater);
+      }
+
+      const newValue = PropertyValue.upgrade(this._signal.value, oldValue);
+
+      newValue.mount(part, updater);
+
+      this._memoizedValue = newValue;
+      this._memoizedVersion = newVersion;
     }
 
     this._memoizedValue!.update(part, updater);

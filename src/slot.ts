@@ -74,6 +74,14 @@ export class Slot<TContext> extends ChildValue implements Renderable<TContext> {
     return this._memoizedValue;
   }
 
+  setProps(newProps: SpreadProps): void {
+    this._pendingProps = newProps;
+  }
+
+  setValue(newValue: unknown): void {
+    this._pendingValue = newValue;
+  }
+
   forceUpdate(updater: Updater<TContext>): void {
     if (
       (this._flags & SlotFlag.MOUNTED) === 0 ||
@@ -85,17 +93,6 @@ export class Slot<TContext> extends ChildValue implements Renderable<TContext> {
     this._flags |= SlotFlag.DIRTY;
     updater.enqueueRenderable(this);
     updater.requestUpdate();
-  }
-
-  mount(part: ChildPart, _updater: Updater): void {
-    if (this._mountState !== null) {
-      part.endNode.parentNode?.insertBefore(
-        this._mountState.element,
-        part.endNode,
-      );
-    }
-
-    this._flags |= SlotFlag.MOUNTED;
   }
 
   render(updater: Updater<TContext>, _scope: ScopeInterface<TContext>): void {
@@ -126,12 +123,15 @@ export class Slot<TContext> extends ChildValue implements Renderable<TContext> {
     this._memoizedValue = this._pendingValue;
   }
 
-  setProps(newProps: SpreadProps): void {
-    this._pendingProps = newProps;
-  }
+  mount(part: ChildPart, _updater: Updater): void {
+    if (this._mountState !== null) {
+      part.endNode.parentNode?.insertBefore(
+        this._mountState.element,
+        part.endNode,
+      );
+    }
 
-  setValue(newValue: unknown): void {
-    this._pendingValue = newValue;
+    this._flags |= SlotFlag.MOUNTED;
   }
 
   unmount(_part: ChildPart, updater: Updater): void {

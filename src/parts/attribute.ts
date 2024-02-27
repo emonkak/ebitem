@@ -11,8 +11,6 @@ export class AttributePart implements Part {
 
   private _committedValue: AttributeValue | null = null;
 
-  private _dirty = false;
-
   constructor(element: Element, name: string) {
     this._element = element;
     this._name = name;
@@ -32,14 +30,9 @@ export class AttributePart implements Part {
 
   setValue(newValue: unknown, _updater: Updater): void {
     this._pendingValue = AttributeValue.upgrade(newValue, this._committedValue);
-    this._dirty = true;
   }
 
   commit(updater: Updater): void {
-    if (!this._dirty) {
-      return;
-    }
-
     const oldValue = this._committedValue;
     const newValue = this._pendingValue;
 
@@ -58,7 +51,6 @@ export class AttributePart implements Part {
     }
 
     this._committedValue = newValue;
-    this._dirty = false;
   }
 
   disconnect(updater: Updater): void {
@@ -111,6 +103,8 @@ export abstract class AttributeValue {
 export class BooleanAttribute extends AttributeValue {
   private _value: boolean;
 
+  private _dirty = true;
+
   constructor(value: boolean) {
     super();
     this._value = value;
@@ -122,6 +116,7 @@ export class BooleanAttribute extends AttributeValue {
 
   set value(newValue: boolean) {
     this._value = newValue;
+    this._dirty = true;
   }
 
   mount(_part: AttributePart, _updater: Updater): void {}
@@ -129,11 +124,13 @@ export class BooleanAttribute extends AttributeValue {
   unmount(_part: AttributePart, _updater: Updater): void {}
 
   update(part: AttributePart, _updater: Updater): void {
-    const element = part.node;
-    if (this._value) {
-      element.setAttribute(part.name, '');
-    } else {
-      element.removeAttribute(part.name);
+    if (this._dirty) {
+      if (this._value) {
+        part.node.setAttribute(part.name, '');
+      } else {
+        part.node.removeAttribute(part.name);
+      }
+      this._dirty = false;
     }
   }
 }
@@ -158,28 +155,42 @@ export class SignalAttribute<T> extends AttributeValue {
 
   mount(part: AttributePart, updater: Updater): void {
     this._subscription = this._signal.subscribe(() => {
-      part.setValue(this, updater);
       updater.enqueueMutationEffect(part);
       updater.requestUpdate();
     });
+    this._memoizedValue = AttributeValue.upgrade(this._signal.value, null);
+    this._memoizedVersion = this._signal.version;
+    this._memoizedValue.mount(part, updater);
   }
 
-  unmount(_part: AttributePart, _updater: Updater): void {
+  unmount(part: AttributePart, updater: Updater): void {
     if (this._subscription !== null) {
       this._subscription();
       this._subscription = null;
     }
+    if (this._memoizedValue !== null) {
+      this._memoizedValue.unmount(part, updater);
+      this._memoizedValue = null;
+      this._memoizedVersion = 0;
+    }
   }
 
   update(part: AttributePart, updater: Updater): void {
-    const version = this._signal.version;
+    const newVersion = this._signal.version;
 
-    if (this._memoizedVersion < version) {
-      this._memoizedValue = AttributeValue.upgrade(
-        this._signal.value,
-        this._memoizedValue,
-      );
-      this._memoizedVersion = version;
+    if (this._memoizedVersion < newVersion) {
+      const oldValue = this._memoizedValue;
+
+      if (oldValue !== null) {
+        oldValue.unmount(part, updater);
+      }
+
+      const newValue = AttributeValue.upgrade(this._signal.value, oldValue);
+
+      newValue.mount(part, updater);
+
+      this._memoizedValue = newValue;
+      this._memoizedVersion = newVersion;
     }
 
     this._memoizedValue!.update(part, updater);
@@ -188,6 +199,8 @@ export class SignalAttribute<T> extends AttributeValue {
 
 export class StringAttribute extends AttributeValue {
   private _value: string;
+
+  private _dirty = true;
 
   constructor(value: string) {
     super();
@@ -200,6 +213,7 @@ export class StringAttribute extends AttributeValue {
 
   set value(newValue: string) {
     this._value = newValue;
+    this._dirty = true;
   }
 
   mount(_part: AttributePart, _updater: Updater): void {}
@@ -207,7 +221,9 @@ export class StringAttribute extends AttributeValue {
   unmount(_part: AttributePart, _updater: Updater): void {}
 
   update(part: AttributePart, _updater: Updater): void {
-    const element = part.node;
-    element.setAttribute(part.name, this._value);
+    if (this._dirty) {
+      part.node.setAttribute(part.name, this._value);
+      this._dirty = false;
+    }
   }
 }

@@ -128,7 +128,6 @@ export class Block<TProps, TContext>
         );
 
         // The mount point has been changed, so reconnect to the part.
-        this._mountPart!.setValue(this, updater);
         updater.enqueueMutationEffect(this._mountPart!);
       } else {
         template.patch(

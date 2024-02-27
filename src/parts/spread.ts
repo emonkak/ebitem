@@ -32,34 +32,32 @@ export class SpreadPart implements Part {
       throw new Error('The value of "SpreadPart" must be an object.');
     }
 
-    if (this._memoizedProps !== newProps) {
-      const oldProps = this._memoizedProps;
-      const oldKeys = Object.keys(oldProps);
-      const newKeys = Object.keys(newProps);
+    const oldProps = this._memoizedProps;
+    const oldKeys = Object.keys(oldProps);
+    const newKeys = Object.keys(newProps);
 
-      for (let i = 0, l = newKeys.length; i < l; i++) {
-        const key = newKeys[i]!;
-        const exsistingPart = this._parts.get(key);
-        if (exsistingPart !== undefined) {
-          updatePart(exsistingPart, oldProps[key], newProps[key], updater);
-        } else {
-          const newPart = createPart(key, this._element);
-          mountPart(newPart, newProps[key], updater);
-          this._parts.set(key, newPart);
-        }
+    for (let i = 0, l = newKeys.length; i < l; i++) {
+      const key = newKeys[i]!;
+      const exsistingPart = this._parts.get(key);
+      if (exsistingPart !== undefined) {
+        updatePart(exsistingPart, oldProps[key], newProps[key], updater);
+      } else {
+        const newPart = createPart(key, this._element);
+        mountPart(newPart, newProps[key], updater);
+        this._parts.set(key, newPart);
       }
-
-      for (let i = 0, l = oldKeys.length; i < l; i++) {
-        const key = oldKeys[i]!;
-        if (!Object.hasOwn(newProps, key)) {
-          const oldPart = this._parts.get(key)!;
-          this._parts.delete(key);
-          updater.enqueueMutationEffect(new DisconnectPart(oldPart));
-        }
-      }
-
-      this._pendingProps = newProps;
     }
+
+    for (let i = 0, l = oldKeys.length; i < l; i++) {
+      const key = oldKeys[i]!;
+      if (!Object.hasOwn(newProps, key)) {
+        const oldPart = this._parts.get(key)!;
+        this._parts.delete(key);
+        updater.enqueueMutationEffect(new DisconnectPart(oldPart));
+      }
+    }
+
+    this._pendingProps = newProps;
   }
 
   commit(_updater: Updater): void {

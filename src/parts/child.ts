@@ -9,8 +9,6 @@ export class ChildPart implements Part {
 
   private _pendingValue: ChildValue | null = null;
 
-  private _dirty = false;
-
   constructor(node: ChildNode) {
     this._node = node;
   }
@@ -35,14 +33,9 @@ export class ChildPart implements Part {
 
   setValue(newValue: unknown, _updater: Updater): void {
     this._pendingValue = ChildValue.upgrade(newValue, this._committedValue);
-    this._dirty = true;
   }
 
   commit(updater: Updater): void {
-    if (!this._dirty) {
-      return;
-    }
-
     const oldValue = this._committedValue;
     const newValue = this._pendingValue;
 
@@ -61,7 +54,6 @@ export class ChildPart implements Part {
     }
 
     this._committedValue = newValue;
-    this._dirty = false;
   }
 
   disconnect(updater: Updater): void {
@@ -162,38 +154,42 @@ export class SignalChild<T> extends ChildValue {
 
   mount(part: ChildPart, updater: Updater): void {
     this._subscription = this._signal.subscribe(() => {
-      part.setValue(this, updater);
       updater.enqueueMutationEffect(part);
       updater.requestUpdate();
     });
+    this._memoizedValue = ChildValue.upgrade(this._signal.value, null);
+    this._memoizedVersion = this._signal.version;
+    this._memoizedValue.mount(part, updater);
   }
 
-  unmount(_part: ChildPart, _updater: Updater): void {
+  unmount(part: ChildPart, updater: Updater): void {
     if (this._subscription !== null) {
       this._subscription();
       this._subscription = null;
     }
+    if (this._memoizedValue !== null) {
+      this._memoizedValue.unmount(part, updater);
+      this._memoizedValue = null;
+      this._memoizedVersion = 0;
+    }
   }
 
   update(part: ChildPart, updater: Updater): void {
-    const { version } = this._signal;
+    const newVersion = this._signal.version;
 
-    if (this._memoizedVersion < version) {
+    if (this._memoizedVersion < newVersion) {
       const oldValue = this._memoizedValue;
 
       if (oldValue !== null) {
         oldValue.unmount(part, updater);
       }
 
-      const newValue = ChildValue.upgrade(
-        this._signal.value,
-        this._memoizedValue,
-      );
+      const newValue = ChildValue.upgrade(this._signal.value, oldValue);
 
       newValue.mount(part, updater);
 
       this._memoizedValue = newValue;
-      this._memoizedVersion = version;
+      this._memoizedVersion = newVersion;
     }
 
     this._memoizedValue!.update(part, updater);
@@ -201,9 +197,11 @@ export class SignalChild<T> extends ChildValue {
 }
 
 export class TextChild extends ChildValue {
+  private readonly _node: Text;
+
   private _value: string;
 
-  private readonly _node: Text;
+  private _dirty = true;
 
   constructor(value: string) {
     super();
@@ -225,6 +223,7 @@ export class TextChild extends ChildValue {
 
   set value(newValue: string) {
     this._value = newValue;
+    this._dirty = true;
   }
 
   mount(part: ChildPart, _updater: Updater): void {
@@ -237,6 +236,9 @@ export class TextChild extends ChildValue {
   }
 
   update(_part: ChildPart, _updater: Updater): void {
-    this._node.textContent = this._value;
+    if (this._dirty) {
+      this._node.textContent = this._value;
+      this._dirty = false;
+    }
   }
 }
