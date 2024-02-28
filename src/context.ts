@@ -9,10 +9,11 @@ import {
   ensureHookType,
 } from './hook.js';
 import type { Hook } from './hook.js';
-import type { ScopeInterface } from './scopeInterface.js';
+import type { Renderable } from './renderable.js';
+import type { ScopeInterface } from './scope.js';
 import { AtomSignal, Signal } from './signal.js';
 import { TemplateResult } from './templateResult.js';
-import type { Effect, Renderable, Updater } from './updater.js';
+import type { Effect, Updater } from './updater.js';
 
 type ValueOrFunction<T> = T extends Function ? never : T | (() => T);
 

@@ -1,8 +1,8 @@
-export { block } from './directives/block.js';
-export { classList } from './directives/classList.js';
-export { elementRef } from './directives/elementRef.js';
-export { list } from './directives/list.js';
-export { slot } from './directives/slot.js';
-export { style } from './directives/style.js';
-export { unsafeHTML } from './directives/unsafeHTML.js';
-export { unsafeSVG } from './directives/unsafeSVG.js';
+export * from './directives/block.js';
+export * from './directives/classList.js';
+export * from './directives/elementRef.js';
+export * from './directives/list.js';
+export * from './directives/slot.js';
+export * from './directives/style.js';
+export * from './directives/unsafeHTML.js';
+export * from './directives/unsafeSVG.js';

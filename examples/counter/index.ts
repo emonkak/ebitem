@@ -1,20 +1,21 @@
 import {
   AsyncUpdater,
-  AtomSignal,
   Block,
   Context,
   Scope,
-  Signal,
   TemplateResult,
+  mount,
+} from '@emonkak/tempura';
+import {
   block,
   classList,
   elementRef,
   list,
-  mount,
   slot,
-} from '@emonkak/tempura';
+} from '@emonkak/tempura/directives.js';
+import { Signal, atom } from '@emonkak/tempura/signal.js';
 
-const counterSignal = new AtomSignal(0);
+const counterSignal = atom(0);
 
 function App(_props: {}, context: Context): TemplateResult {
   const [items, setItems] = context.useState([

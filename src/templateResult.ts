@@ -1,8 +1,8 @@
 import { directiveSymbol } from './directive.js';
-import { Fragment } from './fragment.js';
 import { Part } from './part.js';
-import { ChildPart } from './parts.js';
-import type { TemplateInterface } from './templateInterface.js';
+import { ChildPart } from './part/child.js';
+import { Fragment } from './renderable/fragment.js';
+import type { TemplateInterface } from './template.js';
 import type { Updater } from './updater.js';
 
 export class TemplateResult {

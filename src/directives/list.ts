@@ -1,6 +1,6 @@
 import { Directive, directiveSymbol } from '../directive.js';
 import { DisconnectPart, Part, mountPart, updatePart } from '../part.js';
-import { ChildPart, ChildValue } from '../parts.js';
+import { ChildPart, ChildValue } from '../part/child.js';
 import type { Effect, Updater } from '../updater.js';
 
 export function list<TItem>(items: TItem[]): List<TItem, TItem, number>;

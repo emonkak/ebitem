@@ -1,5 +1,9 @@
-import { AtomSignal } from '../src/signal.js';
-import { ArraySignal, AutoSignal, StructSignal } from '../src/signals.js';
+import {
+  ArraySignal,
+  AtomSignal,
+  StructSignal,
+  TrackingSignal,
+} from '../src/signal.js';
 
 interface PersonState {
   firstName: AtomSignal<string>;
@@ -8,7 +12,7 @@ interface PersonState {
 }
 
 class PersonStore extends StructSignal<PersonState> {
-  readonly fullName = new AutoSignal(
+  readonly fullName = new TrackingSignal(
     ({ firstName, lastName }) => firstName.value + ' ' + lastName.value,
     this.value,
   );

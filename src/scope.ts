@@ -1,11 +1,36 @@
 import { Context } from './context.js';
 import type { Hook } from './hook.js';
-import type { ScopeInterface } from './scopeInterface.js';
-import { Template } from './template.js';
-import { TemplateInterface } from './templateInterface.js';
-import type { Renderable, Updater } from './updater.js';
+import type { Renderable } from './renderable.js';
+import { Template, TemplateInterface } from './template.js';
+import type { Updater } from './updater.js';
 
 type Varibales = { [key: PropertyKey]: unknown };
+
+export interface ScopeInterface<TContext> {
+  getVariable(key: PropertyKey, renderable: Renderable<TContext>): unknown;
+
+  setVariable(
+    key: PropertyKey,
+    value: unknown,
+    renderable: Renderable<TContext>,
+  ): void;
+
+  createContext(
+    renderable: Renderable<TContext>,
+    hooks: Hook[],
+    updater: Updater<TContext>,
+  ): TContext;
+
+  createHTMLTemplate(
+    strings: TemplateStringsArray,
+    values: unknown[],
+  ): TemplateInterface;
+
+  createSVGTemplate(
+    strings: TemplateStringsArray,
+    values: unknown[],
+  ): TemplateInterface;
+}
 
 export class Scope implements ScopeInterface<Context> {
   private readonly _variableScope: WeakMap<Renderable<Context>, Varibales> =

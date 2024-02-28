@@ -1,13 +1,27 @@
 import { Part, mountPart, updatePart } from './part.js';
-import { AttributePart } from './parts.js';
-import { ChildPart } from './parts/child.js';
-import { EventPart } from './parts/event.js';
-import { PropertyPart } from './parts/property.js';
-import { SpreadPart } from './parts/spread.js';
-import type { MountPoint, TemplateInterface } from './templateInterface.js';
+import { AttributePart } from './part/attribute.js';
+import { ChildPart } from './part/child.js';
+import { EventPart } from './part/event.js';
+import { PropertyPart } from './part/property.js';
+import { SpreadPart } from './part/spread.js';
 import type { Updater } from './updater.js';
 
 type Hole = AttributeHole | ChildHole | EventHole | PropertyHole | SpreadHole;
+
+export interface TemplateInterface {
+  mount(values: unknown[], updater: Updater): MountPoint;
+  patch(
+    parts: Part[],
+    oldValues: unknown[],
+    newValues: unknown[],
+    updater: Updater,
+  ): void;
+}
+
+export interface MountPoint {
+  children: ChildNode[];
+  parts: Part[];
+}
 
 interface AttributeHole {
   type: 'attribute';

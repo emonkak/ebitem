@@ -1,6 +1,6 @@
 import { Directive, directiveSymbol } from '../directive.js';
 import type { Part } from '../part.js';
-import { ChildPart, ChildValue } from '../parts.js';
+import { ChildPart, ChildValue } from '../part/child.js';
 import type { Updater } from '../updater.js';
 
 export function unsafeSVG(content: string): UnsafeSVG {

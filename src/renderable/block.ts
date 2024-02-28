@@ -1,9 +1,10 @@
-import { Hook } from './hook.js';
-import { ChildPart, ChildValue } from './parts.js';
-import type { ScopeInterface } from './scopeInterface.js';
-import type { MountPoint, TemplateInterface } from './templateInterface.js';
-import type { TemplateResult } from './templateResult.js';
-import type { Renderable, Updater } from './updater.js';
+import { Hook } from '../hook.js';
+import { ChildPart, ChildValue } from '../part/child.js';
+import type { Renderable } from '../renderable.js';
+import type { ScopeInterface } from '../scope.js';
+import type { MountPoint, TemplateInterface } from '../template.js';
+import type { TemplateResult } from '../templateResult.js';
+import type { Updater } from '../updater.js';
 
 export class Block<TProps, TContext>
   extends ChildValue

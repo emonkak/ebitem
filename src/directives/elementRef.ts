@@ -1,7 +1,7 @@
 import { Directive, directiveSymbol } from '../directive.js';
 import type { Ref } from '../hook.js';
-import { Part } from '../part.js';
-import { AttributePart, AttributeValue } from '../parts.js';
+import type { Part } from '../part.js';
+import { AttributePart, AttributeValue } from '../part/attribute.js';
 import type { Updater } from '../updater.js';
 
 export function elementRef(ref: Ref<Element | null>) {

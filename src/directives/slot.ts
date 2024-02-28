@@ -1,6 +1,7 @@
 import { Directive, directiveSymbol } from '../directive.js';
 import { Part, mountPart, updatePart } from '../part.js';
-import { ChildPart, ChildValue, SpreadPart, SpreadProps } from '../parts.js';
+import { ChildPart, ChildValue } from '../part/child.js';
+import { SpreadPart, SpreadProps } from '../part/spread.js';
 import type { Updater } from '../updater.js';
 
 export function slot(type: string, props: SpreadProps, value: unknown): Slot {

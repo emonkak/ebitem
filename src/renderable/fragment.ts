@@ -1,7 +1,8 @@
-import { ChildPart, ChildValue } from './parts.js';
-import type { ScopeInterface } from './scopeInterface.js';
-import type { MountPoint, TemplateInterface } from './templateInterface.js';
-import type { Renderable, Updater } from './updater.js';
+import { ChildPart, ChildValue } from '../part/child.js';
+import type { Renderable } from '../renderable.js';
+import type { ScopeInterface } from '../scope.js';
+import type { MountPoint, TemplateInterface } from '../template.js';
+import type { Updater } from '../updater.js';
 
 const FragmentFlag = {
   DIRTY: 0b1,
