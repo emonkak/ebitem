@@ -57,10 +57,6 @@ export class SlotChild<TContext> extends ChildValue {
 
   private _memoizedValue: unknown;
 
-  private _pendingProps: SpreadProps;
-
-  private _pendingValue: unknown;
-
   constructor(
     type: string,
     props: SpreadProps,
@@ -84,8 +80,6 @@ export class SlotChild<TContext> extends ChildValue {
     this._childPart = childPart;
     this._memoizedProps = props;
     this._memoizedValue = value;
-    this._pendingProps = props;
-    this._pendingValue = value;
   }
 
   get endNode(): ChildNode | null {
@@ -113,10 +107,10 @@ export class SlotChild<TContext> extends ChildValue {
     newValue: unknown,
     updater: Updater<TContext>,
   ): void {
-    updatePart(this._elementPart, newProps, this._memoizedProps, updater);
-    updatePart(this._childPart, newValue, this._memoizedValue, updater);
-    this._pendingProps = newProps;
-    this._pendingValue = newValue;
+    updatePart(this._elementPart, this._memoizedProps, newProps, updater);
+    updatePart(this._childPart, this._memoizedValue, newValue, updater);
+    this._memoizedProps = newProps;
+    this._memoizedValue = newValue;
   }
 
   onMount(part: ChildPart, _updater: Updater): void {
@@ -130,8 +124,5 @@ export class SlotChild<TContext> extends ChildValue {
     this._element.remove();
   }
 
-  onUpdate(_part: ChildPart, _updater: Updater): void {
-    this._memoizedProps = this._pendingProps;
-    this._memoizedValue = this._pendingValue;
-  }
+  onUpdate(_part: ChildPart, _updater: Updater): void {}
 }
