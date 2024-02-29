@@ -74,19 +74,13 @@ export class List<TItem, TValue, TKey> implements Directive {
 }
 
 export class ListChild<TItem, TValue, TKey> extends ChildValue {
-  private _commitedParts: ItemPart[] = [];
+  private _memoizedParts: ItemPart[] = [];
 
-  private _commitedValues: TValue[] = [];
+  private _memoizedValues: TValue[] = [];
 
-  private _commitedKeys: TKey[] = [];
+  private _memoizedKeys: TKey[] = [];
 
   private _containerPart: ChildPart;
-
-  private _pendingParts: ItemPart[];
-
-  private _pendingValues: TValue[];
-
-  private _pendingKeys: TKey[];
 
   constructor(
     items: TItem[],
@@ -113,34 +107,28 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
     }
 
     this._containerPart = containerPart;
-    this._pendingParts = parts;
-    this._pendingValues = values;
-    this._pendingKeys = keys;
+    this._memoizedParts = parts;
   }
 
   get startNode(): ChildNode | null {
-    const parts = this._commitedParts;
+    const parts = this._memoizedParts;
     return parts.length > 0 ? parts[0]!.startNode : null;
   }
 
   get endNode(): ChildNode | null {
-    const parts = this._commitedParts;
+    const parts = this._memoizedParts;
     return parts.length > 0 ? parts[parts.length - 1]!.endNode : null;
   }
 
   onMount(_part: Part, _updater: Updater): void {}
 
   onUnmount(_part: Part, updater: Updater): void {
-    for (let i = 0, l = this._commitedParts.length; i < l; i++) {
-      this._commitedParts[i]!.disconnect(updater);
+    for (let i = 0, l = this._memoizedParts.length; i < l; i++) {
+      this._memoizedParts[i]!.disconnect(updater);
     }
   }
 
-  onUpdate(_part: ChildPart, _updater: Updater): void {
-    this._commitedParts = this._pendingParts;
-    this._commitedValues = this._pendingValues;
-    this._commitedKeys = this._pendingKeys;
-  }
+  onUpdate(_part: ChildPart, _updater: Updater): void {}
 
   update(
     newItems: TItem[],
@@ -148,9 +136,9 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
     keySelector: (item: TItem, index: number) => TKey,
     updater: Updater,
   ): void {
-    const oldParts: (ItemPart | undefined)[] = this._commitedParts;
-    const oldValues = this._commitedValues;
-    const oldKeys = this._commitedKeys;
+    const oldParts: (ItemPart | undefined)[] = this._memoizedParts;
+    const oldValues = this._memoizedValues;
+    const oldKeys = this._memoizedKeys;
     const newParts = new Array(newItems.length);
     const newValues = newItems.map(valueSelector);
     const newKeys = newItems.map(keySelector);
@@ -175,36 +163,36 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
         oldTail--;
       } else if (oldKeys[oldHead] === newKeys[newHead]) {
         // Old head matches new head; update in place
-        const part = oldParts[oldHead]!;
-        updatePart(part, oldValues[oldHead], newValues[newHead], updater);
-        newParts[newHead] = part;
+        const oldPart = oldParts[oldHead]!;
+        updatePart(oldPart, oldValues[oldHead], newValues[newHead], updater);
+        newParts[newHead] = oldPart;
         oldHead++;
         newHead++;
       } else if (oldKeys[oldTail] === newKeys[newTail]) {
         // Old tail matches new tail; update in place
-        const part = oldParts[oldTail]!;
-        updatePart(part, oldValues[oldTail], newValues[newTail], updater);
-        newParts[newTail] = part;
+        const oldPart = oldParts[oldTail]!;
+        updatePart(oldPart, oldValues[oldTail], newValues[newTail], updater);
+        newParts[newTail] = oldPart;
         oldTail--;
         newTail--;
       } else if (oldKeys[oldHead] === newKeys[newTail]) {
         // Old tail matches new head; update and move to new head
-        const part = oldParts[oldHead]!;
+        const oldPart = oldParts[oldHead]!;
         updater.enqueueMutationEffect(
-          new ReorderItemPart(part, newParts[newTail + 1] ?? null),
+          new ReorderItemPart(oldPart, newParts[newTail + 1] ?? null),
         );
-        updatePart(part, oldValues[oldHead], newValues[newTail], updater);
-        newParts[newTail] = part;
+        updatePart(oldPart, oldValues[oldHead], newValues[newTail], updater);
+        newParts[newTail] = oldPart;
         oldHead++;
         newTail--;
       } else if (oldKeys[oldTail] === newKeys[newHead]) {
         // Old tail matches new head; update and move to new head
-        const part = oldParts[oldTail]!;
+        const oldPart = oldParts[oldTail]!;
         updater.enqueueMutationEffect(
-          new ReorderItemPart(part, oldParts[oldHead] ?? null),
+          new ReorderItemPart(oldPart, oldParts[oldHead] ?? null),
         );
-        updatePart(part, oldValues[oldTail], newValues[newHead], updater);
-        newParts[newHead] = part;
+        updatePart(oldPart, oldValues[oldTail], newValues[newHead], updater);
+        newParts[newHead] = oldPart;
         oldTail--;
         newHead++;
       } else {
@@ -216,13 +204,13 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
         }
         if (!newKeyToIndexMap.has(oldKeys[oldHead]!)) {
           // Old head is no longer in new list; remove
-          const part = oldParts[oldHead]!;
-          updater.enqueueMutationEffect(new DisconnectPart(part));
+          const oldPart = oldParts[oldHead]!;
+          updater.enqueueMutationEffect(new DisconnectPart(oldPart));
           oldHead++;
         } else if (!newKeyToIndexMap.has(oldKeys[oldTail]!)) {
           // Old tail is no longer in new list; remove
-          const part = oldParts[oldTail]!;
-          updater.enqueueMutationEffect(new DisconnectPart(part));
+          const oldPart = oldParts[oldTail]!;
+          updater.enqueueMutationEffect(new DisconnectPart(oldPart));
           oldTail--;
         } else {
           // Any mismatches at this point are due to additions or
@@ -282,9 +270,8 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
       oldHead++;
     }
 
-    this._pendingParts = newParts;
-    this._pendingValues = newValues;
-    this._pendingKeys = newKeys;
+    this._memoizedValues = newValues;
+    this._memoizedKeys = newKeys;
   }
 }
 
