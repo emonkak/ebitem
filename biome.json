@@ -9,5 +9,15 @@
   },
   "formatter": {
     "indentStyle": "space"
+  },
+  "linter": {
+    "rules": {
+      "style": {
+        "noNonNullAssertion": "off"
+      },
+      "suspicious": {
+        "noAssignInExpressions": "off"
+      }
+    }
   }
 }

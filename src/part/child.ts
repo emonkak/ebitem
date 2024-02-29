@@ -3,28 +3,28 @@ import { Signal, Subscription } from '../signal.js';
 import type { Updater } from '../updater.js';
 
 export class ChildPart implements Part {
-  protected readonly _node: ChildNode;
+  protected readonly _markerNode: Comment;
 
   protected _committedValue: ChildValue | null = null;
 
   private _pendingValue: ChildValue | null = null;
 
-  constructor(node: ChildNode) {
-    this._node = node;
+  constructor(markerNode: Comment) {
+    this._markerNode = markerNode;
   }
 
   get node(): ChildNode {
-    return this._node;
+    return this._markerNode;
   }
 
   get startNode(): ChildNode {
     return this._committedValue
-      ? this._committedValue.startNode ?? this._node
-      : this._node;
+      ? this._committedValue.startNode ?? this._markerNode
+      : this._markerNode;
   }
 
   get endNode(): ChildNode {
-    return this._node;
+    return this._markerNode;
   }
 
   get value(): ChildValue | null {

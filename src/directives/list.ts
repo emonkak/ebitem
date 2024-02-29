@@ -291,22 +291,22 @@ export class ListChild<TItem, TValue, TKey> extends ChildValue {
 export class ItemPart extends ChildPart implements Part {
   private readonly _containerPart: ChildPart;
 
-  constructor(node: ChildNode, containerPart: ChildPart) {
-    super(node);
+  constructor(markerNode: Comment, containerPart: ChildPart) {
+    super(markerNode);
     this._containerPart = containerPart;
   }
 
   override commit(updater: Updater): void {
     if (!this.node.isConnected) {
       const reference = this._containerPart.endNode;
-      reference.parentNode!.insertBefore(this._node, reference);
+      reference.parentNode!.insertBefore(this._markerNode, reference);
     }
 
     super.commit(updater);
   }
 
   override disconnect(updater: Updater): void {
-    this._node.remove();
+    this._markerNode.remove();
     super.disconnect(updater);
   }
 
@@ -315,7 +315,7 @@ export class ItemPart extends ChildPart implements Part {
       ? referencePart.startNode
       : this._containerPart.endNode;
 
-    reference.parentNode!.insertBefore(this._node, reference);
+    reference.parentNode!.insertBefore(this._markerNode, reference);
 
     this._committedValue?.onMount(this, updater);
   }
