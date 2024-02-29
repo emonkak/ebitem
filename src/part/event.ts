@@ -40,7 +40,7 @@ export class EventPart implements Part {
       )
     ) {
       throw new Error(
-        'The value of "EventPart" must be a EventListener, EventListenerObject or null.',
+        'A value of the event part must be a EventListener, EventListenerObject or null.',
       );
     }
 

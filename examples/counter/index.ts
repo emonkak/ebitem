@@ -152,7 +152,7 @@ function Counter({ count }: CounterProps, context: Context): TemplateResult {
 
   return context.html`
     <h1>
-      <span class="count-label" ref=${elementRef(countLabelRef)}>COUNT: </span>
+      <span class="count-label" ${elementRef(countLabelRef)}>COUNT: </span>
       <span
         class=${classList('count-value', {
           'is-odd': count.value % 2 !== 0,

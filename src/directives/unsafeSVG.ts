@@ -17,7 +17,7 @@ export class UnsafeSVG implements Directive {
   [directiveSymbol](part: Part, updater: Updater): void {
     if (!(part instanceof ChildPart)) {
       throw new Error(
-        '"UnsafeSVG" directive must be used in an arbitrary child.',
+        'UnsafeSVG directive must be used in an arbitrary child.',
       );
     }
 

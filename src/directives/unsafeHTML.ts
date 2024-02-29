@@ -17,7 +17,7 @@ export class UnsafeHTML implements Directive {
   [directiveSymbol](part: Part, updater: Updater): void {
     if (!(part instanceof ChildPart)) {
       throw new Error(
-        '"UnsafeHTML" directive must be used in an arbitrary child.',
+        'UnsafeHTML directive must be used in an arbitrary child.',
       );
     }
 

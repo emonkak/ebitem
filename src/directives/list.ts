@@ -46,7 +46,7 @@ export class List<TItem, TValue, TKey> implements Directive {
 
   [directiveSymbol](part: Part, updater: Updater): void {
     if (!(part instanceof ChildPart)) {
-      throw new Error('"List" directive must be used in an arbitrary child.');
+      throw new Error('List directive must be used in an arbitrary child.');
     }
 
     const value = part.value;

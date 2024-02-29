@@ -26,7 +26,7 @@ export class TemplateResult {
   [directiveSymbol](part: Part, updater: Updater): void {
     if (!(part instanceof ChildPart)) {
       throw new Error(
-        '"TemplateResult" directive must be used in an arbitrary child.',
+        'TemplateResult directive must be used in an arbitrary child.',
       );
     }
 

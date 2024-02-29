@@ -1,12 +1,17 @@
 import { Part, mountPart, updatePart } from './part.js';
 import { AttributePart } from './part/attribute.js';
 import { ChildPart } from './part/child.js';
+import { ElementPart } from './part/element.js';
 import { EventPart } from './part/event.js';
 import { PropertyPart } from './part/property.js';
-import { SpreadPart } from './part/spread.js';
 import type { Updater } from './updater.js';
 
-type Hole = AttributeHole | ChildHole | EventHole | PropertyHole | SpreadHole;
+export type Hole =
+  | AttributeHole
+  | ChildHole
+  | ElementHole
+  | EventHole
+  | PropertyHole;
 
 export interface TemplateInterface {
   mount(values: unknown[], updater: Updater): MountPoint;
@@ -34,6 +39,11 @@ interface ChildHole {
   index: number;
 }
 
+interface ElementHole {
+  type: 'element';
+  index: number;
+}
+
 interface EventHole {
   type: 'event';
   index: number;
@@ -46,32 +56,21 @@ interface PropertyHole {
   name: string;
 }
 
-interface SpreadHole {
-  type: 'spread';
-  index: number;
-}
-
 export class Template implements TemplateInterface {
-  static parseHTML(
-    strings: TemplateStringsArray,
-    markerString: string,
-  ): Template {
+  static parseHTML(strings: ReadonlyArray<string>, marker: string): Template {
     const template = document.createElement('template');
-    template.innerHTML = strings.join(markerString).trim();
-    const holes = parseChildren(template.content, markerString);
+    template.innerHTML = strings.join(marker).trim();
+    const holes = parseChildren(template.content, marker);
     return new Template(template, holes);
   }
 
-  static parseSVG(
-    strings: TemplateStringsArray,
-    markerString: string,
-  ): Template {
+  static parseSVG(strings: ReadonlyArray<string>, marker: string): Template {
     const template = document.createElement('template');
-    template.innerHTML = '<svg>' + strings.join(markerString).trim() + '</svg>';
+    template.innerHTML = `<svg>${strings.join(marker).trim()}</svg>`;
     template.content.replaceChildren(
       ...template.content.firstChild!.childNodes,
     );
-    const holes = parseChildren(template.content, markerString);
+    const holes = parseChildren(template.content, marker);
     return new Template(template, holes);
   }
 
@@ -98,13 +97,13 @@ export class Template implements TemplateInterface {
       );
 
       let currentHole = this._holes[0]!;
-      let currentNode;
+      let currentNode: Node | null;
       let holeIndex = 0;
       let nodeIndex = 0;
 
       outer: while ((currentNode = walker.nextNode()) !== null) {
         while (currentHole.index === nodeIndex) {
-          let part;
+          let part: Part;
 
           switch (currentHole.type) {
             case 'attribute':
@@ -113,17 +112,17 @@ export class Template implements TemplateInterface {
                 currentHole.name,
               );
               break;
+            case 'child':
+              part = new ChildPart(currentNode as Comment);
+              break;
+            case 'element':
+              part = new ElementPart(currentNode as Element);
+              break;
             case 'event':
               part = new EventPart(currentNode as Element, currentHole.name);
               break;
-            case 'child':
-              part = new ChildPart(currentNode as ChildNode);
-              break;
             case 'property':
               part = new PropertyPart(currentNode as Element, currentHole.name);
-              break;
-            case 'spread':
-              part = new SpreadPart(currentNode as Element);
               break;
           }
 
@@ -160,7 +159,7 @@ export class Template implements TemplateInterface {
 
 function parseAttribtues(
   element: Element,
-  markerString: string,
+  marker: string,
   holes: Hole[],
   index: number,
 ): void {
@@ -172,12 +171,12 @@ function parseAttribtues(
     const name = attribute.name;
     const value = attribute.value;
 
-    if (name === markerString && value === '') {
+    if (name === marker && value === '') {
       holes.push({
-        type: 'spread',
+        type: 'element',
         index,
       });
-    } else if (value === markerString) {
+    } else if (value === marker) {
       if (name.length > 1 && name[0] === '@') {
         holes.push({
           type: 'event',
@@ -205,34 +204,36 @@ function parseAttribtues(
   }
 }
 
-function parseChildren(rootNode: Node, markerString: string): Hole[] {
+function parseChildren(rootNode: Node, marker: string): Hole[] {
   const walker = document.createTreeWalker(
     rootNode,
     NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT,
   );
   const holes: Hole[] = [];
 
-  let current;
+  let currentNode: Node | null;
   let index = 0;
 
-  while ((current = walker.nextNode()) !== null) {
-    if (current.nodeType === Node.ELEMENT_NODE) {
-      parseAttribtues(current as Element, markerString, holes, index);
-    } else if (current.nodeType === Node.TEXT_NODE) {
-      const components = current.textContent!.split(markerString);
+  while ((currentNode = walker.nextNode()) !== null) {
+    if (currentNode.nodeType === Node.ELEMENT_NODE) {
+      parseAttribtues(currentNode as Element, marker, holes, index);
+    } else if (currentNode.nodeType === Node.TEXT_NODE) {
+      const components = (currentNode as Text).data.split(marker);
+
       if (components.length > 1) {
         const tailIndex = components.length - 1;
+        const parent = currentNode.parentNode!;
+
         for (let i = 0; i < tailIndex; i++) {
           const component = components[i]!;
-          const parent = current.parentNode!;
 
           if (component !== '') {
             const text = document.createTextNode(component);
-            parent.insertBefore(text, current);
+            parent.insertBefore(text, currentNode);
             index++;
           }
 
-          parent.insertBefore(document.createComment(''), current);
+          parent.insertBefore(document.createComment(''), currentNode);
 
           holes.push({
             type: 'child',
@@ -242,11 +243,13 @@ function parseChildren(rootNode: Node, markerString: string): Hole[] {
         }
 
         const tailComponent = components[tailIndex]!;
+
         if (tailComponent !== '') {
-          current.textContent = tailComponent;
+          // Reuse the current node.
+          (currentNode as Text).data = tailComponent;
         } else {
-          walker.currentNode = current.previousSibling!;
-          (current as Text).remove();
+          walker.currentNode = currentNode.previousSibling!;
+          (currentNode as Text).remove();
           index--;
         }
       }

@@ -24,9 +24,7 @@ export class Style implements Directive {
 
   [directiveSymbol](part: Part, updater: Updater): void {
     if (!(part instanceof AttributePart) || part.name !== 'style') {
-      throw new Error(
-        '"Style" directive must be used in the "style" attribute.',
-      );
+      throw new Error('Style directive must be used in the "style" attribute.');
     }
 
     updater.enqueueMutationEffect(

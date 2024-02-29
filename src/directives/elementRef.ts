@@ -1,7 +1,7 @@
 import { Directive, directiveSymbol } from '../directive.js';
 import type { Ref } from '../hook.js';
 import type { Part } from '../part.js';
-import { AttributePart, AttributeValue } from '../part/attribute.js';
+import { ElementPart, ElementValue } from '../part/element.js';
 import type { Updater } from '../updater.js';
 
 export function elementRef(ref: Ref<Element | null>) {
@@ -16,21 +16,19 @@ export class ElementRef implements Directive {
   }
 
   [directiveSymbol](part: Part, updater: Updater): void {
-    if (!(part instanceof AttributePart) || part.name !== 'ref') {
-      throw new Error(
-        '"ElementRef" directive must be used in the "ref" attribute.',
-      );
+    if (!(part instanceof ElementPart)) {
+      throw new Error('ElementRef directive must be used in an element part.');
     }
 
-    if (!(part.value instanceof RefAttribute) || part.value.ref !== this._ref) {
-      part.setValue(new RefAttribute(this._ref), updater);
+    if (!(part.value instanceof RefElement) || part.value.ref !== this._ref) {
+      part.setValue(new RefElement(this._ref), updater);
 
       updater.enqueueMutationEffect(part);
     }
   }
 }
 
-export class RefAttribute extends AttributeValue {
+export class RefElement extends ElementValue {
   private readonly _ref: Ref<Element | null>;
 
   constructor(ref: Ref<Element | null>) {
@@ -42,7 +40,7 @@ export class RefAttribute extends AttributeValue {
     return this._ref;
   }
 
-  onMount(part: AttributePart, _updater: Updater): void {
+  onMount(part: ElementPart, _updater: Updater): void {
     if (typeof this._ref === 'function') {
       this._ref(part.node);
     } else {
@@ -50,7 +48,7 @@ export class RefAttribute extends AttributeValue {
     }
   }
 
-  onUnmount(_part: AttributePart, _updater: Updater): void {
+  onUnmount(_part: ElementPart, _updater: Updater): void {
     if (typeof this._ref === 'function') {
       this._ref(null);
     } else {
@@ -58,5 +56,5 @@ export class RefAttribute extends AttributeValue {
     }
   }
 
-  onUpdate(_part: AttributePart, _updater: Updater): void {}
+  onUpdate(_part: ElementPart, _updater: Updater): void {}
 }

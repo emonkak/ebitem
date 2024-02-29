@@ -24,7 +24,7 @@ export class PropertyPart implements Part {
     return this._name;
   }
 
-  get value(): unknown {
+  get value(): PropertyValue | null {
     return this._committedValue;
   }
 

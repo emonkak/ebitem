@@ -27,7 +27,7 @@ export class Block<TProps, TContext> implements Directive {
 
   [directiveSymbol](part: Part, updater: Updater): void {
     if (!(part instanceof ChildPart)) {
-      throw new Error('"Block" directive must be used in an arbitrary child.');
+      throw new Error('Block directive must be used in an arbitrary child.');
     }
 
     const value = part.value;
