@@ -1,128 +1,55 @@
-import { Directive, directiveSymbol } from '../directive.js';
-import { Part, mountPart, updatePart } from '../part.js';
-import { ChildPart, ChildValue } from '../part/child.js';
-import { ElementPart, SpreadProps } from '../part/element.js';
+import { Directive, directiveTag } from '../directive.js';
+import type { Part } from '../part.js';
+import { ChildPart } from '../part/child.js';
+import type { ElementProps } from '../part/element.js';
+import { Slot } from '../slot.js';
 import type { Updater } from '../updater.js';
 
-export function slot(type: string, props: SpreadProps, value: unknown): Slot {
-  return new Slot(type, props, value);
+export function slot(
+  type: string,
+  props: ElementProps,
+  value: unknown,
+): SlotDirective {
+  return new SlotDirective(type, props, value);
 }
 
-export class Slot implements Directive {
+export class SlotDirective implements Directive<unknown> {
   private readonly _type: string;
 
-  private readonly _props: SpreadProps;
+  private readonly _elementProps: ElementProps;
 
-  private readonly _value: unknown;
+  private readonly _childValue: unknown;
 
-  constructor(type: string, props: SpreadProps, value: unknown) {
+  constructor(type: string, elementProps: ElementProps, childValue: unknown) {
     this._type = type;
-    this._props = props;
-    this._value = value;
+    this._elementProps = elementProps;
+    this._childValue = childValue;
   }
 
-  [directiveSymbol](part: Part, updater: Updater): void {
+  [directiveTag](_context: unknown, part: Part, updater: Updater): void {
     if (!(part instanceof ChildPart)) {
       throw new Error('Slot directive must be used in an arbitrary child.');
     }
 
-    const value = part.value;
+    const slot = part.value;
 
-    if (value instanceof SlotChild && value.type === this._type) {
-      value.update(this._props, this._value, updater);
+    if (slot instanceof Slot && slot.type === this._type) {
+      slot.elementPart.value = this._elementProps;
+      slot.childPart.value = this._childValue;
+
+      updater.enqueueMutationEffect(slot);
     } else {
-      const newSlot = new SlotChild(
+      const newSlot = new Slot(
         this._type,
-        this._props,
-        this._value,
-        updater,
+        this._elementProps,
+        this._childValue,
       );
 
-      part.setValue(newSlot, updater);
+      part.value = newSlot;
 
       updater.enqueueMutationEffect(part);
-      updater.requestUpdate();
     }
+
+    updater.requestUpdate();
   }
-}
-
-export class SlotChild<TContext> extends ChildValue {
-  private readonly _element: Element;
-
-  private readonly _elementPart: ElementPart;
-
-  private readonly _childPart: ChildPart;
-
-  private _memoizedProps: SpreadProps;
-
-  private _memoizedValue: unknown;
-
-  constructor(
-    type: string,
-    props: SpreadProps,
-    value: unknown,
-    updater: Updater,
-  ) {
-    super();
-
-    const element = document.createElement(type);
-    const marker = document.createComment('');
-    const childPart = new ChildPart(marker);
-    const elementPart = new ElementPart(element);
-
-    element.appendChild(marker);
-
-    mountPart(elementPart, props, updater);
-    mountPart(childPart, value, updater);
-
-    this._element = element;
-    this._elementPart = elementPart;
-    this._childPart = childPart;
-    this._memoizedProps = props;
-    this._memoizedValue = value;
-  }
-
-  get endNode(): ChildNode | null {
-    return this._element;
-  }
-
-  get props(): SpreadProps {
-    return this._memoizedProps;
-  }
-
-  get startNode(): ChildNode | null {
-    return this._element;
-  }
-
-  get type(): string {
-    return this._element.tagName;
-  }
-
-  get value(): unknown {
-    return this._memoizedValue;
-  }
-
-  update(
-    newProps: SpreadProps,
-    newValue: unknown,
-    updater: Updater<TContext>,
-  ): void {
-    updatePart(this._elementPart, this._memoizedProps, newProps, updater);
-    updatePart(this._childPart, this._memoizedValue, newValue, updater);
-    this._memoizedProps = newProps;
-    this._memoizedValue = newValue;
-  }
-
-  onMount(part: ChildPart, _updater: Updater): void {
-    const reference = part.endNode;
-    reference.parentNode!.insertBefore(this._element, part.endNode);
-  }
-
-  onUnmount(_part: ChildPart, updater: Updater): void {
-    this._childPart.disconnect(updater);
-    this._elementPart.disconnect(updater);
-    this._element.remove();
-  }
-
-  onUpdate(_part: ChildPart, _updater: Updater): void {}
 }

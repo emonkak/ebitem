@@ -1,17 +1,22 @@
-import type { Part } from '../part.js';
+import { disconnectDirective } from '../directive.js';
+import { Part } from '../part.js';
 import type { Updater } from '../updater.js';
 
-type EventListenerWithOptions = EventListenerOrEventListenerObject &
-  AddEventListenerOptions;
+type EventValue =
+  | EventListener
+  | (EventListenerObject & AddEventListenerOptions)
+  | null;
 
 export class EventPart implements Part {
   private readonly _element: Element;
 
   private readonly _name: string;
 
-  private _committedValue: EventListenerWithOptions | null = null;
+  private _pendingValue: EventValue = null;
 
-  private _pendingValue: EventListenerWithOptions | null = null;
+  private _memoizedValue: EventValue = null;
+
+  private _dirty = false;
 
   constructor(element: Element, name: string) {
     this._element = element;
@@ -22,69 +27,73 @@ export class EventPart implements Part {
     return this._element;
   }
 
-  get value(): EventListenerWithOptions | null {
-    return this._committedValue;
-  }
-
   get name(): string {
     return this._name;
   }
 
-  setValue(newValue: unknown, _updater: Updater): void {
-    if (
-      !(
-        newValue === null ||
-        typeof newValue === 'function' ||
-        (typeof newValue === 'object' &&
-          typeof (newValue as any).handleEvent === 'function')
-      )
-    ) {
+  get value(): EventValue {
+    return this._memoizedValue;
+  }
+
+  set value(newValue: unknown) {
+    if (!isEventHandler(newValue)) {
       throw new Error(
-        'A value of the event part must be a EventListener, EventListenerObject or null.',
+        'A value of EventPart must be a EventListener, EventListenerObject or null.',
       );
     }
 
-    this._pendingValue = newValue as EventListenerWithOptions | null;
+    this._pendingValue = newValue;
+    this._dirty = true;
+  }
+
+  get dirty(): boolean {
+    return this._dirty;
   }
 
   commit(_updater: Updater): void {
-    const {
-      _element: element,
-      _name: name,
-      _committedValue: oldValue,
-      _pendingValue: newValue,
-    } = this;
+    const oldValue = this._memoizedValue;
+    const newValue = this._pendingValue;
 
-    if (oldValue !== newValue) {
-      if (oldValue !== null) {
-        element.removeEventListener(name, this, oldValue);
+    if (oldValue !== null) {
+      if (typeof oldValue === 'function') {
+        this._element.removeEventListener(this._name, oldValue);
+      } else {
+        this._element.removeEventListener(this._name, oldValue, oldValue);
       }
-
-      if (newValue !== null) {
-        element.addEventListener(name, this, newValue);
-      }
-
-      this._committedValue = newValue;
     }
+
+    if (newValue !== null) {
+      if (typeof newValue === 'function') {
+        this._element.addEventListener(this._name, newValue);
+      } else {
+        this._element.addEventListener(this._name, newValue, newValue);
+      }
+    }
+
+    this._memoizedValue = newValue;
+    this._dirty = false;
   }
 
-  disconnect(_updater: Updater): void {
-    if (this._committedValue !== null) {
-      // The element may be retained by someone, so we remove the event listener
-      // to avoid memory leaks.
-      this._element.removeEventListener(this._name, this, this._committedValue);
-      this._committedValue = null;
-    }
-  }
+  disconnect(updater: Updater): void {
+    disconnectDirective(this, updater);
 
-  handleEvent(event: Event): void {
-    const value = this._committedValue;
+    const value = this._memoizedValue;
+
     if (value !== null) {
       if (typeof value === 'function') {
-        value.call(this._element, event);
+        this._element.removeEventListener(this._name, value);
       } else {
-        value.handleEvent(event);
+        this._element.removeEventListener(this._name, value, value);
       }
     }
   }
+}
+
+function isEventHandler(value: unknown): value is EventValue {
+  return (
+    value === null ||
+    typeof value === 'function' ||
+    (typeof value === 'object' &&
+      typeof (value as any).handleEvent === 'function')
+  );
 }

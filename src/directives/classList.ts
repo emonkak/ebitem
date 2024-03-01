@@ -1,4 +1,5 @@
-import { Directive, directiveSymbol } from '../directive.js';
+import type { Context } from '../context.js';
+import { Directive, directiveTag } from '../directive.js';
 import type { Part } from '../part.js';
 import { AttributePart } from '../part/attribute.js';
 import type { Effect, Updater } from '../updater.js';
@@ -7,31 +8,35 @@ export type ClassMap = Map<string, boolean>;
 
 export type ClassSpecifier = string | { [key: string]: boolean };
 
-export function classList(...classSpecifiers: ClassSpecifier[]): ClassList {
-  return new ClassList(classSpecifiers);
+export function classList(
+  ...classSpecifiers: ClassSpecifier[]
+): ClassListDirective {
+  return new ClassListDirective(classSpecifiers);
 }
 
-export class ClassList implements Directive {
+export class ClassListDirective implements Directive<Context> {
   private readonly _classSpecifiers: ClassSpecifier[];
 
   constructor(classSpecifiers: ClassSpecifier[]) {
     this._classSpecifiers = classSpecifiers;
   }
 
-  [directiveSymbol](part: Part, updater: Updater): void {
+  [directiveTag](
+    _context: Context,
+    part: Part,
+    updater: Updater<Context>,
+  ): void {
     if (!(part instanceof AttributePart) || part.name !== 'class') {
       throw new Error(
         'ClassList directive must be used in the "class" attribute.',
       );
     }
 
-    updater.enqueueMutationEffect(
-      new UpdateClassList(part, this._classSpecifiers),
-    );
+    updater.enqueueMutationEffect(new UpdateClass(part, this._classSpecifiers));
   }
 }
 
-class UpdateClassList implements Effect {
+class UpdateClass implements Effect {
   private readonly _part: AttributePart;
 
   private readonly _classSpecifiers: ClassSpecifier[];

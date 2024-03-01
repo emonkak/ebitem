@@ -1,5 +1,6 @@
 import { Context } from './context.js';
 import type { Hook } from './hook.js';
+import type { Part } from './part.js';
 import type { Renderable } from './renderable.js';
 import { Template, TemplateInterface } from './template.js';
 import type { Updater } from './updater.js';
@@ -7,6 +8,10 @@ import type { Updater } from './updater.js';
 type Varibales = { [key: PropertyKey]: unknown };
 
 export interface ScopeInterface<TContext> {
+  getHooks(part: Part): Hook[] | undefined;
+
+  setHooks(part: Part, hooks: Hook[]): void;
+
   getVariable(key: PropertyKey, renderable: Renderable<TContext>): unknown;
 
   setVariable(
@@ -33,25 +38,35 @@ export interface ScopeInterface<TContext> {
 }
 
 export class Scope implements ScopeInterface<Context> {
+  private readonly _globalVariables: Varibales;
+
+  private readonly _marker: string;
+
   private readonly _variableScope: WeakMap<Renderable<Context>, Varibales> =
     new WeakMap();
 
   private readonly _templateCaches: WeakMap<TemplateStringsArray, Template> =
     new WeakMap();
 
-  private readonly _globalVariables: Varibales;
-
-  private readonly _marker: string;
+  private readonly _hooksInParts: WeakMap<Part, Hook[]> = new WeakMap();
 
   constructor(globalVariables: Varibales = {}) {
     this._globalVariables = globalVariables;
     this._marker = `?${getUUID()}?`;
   }
 
+  getHooks(part: Part): Hook[] | undefined {
+    return this._hooksInParts.get(part);
+  }
+
   getVariable(key: PropertyKey, renderable: Renderable<Context>): unknown {
     return (
       this._variableScope.get(renderable)?.[key] ?? this._globalVariables[key]
     );
+  }
+
+  setHooks(part: Part, hooks: Hook[]): void {
+    this._hooksInParts.set(part, hooks);
   }
 
   setVariable(

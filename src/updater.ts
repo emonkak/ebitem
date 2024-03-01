@@ -1,11 +1,12 @@
-import { ChildPart } from './part/child.js';
 import type { Renderable } from './renderable.js';
+import type { ScopeInterface } from './scope.js';
 
 export interface Updater<TContext = unknown> {
   get currentRenderable(): Renderable<TContext> | null;
-  enqueueLayoutEffect(effect: Effect<TContext>): void;
-  enqueueMutationEffect(effect: Effect<TContext>): void;
-  enqueuePassiveEffect(effect: Effect<TContext>): void;
+  get scope(): ScopeInterface<TContext>;
+  enqueueLayoutEffect(effect: Effect): void;
+  enqueueMutationEffect(effect: Effect): void;
+  enqueuePassiveEffect(effect: Effect): void;
   enqueueRenderable(renderable: Renderable<TContext>): void;
   isRunning(): boolean;
   requestUpdate(): void;
@@ -13,22 +14,4 @@ export interface Updater<TContext = unknown> {
 
 export interface Effect<TContext = unknown> {
   commit(updater: Updater<TContext>): void;
-}
-
-export function mount<TContext>(
-  updater: Updater<TContext>,
-  renderable: Renderable<TContext>,
-  container: Node,
-) {
-  updater.enqueueRenderable(renderable);
-  updater.enqueueLayoutEffect({
-    commit(updater: Updater<TContext>) {
-      const node = document.createComment('');
-      container.appendChild(node);
-      const part = new ChildPart(node);
-      part.setValue(renderable, updater);
-      part.commit(updater);
-    },
-  });
-  updater.requestUpdate();
 }

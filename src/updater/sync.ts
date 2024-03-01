@@ -25,6 +25,10 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
     return this._currentRenderable;
   }
 
+  get scope(): ScopeInterface<TContext> {
+    return this._scope;
+  }
+
   enqueueLayoutEffect(effect: Effect<TContext>): void {
     this._pendingLayoutEffects.push(effect);
   }

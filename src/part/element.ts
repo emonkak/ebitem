@@ -1,17 +1,22 @@
-import { DisconnectPart, Part, mountPart, updatePart } from '../part.js';
+import { disconnectDirective } from '../directive.js';
+import type { Part } from '../part.js';
 import type { Updater } from '../updater.js';
 import { AttributePart } from './attribute.js';
 import { EventPart } from './event.js';
 import { PropertyPart } from './property.js';
 
-export type SpreadProps = { [key: string]: unknown };
+export type ElementProps = { [key: string]: unknown };
 
 export class ElementPart implements Part {
   private readonly _element: Element;
 
-  private _pendingValue: ElementValue | null = null;
+  private _pendingProps: ElementProps = {};
 
-  private _committedValue: ElementValue | null = null;
+  private _memoizedProps: ElementProps = {};
+
+  private _memoizedParts = new Map<string, Part>();
+
+  private _dirty = true;
 
   constructor(element: Element) {
     this._element = element;
@@ -21,124 +26,60 @@ export class ElementPart implements Part {
     return this._element;
   }
 
-  get value(): ElementValue | null {
-    return this._committedValue;
+  get value(): ElementProps {
+    return this._memoizedProps;
   }
 
-  setValue(newValue: unknown, _updater: Updater): void {
-    this._pendingValue = ElementValue.lift(newValue, this._committedValue);
+  get dirty(): boolean {
+    return this._dirty;
+  }
+
+  set value(newProps: unknown) {
+    if (!isElementProps(newProps)) {
+      throw new Error('A value of the SpreadPart must be an object.');
+    }
+
+    this._pendingProps = newProps;
+    this._dirty = true;
   }
 
   commit(updater: Updater): void {
-    const oldValue = this._committedValue;
-    const newValue = this._pendingValue;
+    const newProps = this._pendingProps;
+    const oldProps = this._memoizedProps;
+    const newKeys = Object.keys(newProps);
+    const oldKeys = Object.keys(oldProps);
 
-    if (oldValue !== newValue) {
-      if (oldValue !== null) {
-        oldValue.onUnmount(this, updater);
+    for (let i = 0, l = newKeys.length; i < l; i++) {
+      const key = newKeys[i]!;
+      let part = this._memoizedParts.get(key);
+
+      if (part === undefined) {
+        part = createPart(key, this._element);
+        this._memoizedParts.set(key, part);
       }
 
-      if (newValue !== null) {
-        newValue.onMount(this, updater);
+      part.value = newProps[key];
+      part.commit(updater);
+    }
+
+    for (let i = 0, l = oldKeys.length; i < l; i++) {
+      const oldKey = oldKeys[i]!;
+
+      if (!Object.hasOwn(newProps, oldKey)) {
+        const oldPart = this._memoizedParts.get(oldKey)!;
+        oldPart.disconnect(updater);
+        this._memoizedParts.delete(oldKey);
       }
     }
 
-    if (newValue !== null) {
-      newValue.onUpdate(this, updater);
-    }
-
-    this._committedValue = newValue;
+    this._memoizedProps = this._pendingProps;
+    this._dirty = false;
   }
 
   disconnect(updater: Updater): void {
-    if (this._committedValue !== null) {
-      this._committedValue.onUnmount(this, updater);
-      this._committedValue = null;
-    }
-  }
-}
+    disconnectDirective(this, updater);
 
-export abstract class ElementValue {
-  static lift(newValue: unknown, oldValue: ElementValue | null) {
-    if (newValue instanceof ElementValue) {
-      return newValue;
-    } else if (isSpreadProps(newValue)) {
-      if (oldValue instanceof SpreadValue) {
-        oldValue.setProps(newValue);
-        return oldValue;
-      } else {
-        return new SpreadValue(newValue);
-      }
-    } else {
-      throw new Error(
-        'A value of the element part must be an "ElementValue" or object.',
-      );
-    }
-  }
-
-  abstract onMount(_part: ElementPart, _updater: Updater): void;
-
-  abstract onUnmount(_part: ElementPart, _updater: Updater): void;
-
-  abstract onUpdate(_part: ElementPart, _updater: Updater): void;
-}
-
-class SpreadValue extends ElementValue {
-  private _pendingProps: SpreadProps;
-
-  private _memoizedProps: SpreadProps = {};
-
-  private _parts = new Map<string, Part>();
-
-  constructor(props: SpreadProps) {
-    super();
-    this._pendingProps = props;
-  }
-
-  setProps(newProps: SpreadProps): void {
-    this._pendingProps = newProps;
-  }
-
-  onMount(_part: ElementPart, _updater: Updater): void {}
-
-  onUnmount(_part: ElementPart, updater: Updater): void {
-    this._parts.forEach((part) => part.disconnect(updater));
-    this._parts.clear();
-  }
-
-  onUpdate(part: ElementPart, updater: Updater) {
-    const newProps = this._pendingProps;
-    const oldProps = this._memoizedProps;
-
-    if (newProps !== oldProps) {
-      const newKeys = Object.keys(newProps);
-      const oldKeys = Object.keys(oldProps);
-
-      for (let i = 0, l = newKeys.length; i < l; i++) {
-        const key = newKeys[i]!;
-        const currentPart = this._parts.get(key);
-
-        if (currentPart !== undefined) {
-          updatePart(currentPart, oldProps[key], newProps[key], updater);
-        } else {
-          const newPart = createPart(key, part.node);
-          mountPart(newPart, newProps[key], updater);
-          this._parts.set(key, newPart);
-        }
-      }
-
-      for (let i = 0, l = oldKeys.length; i < l; i++) {
-        const key = oldKeys[i]!;
-
-        if (!Object.hasOwn(newProps, key)) {
-          const oldPart = this._parts.get(key)!;
-          this._parts.delete(key);
-          updater.enqueueMutationEffect(new DisconnectPart(oldPart));
-        }
-      }
-
-      this._memoizedProps = newProps;
-    }
+    this._memoizedParts.forEach((part) => part.disconnect(updater));
   }
 }
 
@@ -152,6 +93,6 @@ function createPart(name: string, element: Element): Part {
   }
 }
 
-function isSpreadProps(value: unknown): value is SpreadProps {
+function isElementProps(value: unknown): value is ElementProps {
   return value !== null && typeof value === 'object';
 }

@@ -2,7 +2,6 @@ import {
   Cleanup,
   EffectCallback,
   EffectHook,
-  LayoutEffectHook,
   MemoHook,
   ReducerHook,
   RefObject,
@@ -137,7 +136,7 @@ export class Context {
     const currentHook = this._hooks[this._hookIndex];
 
     if (currentHook !== undefined) {
-      ensureHookType<LayoutEffectHook>('layoutEffect', currentHook);
+      ensureHookType<EffectHook>('effect', currentHook);
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
         this._updater.enqueueLayoutEffect(new InvokeEffectHook(currentHook));
@@ -146,8 +145,8 @@ export class Context {
 
       currentHook.callback = callback;
     } else {
-      const newHook: LayoutEffectHook = {
-        type: 'layoutEffect',
+      const newHook: EffectHook = {
+        type: 'effect',
         callback,
         dependencies,
         cleanup: undefined,
@@ -181,6 +180,32 @@ export class Context {
     this._hookIndex++;
 
     return currentHook.value;
+  }
+
+  useMutationEffect(callback: EffectCallback, dependencies?: unknown[]): void {
+    const currentHook = this._hooks[this._hookIndex];
+
+    if (currentHook !== undefined) {
+      ensureHookType<EffectHook>('effect', currentHook);
+
+      if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
+        this._updater.enqueueMutationEffect(new InvokeEffectHook(currentHook));
+        currentHook.dependencies = dependencies;
+      }
+
+      currentHook.callback = callback;
+    } else {
+      const newHook: EffectHook = {
+        type: 'effect',
+        callback,
+        dependencies,
+        cleanup: undefined,
+      };
+      this._hooks.push(newHook);
+      this._updater.enqueueMutationEffect(new InvokeEffectHook(newHook));
+    }
+
+    this._hookIndex++;
   }
 
   useReducer<TState, TAction>(
@@ -257,9 +282,9 @@ export class Context {
 }
 
 class InvokeEffectHook implements Effect {
-  private readonly _hook: EffectHook | LayoutEffectHook;
+  private readonly _hook: EffectHook;
 
-  constructor(hook: EffectHook | LayoutEffectHook) {
+  constructor(hook: EffectHook) {
     this._hook = hook;
   }
 

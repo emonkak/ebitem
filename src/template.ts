@@ -4,6 +4,7 @@ import { ChildPart } from './part/child.js';
 import { ElementPart } from './part/element.js';
 import { EventPart } from './part/event.js';
 import { PropertyPart } from './part/property.js';
+import { TemplateRoot } from './templateRoot.js';
 import type { Updater } from './updater.js';
 
 export type Hole =
@@ -14,18 +15,13 @@ export type Hole =
   | PropertyHole;
 
 export interface TemplateInterface {
-  mount(values: unknown[], updater: Updater): MountPoint;
+  mount(values: unknown[], updater: Updater): TemplateRoot;
   patch(
     parts: Part[],
     oldValues: unknown[],
     newValues: unknown[],
     updater: Updater,
   ): void;
-}
-
-export interface MountPoint {
-  children: ChildNode[];
-  parts: Part[];
 }
 
 interface AttributeHole {
@@ -111,7 +107,7 @@ export class Template implements TemplateInterface {
     return this._holes;
   }
 
-  mount(values: unknown[], updater: Updater): MountPoint {
+  mount(values: unknown[], updater: Updater): TemplateRoot {
     const numHoles = this._holes.length;
     const parts = new Array(numHoles);
     const rootNode = document.importNode(this._element.content, true);
@@ -170,7 +166,7 @@ export class Template implements TemplateInterface {
       }
     }
 
-    return { children: [...rootNode.childNodes], parts };
+    return new TemplateRoot([...rootNode.childNodes], parts);
   }
 
   patch(

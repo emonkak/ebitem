@@ -1,237 +1,82 @@
-import type { Part } from '../part.js';
-import { Signal, Subscription } from '../signal.js';
+import { disconnectDirective } from '../directive.js';
+import { NodeRoot } from '../nodeRoot.js';
+import { Part, PartChild } from '../part.js';
 import type { Updater } from '../updater.js';
 
 export class ChildPart implements Part {
   protected readonly _markerNode: Comment;
 
-  protected _committedValue: ChildValue | null = null;
+  private _memoizedValue: PartChild | null = null;
 
-  private _pendingValue: ChildValue | null = null;
+  private _pendingValue: PartChild | null = null;
+
+  private _dirty = false;
 
   constructor(markerNode: Comment) {
     this._markerNode = markerNode;
   }
 
-  get node(): ChildNode {
+  get node(): Comment {
     return this._markerNode;
   }
 
   get startNode(): ChildNode {
-    return this._committedValue
-      ? this._committedValue.startNode ?? this._markerNode
+    return this._memoizedValue instanceof PartChild
+      ? this._memoizedValue.startNode ?? this._markerNode
       : this._markerNode;
   }
 
   get endNode(): ChildNode {
-    return this._markerNode;
+    return this._memoizedValue instanceof PartChild
+      ? this._memoizedValue.endNode ?? this._markerNode
+      : this._markerNode;
   }
 
-  get value(): ChildValue | null {
-    return this._committedValue;
+  get value(): PartChild | null {
+    return this._memoizedValue;
   }
 
-  setValue(newValue: unknown, _updater: Updater): void {
-    this._pendingValue = ChildValue.lift(newValue, this._committedValue);
+  get dirty(): boolean {
+    return this._dirty;
   }
 
-  commit(updater: Updater): void {
-    const oldValue = this._committedValue;
-    const newValue = this._pendingValue;
-
-    if (oldValue !== newValue) {
-      if (oldValue !== null) {
-        oldValue.onUnmount(this, updater);
-      }
-
-      if (newValue !== null) {
-        newValue.onMount(this, updater);
-      }
-    }
-
-    if (newValue !== null) {
-      newValue.onUpdate(this, updater);
-    }
-
-    this._committedValue = newValue;
-  }
-
-  disconnect(updater: Updater): void {
-    if (this._committedValue !== null) {
-      this._committedValue.onUnmount(this, updater);
-      this._committedValue = null;
-    }
-  }
-}
-
-export abstract class ChildValue {
-  static lift(newValue: unknown, oldValue: ChildValue | null): ChildValue {
-    if (newValue instanceof ChildValue) {
-      return newValue;
-    } else if (newValue instanceof Signal) {
-      if (oldValue instanceof SignalChild && oldValue.signal === newValue) {
-        return oldValue;
-      }
-      return new SignalChild(newValue);
-    } else if (newValue == null) {
-      return oldValue instanceof NullChild ? oldValue : new NullChild();
+  set value(newValue: unknown) {
+    if (newValue == null) {
+      this._pendingValue = null;
+    } else if (newValue instanceof PartChild) {
+      this._pendingValue = newValue;
     } else {
-      const stringValue =
-        typeof newValue === 'string' ? newValue : newValue.toString();
-      if (oldValue instanceof TextChild) {
-        oldValue.value = stringValue;
-        return oldValue;
-      } else {
-        return new TextChild(stringValue);
-      }
+      const nodeRoot =
+        this._memoizedValue instanceof NodeRoot
+          ? this._memoizedValue
+          : new NodeRoot(document.createTextNode(''));
+      nodeRoot.value = newValue;
+      this._pendingValue = nodeRoot;
     }
-  }
-
-  abstract get startNode(): ChildNode | null;
-
-  abstract get endNode(): ChildNode | null;
-
-  abstract onMount(_part: ChildPart, _updater: Updater): void;
-
-  abstract onUnmount(_part: ChildPart, _updater: Updater): void;
-
-  abstract onUpdate(_part: ChildPart, _updater: Updater): void;
-}
-
-export class NullChild extends ChildValue {
-  constructor() {
-    super();
-  }
-
-  get startNode(): ChildNode | null {
-    return null;
-  }
-
-  get endNode(): ChildNode | null {
-    return null;
-  }
-
-  onMount(_part: ChildPart, _updater: Updater): void {}
-
-  onUnmount(_part: ChildPart, _updater: Updater): void {}
-
-  onUpdate(_part: ChildPart, _updater: Updater): void {}
-}
-
-export class SignalChild<T> extends ChildValue {
-  private readonly _signal: Signal<T>;
-
-  private _mountedValue: ChildValue | null = null;
-
-  private _mountedVersion = 0;
-
-  private _subscription: Subscription | null = null;
-
-  constructor(signal: Signal<T>) {
-    super();
-    this._signal = signal;
-  }
-
-  get signal(): Signal<T> {
-    return this._signal;
-  }
-
-  get startNode(): ChildNode | null {
-    return this._mountedValue?.startNode ?? null;
-  }
-
-  get endNode(): ChildNode | null {
-    return this._mountedValue?.endNode ?? null;
-  }
-
-  onMount(part: ChildPart, updater: Updater): void {
-    this._mountedValue = ChildValue.lift(this._signal.value, null);
-    this._mountedVersion = this._signal.version;
-    this._mountedValue.onMount(part, updater);
-
-    this._subscription = this._signal.subscribe(() => {
-      updater.enqueueMutationEffect(part);
-      updater.requestUpdate();
-    });
-  }
-
-  onUnmount(part: ChildPart, updater: Updater): void {
-    if (this._subscription !== null) {
-      this._subscription();
-      this._subscription = null;
-    }
-
-    if (this._mountedValue !== null) {
-      this._mountedValue.onUnmount(part, updater);
-      this._mountedValue = null;
-      this._mountedVersion = 0;
-    }
-  }
-
-  onUpdate(part: ChildPart, updater: Updater): void {
-    const newVersion = this._signal.version;
-
-    if (this._mountedVersion < newVersion) {
-      const oldValue = this._mountedValue;
-      const newValue = ChildValue.lift(this._signal.value, oldValue);
-
-      if (oldValue !== null) {
-        oldValue.onUnmount(part, updater);
-      }
-
-      newValue.onMount(part, updater);
-
-      this._mountedValue = newValue;
-      this._mountedVersion = newVersion;
-    }
-
-    this._mountedValue!.onUpdate(part, updater);
-  }
-}
-
-export class TextChild extends ChildValue {
-  private readonly _node: Text;
-
-  private _value: string;
-
-  private _dirty = true;
-
-  constructor(value: string) {
-    super();
-    this._value = value;
-    this._node = document.createTextNode('');
-  }
-
-  get startNode(): Text {
-    return this._node;
-  }
-
-  get endNode(): Text {
-    return this._node;
-  }
-
-  get value(): string {
-    return this._value;
-  }
-
-  set value(newValue: string) {
-    this._value = newValue;
     this._dirty = true;
   }
 
-  onMount(part: ChildPart, _updater: Updater): void {
-    const reference = part.endNode;
-    reference.parentNode!.insertBefore(this._node, reference);
-  }
+  commit(updater: Updater): void {
+    const oldValue = this._memoizedValue;
+    const newValue = this._pendingValue;
 
-  onUnmount(_part: ChildPart, _updater: Updater): void {
-    this._node.remove();
-  }
-
-  onUpdate(_part: ChildPart, _updater: Updater): void {
-    if (this._dirty) {
-      this._node.textContent = this._value;
-      this._dirty = false;
+    if (oldValue !== newValue) {
+      oldValue?.unmount(this, updater);
+      newValue?.mount(this, updater);
     }
+
+    newValue?.commit(updater);
+
+    this._memoizedValue = newValue;
+    this._dirty = true;
+  }
+
+  disconnect(updater: Updater): void {
+    disconnectDirective(this, updater);
+
+    this._memoizedValue?.unmount(this, updater);
+    this._pendingValue = null;
+    this._memoizedValue = null;
+    this._dirty = false;
   }
 }

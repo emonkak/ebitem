@@ -1,7 +1,7 @@
-import { directiveSymbol } from './directive.js';
+import { directiveTag } from './directive.js';
+import { Fragment } from './fragment.js';
 import { Part } from './part.js';
 import { ChildPart } from './part/child.js';
-import { Fragment } from './renderable/fragment.js';
 import type { TemplateInterface } from './template.js';
 import type { Updater } from './updater.js';
 
@@ -23,18 +23,18 @@ export class TemplateResult {
     return this._values;
   }
 
-  [directiveSymbol](part: Part, updater: Updater): void {
+  [directiveTag](part: Part, updater: Updater): void {
     if (!(part instanceof ChildPart)) {
       throw new Error(
         'TemplateResult directive must be used in an arbitrary child.',
       );
     }
 
-    const value = part.value;
+    const fragment = part.value;
 
-    if (value instanceof Fragment && value.template === this._template) {
-      value.setValues(this._values);
-      value.forceUpdate(updater);
+    if (fragment instanceof Fragment && fragment.template === this._template) {
+      fragment.values = this._values;
+      fragment.forceUpdate(updater);
     } else {
       const newFragment = new Fragment(
         this._template,
@@ -42,7 +42,7 @@ export class TemplateResult {
         updater.currentRenderable,
       );
 
-      part.setValue(newFragment, updater);
+      part.value = newFragment;
 
       updater.enqueueRenderable(newFragment);
       updater.enqueueMutationEffect(part);

@@ -1,50 +1,38 @@
-import { Directive, directiveSymbol } from '../directive.js';
-import type { Part } from '../part.js';
-import { ChildPart, ChildValue } from '../part/child.js';
+import { Directive, directiveTag } from '../directive.js';
+import { Part, PartChild } from '../part.js';
+import { ChildPart } from '../part/child.js';
 import type { Updater } from '../updater.js';
 
-export function unsafeHTML(content: string): UnsafeHTML {
-  return new UnsafeHTML(content);
+export function unsafeHTML(content: string): UnsafeHTMLDirective {
+  return new UnsafeHTMLDirective(content);
 }
 
-export class UnsafeHTML implements Directive {
+export class UnsafeHTMLDirective implements Directive<unknown> {
   private readonly _content: string;
 
   constructor(content: string) {
     this._content = content;
   }
 
-  [directiveSymbol](part: Part, updater: Updater): void {
+  [directiveTag](_context: unknown, part: Part, updater: Updater): void {
     if (!(part instanceof ChildPart)) {
       throw new Error(
         'UnsafeHTML directive must be used in an arbitrary child.',
       );
     }
 
-    if (
-      part.value instanceof UnsafeHTMLChild &&
-      part.value.content === this._content
-    ) {
-      // Skip the update if the same content is given.
-      return;
-    }
-
-    part.setValue(new UnsafeHTMLChild(this._content), updater);
+    part.value = new UnsafeHTML(this._content);
 
     updater.enqueueMutationEffect(part);
   }
 }
 
-class UnsafeHTMLChild extends ChildValue {
+class UnsafeHTML extends PartChild {
   private readonly _content: string;
 
   private _startNode: ChildNode | null = null;
 
   private _endNode: ChildNode | null = null;
-
-  get content(): string {
-    return this._content;
-  }
 
   constructor(content: string) {
     super();
@@ -59,31 +47,34 @@ class UnsafeHTMLChild extends ChildValue {
     return this._endNode;
   }
 
-  onMount(part: ChildPart, _updater: Updater): void {
-    const range = document.createRange();
-    const fragment = range.createContextualFragment(this._content);
-    const reference = part.endNode;
+  mount(part: Part, _updater: Updater): void {
+    const template = document.createElement('template');
+    template.innerHTML = this._content;
 
+    const fragment = template.content;
     this._startNode = fragment.firstChild;
     this._endNode = fragment.lastChild;
 
-    reference.parentNode!.insertBefore(reference, fragment);
+    const reference = part.node;
+    reference.parentNode?.insertBefore(fragment, reference);
   }
 
-  onUnmount(_part: ChildPart, _updater: Updater): void {
-    let node = this._startNode;
+  unmount(part: Part, _updater: Updater): void {
+    const { parentNode } = part.node;
 
-    while (node !== null) {
-      node.remove();
-      if (node === this._endNode) {
-        break;
+    if (parentNode !== null) {
+      let currentNode = this._startNode;
+
+      while (currentNode !== null) {
+        const nextNode = currentNode.nextSibling;
+        parentNode.removeChild(currentNode);
+        if (currentNode === this._endNode) {
+          break;
+        }
+        currentNode = nextNode;
       }
-      node = node.nextSibling;
     }
-
-    this._startNode = null;
-    this._endNode = null;
   }
 
-  onUpdate(_part: ChildPart, _updater: Updater): void {}
+  commit(_updater: Updater): void {}
 }

@@ -1,50 +1,38 @@
-import { Directive, directiveSymbol } from '../directive.js';
-import type { Part } from '../part.js';
-import { ChildPart, ChildValue } from '../part/child.js';
+import { Directive, directiveTag } from '../directive.js';
+import { Part, PartChild } from '../part.js';
+import { ChildPart } from '../part/child.js';
 import type { Updater } from '../updater.js';
 
-export function unsafeSVG(content: string): UnsafeSVG {
-  return new UnsafeSVG(content);
+export function unsafeSVG(content: string): UnsafeSVGDirective {
+  return new UnsafeSVGDirective(content);
 }
 
-export class UnsafeSVG implements Directive {
+export class UnsafeSVGDirective implements Directive<unknown> {
   private readonly _content: string;
 
   constructor(content: string) {
     this._content = content;
   }
 
-  [directiveSymbol](part: Part, updater: Updater): void {
+  [directiveTag](_context: unknown, part: Part, updater: Updater): void {
     if (!(part instanceof ChildPart)) {
       throw new Error(
         'UnsafeSVG directive must be used in an arbitrary child.',
       );
     }
 
-    if (
-      part.value instanceof UnsafeSVGChild &&
-      part.value.content === this._content
-    ) {
-      // Skip the update if the same content is given.
-      return;
-    }
-
-    part.setValue(new UnsafeSVG(this._content), updater);
+    part.value = new UnsafeSVG(this._content);
 
     updater.enqueueMutationEffect(part);
   }
 }
 
-class UnsafeSVGChild extends ChildValue {
+class UnsafeSVG extends PartChild {
   private readonly _content: string;
 
   private _startNode: ChildNode | null = null;
 
   private _endNode: ChildNode | null = null;
-
-  get content(): string {
-    return this._content;
-  }
 
   constructor(content: string) {
     super();
@@ -59,34 +47,35 @@ class UnsafeSVGChild extends ChildValue {
     return this._endNode;
   }
 
-  onMount(part: ChildPart, _updater: Updater): void {
-    const range = document.createRange();
-    const fragment = range.createContextualFragment(
-      `<svg>${this._content}</svg>`,
-    );
-    const svg = fragment.firstChild!;
-    const reference = part.endNode;
+  mount(part: Part, _updater: Updater): void {
+    const template = document.createElement('template');
+    template.innerHTML = `<svg>${this._content}</svg>`;
 
-    this._startNode = svg.firstChild;
-    this._endNode = svg.lastChild;
+    const fragment = template.content;
+    fragment.replaceChildren(...fragment.firstChild!.childNodes);
+    this._startNode = fragment.firstChild;
+    this._endNode = fragment.lastChild;
 
-    reference.parentNode?.insertBefore(reference, fragment);
+    const reference = part.node;
+    reference.parentNode?.insertBefore(fragment, reference);
   }
 
-  onUnmount(_part: ChildPart, _updater: Updater): void {
-    let node = this._startNode;
+  unmount(part: Part, _updater: Updater): void {
+    const { parentNode } = part.node;
 
-    while (node !== null) {
-      node.remove();
-      if (node === this._endNode) {
-        break;
+    if (parentNode !== null) {
+      let currentNode = this._startNode;
+
+      while (currentNode !== null) {
+        const nextNode = currentNode.nextSibling;
+        parentNode.removeChild(currentNode);
+        if (currentNode === this._endNode) {
+          break;
+        }
+        currentNode = nextNode;
       }
-      node = node.nextSibling;
     }
-
-    this._startNode = null;
-    this._endNode = null;
   }
 
-  onUpdate(_part: ChildPart, _updater: Updater): void {}
+  commit(_updater: Updater): void {}
 }

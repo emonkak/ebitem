@@ -9,8 +9,8 @@ import {
 import {
   block,
   classList,
-  elementRef,
   list,
+  ref,
   slot,
 } from '@emonkak/tempura/directives.js';
 import { Signal, atom } from '@emonkak/tempura/signal.js';
@@ -152,7 +152,7 @@ function Counter({ count }: CounterProps, context: Context): TemplateResult {
 
   return context.html`
     <h1>
-      <span class="count-label" ${elementRef(countLabelRef)}>COUNT: </span>
+      <span class="count-label" ${ref(countLabelRef)}>COUNT: </span>
       <span
         class=${classList('count-value', {
           'is-odd': count.value % 2 !== 0,
@@ -179,4 +179,4 @@ function shuffle<T>(elements: T[]): T[] {
 
 const updater = new AsyncUpdater(new Scope());
 
-mount(updater, new Block(App, {}), document.body);
+mount(new Block(App, {}), document.body, updater);
