@@ -1,27 +1,27 @@
 import { Part, PartChild } from './part.js';
 import type { Updater } from './updater.js';
 
-export class NodeRoot<TNode extends ChildNode> extends PartChild {
-  private _node: TNode;
+export class Text extends PartChild {
+  private _node: CharacterData;
 
   private _pendingValue: unknown = null;
 
   private _memoizedValue: unknown = null;
 
-  constructor(node: TNode) {
+  constructor(node: CharacterData) {
     super();
     this._node = node;
   }
 
-  get startNode(): TNode {
+  get startNode(): CharacterData {
     return this._node;
   }
 
-  get endNode(): TNode {
+  get endNode(): CharacterData {
     return this._node;
   }
 
-  get node(): TNode {
+  get node(): CharacterData {
     return this._node;
   }
 
@@ -43,8 +43,8 @@ export class NodeRoot<TNode extends ChildNode> extends PartChild {
   }
 
   commit(_updater: Updater): void {
-    this._node.nodeValue =
-      this._pendingValue == null ? null : this._pendingValue.toString();
+    this._node.data =
+      this._pendingValue == null ? '' : this._pendingValue.toString();
     this._memoizedValue = this._pendingValue;
   }
 }

@@ -76,6 +76,4 @@ class UnsafeSVG extends PartChild {
       }
     }
   }
-
-  commit(_updater: Updater): void {}
 }

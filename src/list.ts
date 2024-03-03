@@ -1,49 +1,44 @@
-import {
-  Part,
-  PartChild,
-  insertPart,
-  mountPart,
-  removePart,
-  updatePart,
-} from './part.js';
+import { Part, PartChild, mountPart, removePart, updatePart } from './part.js';
 import { ChildPart } from './part/child.js';
+import type { Renderable } from './renderable.js';
+import type { ScopeInterface } from './scope.js';
 import type { Effect, Updater } from './updater.js';
 
-export class List<TItem, TValue, TKey> extends PartChild {
+export class List<TItem, TValue, TKey, TContext>
+  extends PartChild<TContext>
+  implements Renderable<TContext>
+{
+  private readonly _containerPart: ChildPart;
+
+  private readonly _parent: Renderable<TContext> | null;
+
+  private _pendingValues: TValue[];
+
+  private _pendingKeys: TKey[];
+
   private _memoizedParts: ItemPart[] = [];
 
   private _memoizedValues: TValue[] = [];
 
   private _memoizedKeys: TKey[] = [];
 
-  private _containerPart: ChildPart;
+  private _dirty = false;
+
+  private _mounted = false;
 
   constructor(
     items: TItem[],
     valueSelector: (item: TItem, index: number) => TValue,
     keySelector: (item: TItem, index: number) => TKey,
     containerPart: ChildPart,
-    updater: Updater,
+    parent: Renderable<TContext> | null,
   ) {
     super();
 
-    const parts = new Array(items.length);
-    const values = new Array(items.length);
-    const keys = new Array(items.length);
-
-    for (let i = 0, l = items.length; i < l; i++) {
-      const item = items[i]!;
-      const part = new ItemPart(document.createComment(''), containerPart);
-      const value = valueSelector(item, i);
-      const key = keySelector(item, i);
-      mountPart(part, value, updater);
-      parts[i] = part;
-      values[i] = value;
-      keys[i] = key;
-    }
-
+    this._pendingValues = items.map(valueSelector);
+    this._pendingKeys = items.map(keySelector);
     this._containerPart = containerPart;
-    this._memoizedParts = parts;
+    this._parent = parent;
   }
 
   get startNode(): ChildNode | null {
@@ -56,18 +51,49 @@ export class List<TItem, TValue, TKey> extends PartChild {
     return parts.length > 0 ? parts[parts.length - 1]!.endNode : null;
   }
 
-  update(
+  get parent(): Renderable<TContext> | null {
+    return this._parent;
+  }
+
+  get dirty(): boolean {
+    return this._dirty;
+  }
+
+  get values(): TValue[] {
+    return this._memoizedValues;
+  }
+
+  get keys(): TKey[] {
+    return this._memoizedKeys;
+  }
+
+  forceUpdate(updater: Updater<TContext>): void {
+    if (this._dirty || !this._mounted) {
+      return;
+    }
+
+    this._dirty = true;
+
+    updater.enqueueRenderable(this);
+    updater.requestUpdate();
+  }
+
+  setItems(
     newItems: TItem[],
     valueSelector: (item: TItem, index: number) => TValue,
     keySelector: (item: TItem, index: number) => TKey,
-    updater: Updater,
-  ): void {
+  ) {
+    this._pendingValues = newItems.map(valueSelector);
+    this._pendingKeys = newItems.map(keySelector);
+  }
+
+  render(updater: Updater<TContext>, _scope: ScopeInterface<TContext>): void {
     const oldParts: (ItemPart | undefined)[] = this._memoizedParts;
     const oldValues = this._memoizedValues;
     const oldKeys = this._memoizedKeys;
-    const newParts = new Array(newItems.length);
-    const newValues = newItems.map(valueSelector);
-    const newKeys = newItems.map(keySelector);
+    const newParts = new Array(this._pendingValues.length);
+    const newValues = this._pendingValues;
+    const newKeys = this._pendingKeys;
 
     // Head and tail pointers to old parts and new values
     let oldHead = 0;
@@ -166,7 +192,7 @@ export class List<TItem, TValue, TKey> extends PartChild {
               document.createComment(''),
               this._containerPart,
             );
-            insertPart(part, newValues[newHead], updater);
+            mountPart(part, newValues[newHead], updater);
             newParts[newHead] = part;
           }
           newHead++;
@@ -182,7 +208,7 @@ export class List<TItem, TValue, TKey> extends PartChild {
         document.createComment(''),
         this._containerPart,
       );
-      insertPart(newPart, newValues[newHead], updater);
+      mountPart(newPart, newValues[newHead], updater);
       newParts[newHead] = newPart;
       newHead++;
     }
@@ -190,28 +216,28 @@ export class List<TItem, TValue, TKey> extends PartChild {
     // Remove any remaining unused old parts
     while (oldHead <= oldTail) {
       const oldPart = oldParts[oldHead];
-      if (oldPart) {
+      if (oldPart !== undefined) {
         removePart(oldPart, updater);
       }
       oldHead++;
     }
 
+    this._memoizedParts = newParts;
     this._memoizedValues = newValues;
     this._memoizedKeys = newKeys;
+    this._dirty = false;
   }
 
-  mount(_part: Part, _updater: Updater): void {}
+  mount(_part: Part, _updater: Updater): void {
+    this._mounted = true;
+  }
 
   unmount(_part: Part, updater: Updater): void {
     for (let i = 0, l = this._memoizedParts.length; i < l; i++) {
       this._memoizedParts[i]!.disconnect(updater);
     }
-  }
 
-  commit(updater: Updater): void {
-    for (let i = 0, l = this._memoizedParts.length; i < l; i++) {
-      this._memoizedParts[i]!.commit(updater);
-    }
+    this._mounted = false;
   }
 }
 

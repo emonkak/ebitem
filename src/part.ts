@@ -14,22 +14,9 @@ export abstract class PartChild<TContext = unknown> {
 
   abstract get endNode(): ChildNode | null;
 
-  abstract mount(part: Part, updater: Updater): void;
+  abstract mount(part: Part<TContext>, updater: Updater<TContext>): void;
 
-  abstract unmount(part: Part, updater: Updater): void;
-
-  abstract commit(updater: Updater<TContext>): void;
-}
-
-export function insertPart(part: Part, value: unknown, updater: Updater): void {
-  if (isDirective(value)) {
-    performDirective(value, part, updater);
-  } else {
-    if (!part.dirty) {
-      updater.enqueueMutationEffect(part);
-    }
-    part.value = value;
-  }
+  abstract unmount(part: Part<TContext>, updater: Updater<TContext>): void;
 }
 
 export function mountPart(part: Part, value: unknown, updater: Updater): void {
@@ -37,6 +24,7 @@ export function mountPart(part: Part, value: unknown, updater: Updater): void {
     performDirective(value, part, updater);
   } else {
     part.value = value;
+    updater.enqueueMutationEffect(part);
   }
 }
 
@@ -56,7 +44,9 @@ export function updatePart(
   if (isDirective(newValue)) {
     performDirective(newValue, part, updater);
   } else {
-    if (!part.dirty) {
+    const fresh = !part.dirty;
+    part.value = newValue;
+    if (fresh && part.dirty) {
       updater.enqueueMutationEffect(part);
     }
     part.value = newValue;

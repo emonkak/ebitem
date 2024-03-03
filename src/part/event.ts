@@ -4,17 +4,16 @@ import type { Updater } from '../updater.js';
 
 type EventValue =
   | EventListener
-  | (EventListenerObject & AddEventListenerOptions)
-  | null;
+  | (EventListenerObject & AddEventListenerOptions);
 
 export class EventPart implements Part {
   private readonly _element: Element;
 
   private readonly _name: string;
 
-  private _pendingValue: EventValue = null;
+  private _pendingValue: EventValue | null = null;
 
-  private _memoizedValue: EventValue = null;
+  private _memoizedValue: EventValue | null = null;
 
   private _dirty = false;
 
@@ -31,7 +30,7 @@ export class EventPart implements Part {
     return this._name;
   }
 
-  get value(): EventValue {
+  get value(): EventValue | null {
     return this._memoizedValue;
   }
 

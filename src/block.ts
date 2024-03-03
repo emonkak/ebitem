@@ -69,7 +69,7 @@ export class Block<TProps, TContext>
     return this._parent;
   }
 
-  get isDirty(): boolean {
+  get dirty(): boolean {
     return this._dirty;
   }
 
@@ -85,7 +85,6 @@ export class Block<TProps, TContext>
     this._dirty = true;
 
     updater.enqueueRenderable(this);
-    updater.enqueueMutationEffect(this);
     updater.requestUpdate();
   }
 
@@ -153,9 +152,5 @@ export class Block<TProps, TContext>
       updater.enqueuePassiveEffect(new CleanHooks(this._hooks));
       this._hooks = [];
     }
-  }
-
-  commit(updater: Updater): void {
-    this._memoizedRoot?.commit(updater);
   }
 }

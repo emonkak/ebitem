@@ -1,5 +1,5 @@
 import { Directive, directiveTag } from '../directive.js';
-import type { Part } from '../part.js';
+import { Part } from '../part.js';
 import { ChildPart } from '../part/child.js';
 import type { ElementProps } from '../part/element.js';
 import { Slot } from '../slot.js';
@@ -34,16 +34,11 @@ export class SlotDirective implements Directive<unknown> {
     const slot = part.value;
 
     if (slot instanceof Slot && slot.type === this._type) {
-      slot.elementPart.value = this._elementProps;
-      slot.childPart.value = this._childValue;
-
-      updater.enqueueMutationEffect(slot);
+      slot.updateParts(this._elementProps, this._childValue, updater);
     } else {
-      const newSlot = new Slot(
-        this._type,
-        this._elementProps,
-        this._childValue,
-      );
+      const newSlot = new Slot(this._type);
+
+      newSlot.connectParts(this._elementProps, this._childValue, updater);
 
       part.value = newSlot;
 

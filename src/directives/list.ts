@@ -52,27 +52,27 @@ export class ListDirective<TItem, TValue, TKey> implements Directive {
       throw new Error('List directive must be used in an arbitrary child.');
     }
 
-    const value = part.value;
+    const list = part.value;
 
-    if (value instanceof List) {
-      value.update(
-        this._items,
-        this._valueSelector,
-        this._keySelector,
-        updater,
-      );
+    if (list instanceof List) {
+      list.setItems(this._items, this._valueSelector, this._keySelector);
+      list.forceUpdate(updater);
     } else {
-      const list = new List(
+      const newList = new List(
         this._items,
         this._valueSelector,
         this._keySelector,
         part,
-        updater,
+        updater.currentRenderable,
       );
-      part.value = list;
+
+      part.value = newList;
+
+      updater.enqueueRenderable(newList);
+      updater.enqueueLayoutEffect(part);
+      updater.requestUpdate();
     }
 
-    updater.enqueueMutationEffect(part);
     updater.requestUpdate();
   }
 }

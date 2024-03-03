@@ -1,6 +1,6 @@
 import { disconnectDirective } from '../directive.js';
-import { NodeRoot } from '../nodeRoot.js';
 import { Part, PartChild } from '../part.js';
+import { Text } from '../text.js';
 import type { Updater } from '../updater.js';
 
 export class ChildPart implements Part {
@@ -47,9 +47,9 @@ export class ChildPart implements Part {
       this._pendingValue = newValue;
     } else {
       const nodeRoot =
-        this._memoizedValue instanceof NodeRoot
+        this._memoizedValue instanceof Text
           ? this._memoizedValue
-          : new NodeRoot(document.createTextNode(''));
+          : new Text(document.createTextNode(''));
       nodeRoot.value = newValue;
       this._pendingValue = nodeRoot;
     }
@@ -64,8 +64,6 @@ export class ChildPart implements Part {
       oldValue?.unmount(this, updater);
       newValue?.mount(this, updater);
     }
-
-    newValue?.commit(updater);
 
     this._memoizedValue = newValue;
     this._dirty = true;

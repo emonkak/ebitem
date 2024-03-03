@@ -3,19 +3,19 @@ import type { ScopeInterface } from './scope.js';
 import type { Updater } from './updater.js';
 
 export interface Renderable<TContext> {
-  get isDirty(): boolean;
+  get dirty(): boolean;
   get parent(): Renderable<TContext> | null;
   forceUpdate(updater: Updater<TContext>): void;
   render(updater: Updater<TContext>, scope: ScopeInterface<TContext>): void;
 }
 
 export function shouldSkipRender(renderable: Renderable<unknown>): boolean {
-  if (!renderable.isDirty) {
+  if (!renderable.dirty) {
     return true;
   }
   let current: Renderable<unknown> | null = renderable;
   while ((current = current.parent) !== null) {
-    if (current.isDirty) {
+    if (current.dirty) {
       return true;
     }
   }

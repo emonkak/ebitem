@@ -47,7 +47,7 @@ export class Fragment<TContext>
     return null;
   }
 
-  get isDirty(): boolean {
+  get dirty(): boolean {
     return this._dirty;
   }
 
@@ -75,7 +75,6 @@ export class Fragment<TContext>
     this._dirty = true;
 
     updater.enqueueRenderable(this);
-    updater.enqueueMutationEffect(this);
     updater.requestUpdate();
   }
 
@@ -107,9 +106,5 @@ export class Fragment<TContext>
       this._memoizedRoot.unmount(part, updater);
       this._memoizedRoot = null;
     }
-  }
-
-  commit(updater: Updater): void {
-    this._memoizedRoot?.commit(updater);
   }
 }

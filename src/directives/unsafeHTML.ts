@@ -75,6 +75,4 @@ class UnsafeHTML extends PartChild {
       }
     }
   }
-
-  commit(_updater: Updater): void {}
 }
