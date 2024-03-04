@@ -1,63 +1,64 @@
-import { Part, PartChild } from './part.js';
+import { Binding, Part, checkAndUpdateBinding } from './part.js';
 import type { Updater } from './updater.js';
 
-export class TemplateRoot extends PartChild {
+export class TemplateRoot {
+  private _bindings: Binding<unknown>[];
+
+  private _values: unknown[];
+
   private _childNodes: ChildNode[];
 
-  private _parts: Part[];
-
-  constructor(childNodes: ChildNode[], parts: Part[]) {
-    super();
+  constructor(
+    bindings: Binding<unknown>[],
+    values: unknown[],
+    childNodes: ChildNode[],
+  ) {
+    this._bindings = bindings;
+    this._values = values;
     this._childNodes = childNodes;
-    this._parts = parts;
-  }
-
-  get startNode(): ChildNode | null {
-    return this._childNodes.length > 0 ? this._childNodes[0]! : null;
-  }
-
-  get endNode(): ChildNode | null {
-    return this._childNodes.length > 0
-      ? this._childNodes[this._childNodes.length - 1]!
-      : null;
   }
 
   get childNodes(): ChildNode[] {
     return this._childNodes;
   }
 
-  get parts(): Part[] {
-    return this._parts;
+  get bindings(): Binding<unknown>[] {
+    return this._bindings;
   }
 
-  mount(part: Part, _updater: Updater): void {
+  get values(): Binding<unknown>[] {
+    return this._bindings;
+  }
+
+  patch(newValues: unknown[], updater: Updater): void {
+    for (let i = 0, l = this._bindings.length; i < l; i++) {
+      this._bindings[i] = checkAndUpdateBinding(
+        this._bindings[i]!,
+        this._values[i],
+        newValues[i],
+        updater,
+      );
+    }
+    this._values = newValues;
+  }
+
+  mount(part: Part): void {
     const reference = part.node;
-    const { parentNode } = reference;
 
-    if (parentNode !== null) {
-      for (let i = 0, l = this._childNodes.length; i < l; i++) {
-        parentNode.insertBefore(this._childNodes[i]!, reference);
-      }
+    for (let i = 0, l = this._childNodes.length; i < l; i++) {
+      reference.before(this._childNodes[i]!);
     }
   }
 
-  unmount(part: Part, updater: Updater): void {
-    const { parentNode } = part.node;
-
-    if (parentNode !== null) {
-      for (let i = 0, l = this._childNodes.length; i < l; i++) {
-        parentNode.removeChild(this._childNodes[i]!);
-      }
-    }
-
-    for (let i = 0, l = this._parts.length; i < l; i++) {
-      this._parts[i]!.disconnect(updater);
+  unmount(_part: Part): void {
+    for (let i = 0, l = this._childNodes.length; i < l; i++) {
+      this._childNodes[i]!.remove();
     }
   }
 
-  commit(updater: Updater): void {
-    for (let i = 0, l = this._parts.length; i < l; i++) {
-      this._parts[i]!.commit(updater);
+  disconnect(): void {
+    for (let i = 0, l = this._bindings.length; i < l; i++) {
+      this._bindings[i]!.disconnect();
     }
   }
 }

@@ -1,16 +1,16 @@
 import { assert } from 'chai';
 
-import { Template } from '../src/template.js';
+import { TaggedTemplate } from '../src/template.js';
 
 describe('Template', () => {
   const MARKER = `?${crypto.randomUUID()}?`;
 
-  function html(strings: TemplateStringsArray, ..._values: unknown[]) {
-    return Template.parseHTML(strings, MARKER);
+  function html(tokens: TemplateStringsArray, ..._values: unknown[]) {
+    return TaggedTemplate.parseHTML(tokens, MARKER);
   }
 
-  function svg(strings: TemplateStringsArray, ..._values: unknown[]) {
-    return Template.parseSVG(strings, MARKER);
+  function svg(tokens: TemplateStringsArray, ..._values: unknown[]) {
+    return TaggedTemplate.parseSVG(tokens, MARKER);
   }
 
   describe('.parseHTML()', () => {
@@ -79,8 +79,8 @@ describe('Template', () => {
         </ul>
       `;
       assert.deepEqual(template.holes, [
-        { type: 'child', index: 3 },
-        { type: 'child', index: 6 },
+        { type: 'childNode', index: 3 },
+        { type: 'childNode', index: 6 },
       ]);
       assert.strictEqual(
         template.element.innerHTML,
@@ -99,10 +99,10 @@ describe('Template', () => {
         <div>${0}, ${1}</div>
       `;
       assert.deepEqual(template.holes, [
-        { type: 'child', index: 2 },
-        { type: 'child', index: 4 },
-        { type: 'child', index: 8 },
-        { type: 'child', index: 10 },
+        { type: 'childNode', index: 2 },
+        { type: 'childNode', index: 4 },
+        { type: 'childNode', index: 8 },
+        { type: 'childNode', index: 10 },
       ]);
       assert.strictEqual(
         template.element.innerHTML,
@@ -115,10 +115,10 @@ describe('Template', () => {
 
     it('should throw an error when it is passed a marker in an invalid format', () => {
       assert.throw(() => {
-        Template.parseHTML([], 'INVALID_MARKER');
+        TaggedTemplate.parseHTML([], 'INVALID_MARKER');
       }, 'The marker is in an invalid format:');
       assert.throw(() => {
-        Template.parseHTML([], MARKER.toUpperCase());
+        TaggedTemplate.parseHTML([], MARKER.toUpperCase());
       }, 'The marker is in an invalid format:');
     });
 
@@ -202,10 +202,10 @@ describe('Template', () => {
 
     it('should throw an error when it is passed a marker in an invalid format', () => {
       assert.throw(() => {
-        Template.parseSVG([], 'INVALID_MARKER');
+        TaggedTemplate.parseSVG([], 'INVALID_MARKER');
       }, 'The marker is in an invalid format:');
       assert.throw(() => {
-        Template.parseSVG([], MARKER.toUpperCase());
+        TaggedTemplate.parseSVG([], MARKER.toUpperCase());
       }, 'The marker is in an invalid format:');
     });
   });

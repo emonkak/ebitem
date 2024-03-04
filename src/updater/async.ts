@@ -1,14 +1,13 @@
-import { Renderable, shouldSkipRender } from '../renderable.js';
 import { Scheduler, getDefaultScheduler } from '../scheduler.js';
-import type { ScopeInterface } from '../scope.js';
-import type { Effect, Updater } from '../updater.js';
+import type { Scope } from '../scope.js';
+import { Effect, Renderable, Updater, shouldSkipRender } from '../updater.js';
 
 export interface AsyncUpdaterOptions {
   scheduler?: Scheduler;
 }
 
 export class AsyncUpdater<TContext> implements Updater<TContext> {
-  private readonly _scope: ScopeInterface<TContext>;
+  private readonly _scope: Scope<TContext>;
 
   private readonly _scheduler: Scheduler;
 
@@ -25,7 +24,7 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
   private _runningUpdateLoop: Promise<void> | null = null;
 
   constructor(
-    scope: ScopeInterface<TContext>,
+    scope: Scope<TContext>,
     { scheduler = getDefaultScheduler() }: AsyncUpdaterOptions = {},
   ) {
     this._scope = scope;
@@ -36,19 +35,19 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
     return this._currentRenderable;
   }
 
-  get scope(): ScopeInterface<TContext> {
+  get scope(): Scope<TContext> {
     return this._scope;
   }
 
-  enqueueLayoutEffect(effect: Effect<TContext>): void {
+  enqueueLayoutEffect(effect: Effect): void {
     this._pendingLayoutEffects.push(effect);
   }
 
-  enqueueMutationEffect(effect: Effect<TContext>): void {
+  enqueueMutationEffect(effect: Effect): void {
     this._pendingMutationEffects.push(effect);
   }
 
-  enqueuePassiveEffect(effect: Effect<TContext>): void {
+  enqueuePassiveEffect(effect: Effect): void {
     this._pendingPassiveEffects.push(effect);
   }
 
@@ -80,10 +79,11 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
   }
 
   async _runUpdateLoop(): Promise<void> {
+    console.group('Update Loop');
     do {
       if (this._hasRenderable()) {
         await this._scheduler.postRenderingTask(async () => {
-          console.time('Rendering phase');
+          console.time('(1) Rendering phase');
 
           let startTime = this._scheduler.getCurrentTime();
 
@@ -110,13 +110,13 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
             }
           } while (this._pendingRenderables.length > 0);
 
-          console.timeEnd('Rendering phase');
+          console.timeEnd('(1) Rendering phase');
         });
       }
 
       if (this._hasBlockingEffect()) {
         await this._scheduler.postBlockingTask(async () => {
-          console.time('Blocking phase');
+          console.time('(2) Blocking phase');
 
           const mutationEffects = this._pendingMutationEffects;
           const layoutEffects = this._pendingLayoutEffects;
@@ -125,20 +125,20 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
           this._pendingLayoutEffects = [];
 
           for (let i = 0, l = mutationEffects.length; i < l; i++) {
-            mutationEffects[i]!.commit(this);
+            mutationEffects[i]!.commit('mutation');
           }
 
           for (let i = 0, l = layoutEffects.length; i < l; i++) {
-            layoutEffects[i]!.commit(this);
+            layoutEffects[i]!.commit('layout');
           }
 
-          console.timeEnd('Blocking phase');
+          console.timeEnd('(2) Blocking phase');
         });
       }
 
       if (this._hasPassiveEffect()) {
         await this._scheduler.postBackgroundTask(async () => {
-          console.time('Background phase');
+          console.time('(3) Background phase');
 
           let startTime = this._scheduler.getCurrentTime();
 
@@ -151,10 +151,10 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
               await this._scheduler.yieldToMain();
               startTime = this._scheduler.getCurrentTime();
             }
-            passiveEffects[i]!.commit(this);
+            passiveEffects[i]!.commit('passive');
           }
 
-          console.timeEnd('Background phase');
+          console.timeEnd('(3) Background phase');
         });
       }
     } while (
@@ -162,6 +162,7 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
       this._hasBlockingEffect() ||
       this._hasPassiveEffect()
     );
+    console.groupEnd();
   }
 
   private _hasBlockingEffect(): boolean {

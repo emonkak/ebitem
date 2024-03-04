@@ -1,52 +1,41 @@
-import { Part, mountPart, updatePart } from './part.js';
-import { AttributePart } from './part/attribute.js';
-import { ChildPart } from './part/child.js';
-import { ElementPart } from './part/element.js';
-import { EventPart } from './part/event.js';
-import { PropertyPart } from './part/property.js';
+import { Part, createBinding } from './part.js';
 import { TemplateRoot } from './templateRoot.js';
 import type { Updater } from './updater.js';
 
+export interface Template {
+  hydrate(values: unknown[], updater: Updater): TemplateRoot;
+}
+
 export type Hole =
   | AttributeHole
-  | ChildHole
+  | ChildNodeHole
   | ElementHole
   | EventHole
   | PropertyHole;
 
-export interface TemplateInterface {
-  mount(values: unknown[], updater: Updater): TemplateRoot;
-  patch(
-    parts: Part[],
-    oldValues: unknown[],
-    newValues: unknown[],
-    updater: Updater,
-  ): void;
-}
-
-interface AttributeHole {
+export interface AttributeHole {
   type: 'attribute';
   index: number;
   name: string;
 }
 
-interface ChildHole {
-  type: 'child';
+export interface ChildNodeHole {
+  type: 'childNode';
   index: number;
 }
 
-interface ElementHole {
+export interface ElementHole {
   type: 'element';
   index: number;
 }
 
-interface EventHole {
+export interface EventHole {
   type: 'event';
   index: number;
   name: string;
 }
 
-interface PropertyHole {
+export interface PropertyHole {
   type: 'property';
   index: number;
   name: string;
@@ -60,8 +49,11 @@ interface PropertyHole {
 const MARKER_REGEXP =
   /^\?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\?$/;
 
-export class Template implements TemplateInterface {
-  static parseHTML(strings: ReadonlyArray<string>, marker: string): Template {
+export class TaggedTemplate implements Template {
+  static parseHTML(
+    tokens: ReadonlyArray<string>,
+    marker: string,
+  ): TaggedTemplate {
     // biome-ignore lint: use DEBUG label
     DEBUG: {
       if (!MARKER_REGEXP.test(marker)) {
@@ -69,12 +61,15 @@ export class Template implements TemplateInterface {
       }
     }
     const template = document.createElement('template');
-    template.innerHTML = strings.join(marker).trim();
+    template.innerHTML = tokens.join(marker).trim();
     const holes = parseChildren(template.content, marker);
-    return new Template(template, holes);
+    return new TaggedTemplate(template, holes);
   }
 
-  static parseSVG(strings: ReadonlyArray<string>, marker: string): Template {
+  static parseSVG(
+    tokens: ReadonlyArray<string>,
+    marker: string,
+  ): TaggedTemplate {
     // biome-ignore lint: use DEBUG label
     DEBUG: {
       if (!MARKER_REGEXP.test(marker)) {
@@ -82,12 +77,12 @@ export class Template implements TemplateInterface {
       }
     }
     const template = document.createElement('template');
-    template.innerHTML = `<svg>${strings.join(marker).trim()}</svg>`;
+    template.innerHTML = `<svg>${tokens.join(marker).trim()}</svg>`;
     template.content.replaceChildren(
       ...template.content.firstChild!.childNodes,
     );
     const holes = parseChildren(template.content, marker);
-    return new Template(template, holes);
+    return new TaggedTemplate(template, holes);
   }
 
   private _element: HTMLTemplateElement;
@@ -107,12 +102,12 @@ export class Template implements TemplateInterface {
     return this._holes;
   }
 
-  mount(values: unknown[], updater: Updater): TemplateRoot {
-    const numHoles = this._holes.length;
-    const parts = new Array(numHoles);
+  hydrate(values: unknown[], updater: Updater): TemplateRoot {
+    const holes = this._holes;
+    const bindings = new Array(holes.length);
     const rootNode = document.importNode(this._element.content, true);
 
-    if (numHoles > 0) {
+    if (holes.length > 0) {
       const walker = document.createTreeWalker(
         rootNode,
         NodeFilter.SHOW_ELEMENT |
@@ -120,7 +115,7 @@ export class Template implements TemplateInterface {
           NodeFilter.SHOW_COMMENT,
       );
 
-      let currentHole = this._holes[0]!;
+      let currentHole = holes[0]!;
       let currentNode: Node | null;
       let holeIndex = 0;
       let nodeIndex = 0;
@@ -131,53 +126,55 @@ export class Template implements TemplateInterface {
 
           switch (currentHole.type) {
             case 'attribute':
-              part = new AttributePart(
-                currentNode as Element,
-                currentHole.name,
-              );
+              part = {
+                type: 'attribute',
+                node: currentNode as Element,
+                name: currentHole.name,
+              };
               break;
-            case 'child':
-              part = new ChildPart(currentNode as Comment);
+            case 'childNode':
+              part = {
+                type: 'childNode',
+                node: currentNode as Comment,
+              };
               break;
             case 'element':
-              part = new ElementPart(currentNode as Element);
+              part = {
+                type: 'element',
+                node: currentNode as Element,
+              };
               break;
             case 'event':
-              part = new EventPart(currentNode as Element, currentHole.name);
+              part = {
+                type: 'event',
+                node: currentNode as Element,
+                name: currentHole.name,
+              };
               break;
             case 'property':
-              part = new PropertyPart(currentNode as Element, currentHole.name);
+              part = {
+                type: 'property',
+                node: currentNode as Element,
+                name: currentHole.name,
+              };
               break;
           }
 
-          mountPart(part, values[holeIndex], updater);
-
-          parts[holeIndex] = part;
+          bindings[holeIndex] = createBinding(part, values[holeIndex], updater);
           holeIndex++;
 
-          if (holeIndex >= numHoles) {
+          if (holeIndex >= holes.length) {
             break outer;
           }
 
-          currentHole = this._holes[holeIndex]!;
+          currentHole = holes[holeIndex]!;
         }
 
         nodeIndex++;
       }
     }
 
-    return new TemplateRoot([...rootNode.childNodes], parts);
-  }
-
-  patch(
-    parts: Part[],
-    oldValues: unknown[],
-    newValues: unknown[],
-    updater: Updater,
-  ): void {
-    for (let i = 0, l = this._holes.length; i < l; i++) {
-      updatePart(parts[i]!, oldValues[i], newValues[i], updater);
-    }
+    return new TemplateRoot(bindings, values, [...rootNode.childNodes]);
   }
 }
 
@@ -254,10 +251,10 @@ function parseChildren(rootNode: Node, marker: string): Hole[] {
   );
   const holes: Hole[] = [];
 
-  let currentNode: Node | null;
+  let currentNode: ChildNode | null;
   let index = 0;
 
-  while ((currentNode = walker.nextNode()) !== null) {
+  while ((currentNode = walker.nextNode() as ChildNode | null) !== null) {
     switch (currentNode.nodeType) {
       case Node.ELEMENT_NODE: {
         // biome-ignore lint: use DEBUG label
@@ -291,21 +288,20 @@ function parseChildren(rootNode: Node, marker: string): Hole[] {
 
         if (components.length > 1) {
           const tailIndex = components.length - 1;
-          const parent = currentNode.parentNode!;
 
           for (let i = 0; i < tailIndex; i++) {
             const component = components[i]!;
 
             if (component !== '') {
               const text = document.createTextNode(component);
-              parent.insertBefore(text, currentNode);
+              currentNode.before(text);
               index++;
             }
 
-            parent.insertBefore(document.createComment(''), currentNode);
+            currentNode.before(document.createComment(''));
 
             holes.push({
-              type: 'child',
+              type: 'childNode',
               index,
             });
             index++;

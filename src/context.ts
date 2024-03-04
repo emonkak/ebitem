@@ -8,11 +8,10 @@ import {
   ensureHookType,
 } from './hook.js';
 import type { Hook } from './hook.js';
-import type { Renderable } from './renderable.js';
-import type { ScopeInterface } from './scope.js';
+import type { Scope } from './scope.js';
 import { AtomSignal, Signal } from './signal.js';
 import { TemplateResult } from './templateResult.js';
-import type { Effect, Updater } from './updater.js';
+import type { Effect, Renderable, Updater } from './updater.js';
 
 type ValueOrFunction<T> = T extends Function ? never : T | (() => T);
 
@@ -23,7 +22,7 @@ export class Context {
 
   private readonly _updater: Updater<Context>;
 
-  private readonly _scope: ScopeInterface<Context>;
+  private readonly _scope: Scope<Context>;
 
   private _hookIndex = 0;
 
@@ -31,7 +30,7 @@ export class Context {
     renderable: Renderable<Context>,
     hooks: Hook[],
     updater: Updater<Context>,
-    scope: ScopeInterface<Context>,
+    scope: Scope<Context>,
   ) {
     this._renderable = renderable;
     this._hooks = hooks;
@@ -60,8 +59,8 @@ export class Context {
     return undefined;
   }
 
-  html(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
-    const template = this._scope.createHTMLTemplate(strings, values);
+  html(tokens: ReadonlyArray<string>, ...values: unknown[]): TemplateResult {
+    const template = this._scope.createHTMLTemplate(tokens, values);
     return new TemplateResult(template, values);
   }
 
@@ -73,8 +72,8 @@ export class Context {
     this._scope.setVariable(key, value, this._renderable);
   }
 
-  svg(strings: TemplateStringsArray, ...values: unknown[]): TemplateResult {
-    const template = this._scope.createSVGTemplate(strings, values);
+  svg(tokens: ReadonlyArray<string>, ...values: unknown[]): TemplateResult {
+    const template = this._scope.createSVGTemplate(tokens, values);
     return new TemplateResult(template, values);
   }
 
@@ -288,7 +287,7 @@ class InvokeEffectHook implements Effect {
     this._hook = hook;
   }
 
-  commit(_updater: Updater): void {
+  commit(): void {
     if (this._hook.cleanup !== undefined) {
       this._hook.cleanup();
       this._hook.cleanup = undefined;

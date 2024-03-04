@@ -1,40 +1,109 @@
-import { Context } from '../context.js';
-import { Directive, directiveTag } from '../directive.js';
 import type { Ref } from '../hook.js';
-import type { Part } from '../part.js';
-import { ElementPart } from '../part/element.js';
-import type { Updater } from '../updater.js';
+import {
+  Binding,
+  Directive,
+  ElementPart,
+  Part,
+  directiveTag,
+} from '../part.js';
+import type { Effect, Updater } from '../updater.js';
 
-export function ref(ref: Ref<Element | null>) {
+type ElementRef = Ref<Element | null>;
+
+export function ref(ref: Ref<Element | null>): RefDirective {
   return new RefDirective(ref);
 }
 
-export class RefDirective implements Directive<Context> {
-  private readonly _ref: Ref<Element | null>;
+export class RefDirective implements Directive<ElementRef> {
+  private readonly _ref: ElementRef;
 
-  constructor(ref: Ref<Element | null>) {
+  constructor(ref: ElementRef) {
     this._ref = ref;
   }
 
-  [directiveTag](context: Context, part: Part, _updater: Updater): void {
-    if (!(part instanceof ElementPart)) {
-      throw new Error('ElementRef directive must be used in SpreadPart.');
+  [directiveTag](part: Part, updater: Updater): RefBinding {
+    if (part.type !== 'element') {
+      throw new Error(`${this.constructor.name} must be used in SpreadPart.`);
     }
 
-    const ref = this._ref;
+    const binding = new RefBinding(part);
 
-    context.useEffect(() => {
-      if (typeof ref === 'function') {
-        ref(part.node);
-        return () => {
-          ref(part.node);
-        };
+    binding.bind(this._ref, updater);
+
+    return binding;
+  }
+
+  valueOf(): ElementRef {
+    return this._ref;
+  }
+}
+
+export class RefBinding implements Binding<ElementRef>, Effect {
+  private readonly _part: ElementPart;
+
+  private _pendingRef: ElementRef | null = null;
+
+  private _memoizedRef: ElementRef | null = null;
+
+  private _dirty = false;
+
+  constructor(part: ElementPart) {
+    this._part = part;
+  }
+
+  get part(): ElementPart {
+    return this._part;
+  }
+
+  get startNode(): ChildNode {
+    return this._part.node;
+  }
+
+  get endNode(): ChildNode {
+    return this._part.node;
+  }
+
+  bind(ref: ElementRef, updater: Updater): void {
+    this._pendingRef = ref;
+
+    if (!this._dirty) {
+      updater.enqueuePassiveEffect(this);
+      this._dirty = true;
+    }
+  }
+
+  unbind(updater: Updater): void {
+    this._pendingRef = null;
+
+    if (!this._dirty) {
+      updater.enqueuePassiveEffect(this);
+      this._dirty = true;
+    }
+  }
+
+  disconnect() {}
+
+  commit(): void {
+    if (this._memoizedRef !== null) {
+      const oldRef = this._memoizedRef;
+
+      if (typeof oldRef === 'function') {
+        oldRef(null);
       } else {
-        ref.current = part.node;
-        return () => {
-          ref.current = null;
-        };
+        oldRef.current = null;
       }
-    }, [ref]);
+    }
+
+    if (this._pendingRef !== null) {
+      const newRef = this._pendingRef;
+
+      if (typeof newRef === 'function') {
+        newRef(this._part.node);
+      } else {
+        newRef.current = this._part.node;
+      }
+    }
+
+    this._memoizedRef = this._pendingRef;
   }
 }

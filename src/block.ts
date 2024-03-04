@@ -1,68 +1,71 @@
-import { CleanHooks, Hook } from './hook.js';
-import { Part, PartChild } from './part.js';
-import type { Renderable } from './renderable.js';
-import type { ScopeInterface } from './scope.js';
-import type { TemplateInterface } from './template.js';
+import { Hook } from './hook.js';
+import type { ChildNodePart } from './part.js';
+import type { Scope } from './scope.js';
+import type { Template } from './template.js';
 import type { TemplateResult } from './templateResult.js';
 import type { TemplateRoot } from './templateRoot.js';
-import type { Updater } from './updater.js';
+import { CommitMode, Effect, Renderable, Updater } from './updater.js';
 
-export class Block<TProps, TContext>
-  extends PartChild
-  implements Renderable<TContext>
-{
-  private readonly _type: (props: TProps, context: TContext) => TemplateResult;
+const BlockFlags = {
+  NONE: 0,
+  UPDATING: 1 << 0,
+  MUTATING: 1 << 1,
+  UNMOUNTING: 1 << 2,
+  DISCONNECTING: 1 << 3,
+  MOUNTED: 1 << 4,
+};
+
+export type BlockType<TProps, TContext> = (
+  props: TProps,
+  context: TContext,
+) => TemplateResult;
+
+export class Block<TProps, TContext> implements Effect, Renderable {
+  private readonly _type: BlockType<TProps, TContext>;
+
+  private readonly _part: ChildNodePart;
 
   private readonly _parent: Renderable<TContext> | null;
 
-  private _pendingProps: TProps;
+  private _props: TProps;
+
+  private _memoizedTemplate: Template | null = null;
 
   private _pendingRoot: TemplateRoot | null = null;
 
-  private _memoizedProps: TProps;
-
-  private _memoizedValues: unknown[] = [];
-
-  private _memoizedTemplate: TemplateInterface | null = null;
-
   private _memoizedRoot: TemplateRoot | null = null;
 
-  private _cachedRoots: WeakMap<TemplateInterface, TemplateRoot> | null = null;
+  private _cachedRoots: WeakMap<Template, TemplateRoot> | null = null;
 
   private _hooks: Hook[] = [];
 
-  private _dirty = true;
+  private _flags = BlockFlags.NONE;
 
   constructor(
-    type: (props: TProps, context: TContext) => TemplateResult,
+    type: BlockType<TProps, TContext>,
     props: TProps,
+    part: ChildNodePart = {
+      type: 'childNode',
+      node: document.createComment(''),
+    },
     parent: Renderable<TContext> | null = null,
   ) {
-    super();
     this._type = type;
-    this._pendingProps = props;
-    this._memoizedProps = props;
+    this._part = part;
+    this._props = props;
     this._parent = parent;
   }
 
-  get startNode(): ChildNode | null {
-    return this._memoizedRoot?.childNodes[0] ?? null;
-  }
-
-  get endNode(): ChildNode | null {
-    if (this._memoizedRoot !== null) {
-      const { childNodes } = this._memoizedRoot;
-      return childNodes[childNodes.length - 1]!;
-    }
-    return null;
-  }
-
-  get type(): (props: TProps, context: TContext) => TemplateResult {
+  get type(): BlockType<TProps, TContext> {
     return this._type;
   }
 
+  get part(): ChildNodePart {
+    return this._part;
+  }
+
   get props(): TProps {
-    return this._memoizedProps;
+    return this._props;
   }
 
   get parent(): Renderable<TContext> | null {
@@ -70,30 +73,60 @@ export class Block<TProps, TContext>
   }
 
   get dirty(): boolean {
-    return this._dirty;
+    return !!(
+      this._flags & BlockFlags.UPDATING || this._flags & BlockFlags.UNMOUNTING
+    );
+  }
+
+  get isMounted(): boolean {
+    return !!(this._flags & BlockFlags.MOUNTED);
+  }
+
+  get root(): TemplateRoot | null {
+    return this._memoizedRoot;
   }
 
   set props(newProps: TProps) {
-    this._pendingProps = newProps;
+    this._props = newProps;
   }
 
-  forceUpdate(updater: Updater<TContext>): void {
-    if (this._dirty || this._memoizedRoot === null) {
+  forceUpdate(updater: Updater): void {
+    if (
+      this._flags & BlockFlags.UPDATING ||
+      this._flags & BlockFlags.UNMOUNTING
+    ) {
       return;
     }
 
-    this._dirty = true;
-
     updater.enqueueRenderable(this);
     updater.requestUpdate();
+
+    this._flags |= BlockFlags.UPDATING;
   }
 
-  render(updater: Updater<TContext>, scope: ScopeInterface<TContext>): void {
-    const previousNumberOfHooks = this._hooks.length;
+  forceUnmount(updater: Updater): void {
+    if (!(this._flags & BlockFlags.MUTATING)) {
+      updater.enqueueMutationEffect(this);
+    }
 
+    if (!(this._flags & BlockFlags.DISCONNECTING)) {
+      updater.enqueuePassiveEffect(this);
+    }
+
+    this._flags |=
+      BlockFlags.MUTATING | BlockFlags.DISCONNECTING | BlockFlags.UNMOUNTING;
+    this._flags &= ~BlockFlags.UPDATING;
+  }
+
+  render(updater: Updater<TContext>, scope: Scope<TContext>): void {
+    if (!(this._flags & BlockFlags.UPDATING)) {
+      return;
+    }
+
+    const previousNumberOfHooks = this._hooks.length;
     const render = this._type;
     const context = scope.createContext(this, this._hooks, updater);
-    const { template, values } = render(this._pendingProps, context);
+    const { template, values } = render(this._props, context);
 
     if (this._memoizedRoot !== null) {
       if (this._hooks.length !== previousNumberOfHooks) {
@@ -109,48 +142,80 @@ export class Block<TProps, TContext>
           // Since it is rare that different templates are returned, we defer
           // creating mount point caches.
           this._pendingRoot =
-            this._cachedRoots.get(template) ?? template.mount(values, updater);
+            this._cachedRoots.get(template) ??
+            template.hydrate(values, updater);
         } else {
           this._cachedRoots = new WeakMap();
-          this._pendingRoot = template.mount(values, updater);
+          this._pendingRoot = template.hydrate(values, updater);
         }
 
         // Save the memoized template for future renderings.
         this._cachedRoots.set(this._memoizedTemplate!, this._memoizedRoot);
+
+        if (!(this._flags & BlockFlags.MUTATING)) {
+          updater.enqueueMutationEffect(this);
+        }
+
+        if (!(this._flags & BlockFlags.DISCONNECTING)) {
+          updater.enqueuePassiveEffect(this);
+        }
+
+        this._flags |= BlockFlags.MUTATING | BlockFlags.DISCONNECTING;
       } else {
-        template.patch(
-          this._memoizedRoot.parts,
-          this._memoizedValues,
-          values,
-          updater,
-        );
+        this._memoizedRoot.patch(values, updater);
       }
     } else {
-      this._pendingRoot = template.mount(values, updater);
+      this._pendingRoot = template.hydrate(values, updater);
+
+      if (!(this._flags & BlockFlags.MUTATING)) {
+        updater.enqueueMutationEffect(this);
+      }
+
+      this._flags |= BlockFlags.MUTATING;
     }
 
-    this._memoizedProps = this._pendingProps;
     this._memoizedTemplate = template;
-    this._memoizedValues = values;
-    this._dirty = false;
+    this._flags &= ~BlockFlags.UPDATING;
   }
 
-  mount(part: Part, updater: Updater): void {
-    if (this._pendingRoot !== null) {
-      this._pendingRoot.mount(part, updater);
-      this._memoizedRoot = this._pendingRoot;
+  commit(mode: CommitMode): void {
+    switch (mode) {
+      case 'mutation':
+        if (this._flags & BlockFlags.UNMOUNTING) {
+          this._memoizedRoot?.unmount(this._part);
+          this._flags &= ~BlockFlags.MOUNTED;
+        } else {
+          this._memoizedRoot?.unmount(this._part);
+          this._pendingRoot?.mount(this._part);
+          this._memoizedRoot = this._pendingRoot;
+          this._flags |= BlockFlags.MOUNTED;
+        }
+        this._flags &= ~BlockFlags.MUTATING;
+        break;
+      case 'passive':
+        if (this._flags & BlockFlags.DISCONNECTING) {
+          this._memoizedRoot?.disconnect();
+        }
+        if (this._flags & BlockFlags.UNMOUNTING) {
+          cleanHooks(this._hooks);
+          this._hooks = [];
+        }
+        this._flags &= ~(BlockFlags.UNMOUNTING | BlockFlags.DISCONNECTING);
+        break;
     }
   }
 
-  unmount(part: Part, updater: Updater): void {
-    if (this._memoizedRoot !== null) {
-      this._memoizedRoot.unmount(part, updater);
-      this._memoizedRoot = null;
-    }
+  disconnect() {
+    cleanHooks(this._hooks);
+    this._hooks = [];
+  }
+}
 
-    if (this._hooks.length > 0) {
-      updater.enqueuePassiveEffect(new CleanHooks(this._hooks));
-      this._hooks = [];
+function cleanHooks(hooks: Hook[]): void {
+  for (let i = 0, l = hooks.length; i < l; i++) {
+    const hook = hooks[i]!;
+    if (hook.type === 'effect') {
+      hook.cleanup?.();
     }
   }
 }

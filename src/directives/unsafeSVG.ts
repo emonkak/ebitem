@@ -1,6 +1,10 @@
-import { Directive, directiveTag } from '../directive.js';
-import { Part, PartChild } from '../part.js';
-import { ChildPart } from '../part/child.js';
+import {
+  Binding,
+  ChildNodePart,
+  Directive,
+  Part,
+  directiveTag,
+} from '../part.js';
 import type { Updater } from '../updater.js';
 
 export function unsafeSVG(content: string): UnsafeSVGDirective {
@@ -8,72 +12,95 @@ export function unsafeSVG(content: string): UnsafeSVGDirective {
 }
 
 export class UnsafeSVGDirective implements Directive<unknown> {
-  private readonly _content: string;
+  private readonly _unsafeContent: string;
 
-  constructor(content: string) {
-    this._content = content;
+  constructor(unsafeContent: string) {
+    this._unsafeContent = unsafeContent;
   }
 
-  [directiveTag](_context: unknown, part: Part, updater: Updater): void {
-    if (!(part instanceof ChildPart)) {
+  [directiveTag](part: Part, updater: Updater): UnsafeSVGBinding {
+    if (part.type !== 'childNode') {
       throw new Error(
-        'UnsafeSVG directive must be used in an arbitrary child.',
+        `${this.constructor.name} must be used in ChildNodePart.`,
       );
     }
 
-    part.value = new UnsafeSVG(this._content);
+    const binding = new UnsafeSVGBinding(part);
 
-    updater.enqueueMutationEffect(part);
+    binding.bind(this._unsafeContent, updater);
+
+    return binding;
+  }
+
+  valueOf(): string {
+    return this._unsafeContent;
   }
 }
 
-class UnsafeSVG extends PartChild {
-  private readonly _content: string;
+export class UnsafeSVGBinding implements Binding<string> {
+  private readonly _part: ChildNodePart;
 
-  private _startNode: ChildNode | null = null;
+  private _unsafeContent = '';
 
-  private _endNode: ChildNode | null = null;
+  private _childNodes: ChildNode[] = [];
 
-  constructor(content: string) {
-    super();
-    this._content = content;
+  private _dirty = false;
+
+  constructor(part: ChildNodePart) {
+    this._part = part;
   }
 
-  get startNode(): ChildNode | null {
-    return this._startNode;
+  get part(): ChildNodePart {
+    return this._part;
   }
 
-  get endNode(): ChildNode | null {
-    return this._endNode;
+  get startNode(): ChildNode {
+    return this._childNodes[0] ?? this._part.node;
   }
 
-  mount(part: Part, _updater: Updater): void {
-    const template = document.createElement('template');
-    template.innerHTML = `<svg>${this._content}</svg>`;
-
-    const fragment = template.content;
-    fragment.replaceChildren(...fragment.firstChild!.childNodes);
-    this._startNode = fragment.firstChild;
-    this._endNode = fragment.lastChild;
-
-    const reference = part.node;
-    reference.parentNode?.insertBefore(fragment, reference);
+  get endNode(): ChildNode {
+    return this._part.node;
   }
 
-  unmount(part: Part, _updater: Updater): void {
-    const { parentNode } = part.node;
+  bind(unsafeContent: string, updater: Updater): void {
+    this._unsafeContent = unsafeContent;
 
-    if (parentNode !== null) {
-      let currentNode = this._startNode;
-
-      while (currentNode !== null) {
-        const nextNode = currentNode.nextSibling;
-        parentNode.removeChild(currentNode);
-        if (currentNode === this._endNode) {
-          break;
-        }
-        currentNode = nextNode;
-      }
+    if (!this._dirty) {
+      updater.enqueueMutationEffect(this);
+      this._dirty = true;
     }
+  }
+
+  unbind(updater: Updater): void {
+    this._unsafeContent = '';
+
+    if (!this._dirty) {
+      updater.enqueueMutationEffect(this);
+      this._dirty = true;
+    }
+  }
+
+  disconnect() {}
+
+  commit() {
+    for (let i = 0, l = this._childNodes.length; i < l; i++) {
+      this._childNodes[i]!.remove();
+    }
+
+    if (this._unsafeContent !== '') {
+      const template = document.createElement('template');
+      template.innerHTML = `<svg>${this._unsafeContent}</svg>`;
+
+      const fragment = template.content;
+      this._childNodes = [...fragment.firstChild!.childNodes];
+      fragment.replaceChildren(...this._childNodes);
+
+      const reference = this._part.node;
+      reference.before(fragment);
+    } else {
+      this._childNodes = [];
+    }
+
+    this._dirty = false;
   }
 }

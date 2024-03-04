@@ -1,5 +1,3 @@
-import type { Effect, Updater } from './updater.js';
-
 export type Cleanup = () => void;
 
 export type EffectCallback = () => Cleanup | void;
@@ -31,23 +29,6 @@ export interface ReducerHook<TState = any, TAction = any> {
   type: 'reducer';
   dispatch: (action: TAction) => void;
   state: TState;
-}
-
-export class CleanHooks implements Effect {
-  private _hooks: Hook[];
-
-  constructor(hooks: Hook[]) {
-    this._hooks = hooks;
-  }
-
-  commit(_updater: Updater): void {
-    for (let i = 0, l = this._hooks.length; i < l; i++) {
-      const hook = this._hooks[i]!;
-      if (hook.type === 'effect') {
-        hook.cleanup?.();
-      }
-    }
-  }
 }
 
 export function ensureHookType<TExpectedHook extends Hook>(

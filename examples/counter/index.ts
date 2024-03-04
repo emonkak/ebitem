@@ -2,16 +2,23 @@ import {
   AsyncUpdater,
   Block,
   Context,
-  Scope,
+  LocalScope,
   TemplateResult,
-  mount,
+  boot,
 } from '@emonkak/tempura';
 import {
   block,
-  classList,
+  cached,
+  classNames,
+  condition,
   list,
   ref,
+  signal,
   slot,
+  style,
+  unless,
+  unsafeHTML,
+  when,
 } from '@emonkak/tempura/directives.js';
 import { Signal, atom } from '@emonkak/tempura/signal.js';
 
@@ -59,7 +66,7 @@ function App(_props: {}, context: Context): TemplateResult {
               setItems(newItems);
             },
           }),
-        (_item, index) => index,
+        (item) => item,
       ),
     [items],
   );
@@ -87,9 +94,10 @@ function App(_props: {}, context: Context): TemplateResult {
         <button type="button" @click=${onShuffle}>Shuffle</button>
       </p>
       ${context.html`<div>Hello World!</div>`}
+      ${unsafeHTML('<div style="color: red">Hello World!</div>')}
       ${slot(
         'article',
-        { lang: 'en' },
+        { style: style({ color: 'blue' }) },
         context.html`<span>Hello World!</span>`,
       )}
     </div>
@@ -154,11 +162,26 @@ function Counter({ count }: CounterProps, context: Context): TemplateResult {
     <h1>
       <span class="count-label" ${ref(countLabelRef)}>COUNT: </span>
       <span
-        class=${classList('count-value', {
+        class=${classNames('count-value', {
           'is-odd': count.value % 2 !== 0,
           'is-even': count.value % 2 === 0,
         })}
-        data-count=${count}>${count}</span>
+        data-count=${count}>${signal(count)}</span>
+      <span class="count-condition">${condition(
+        count.value % 2 === 0,
+        '(Even)',
+        '(Odd)',
+      )}</span>
+      <span class="count-even">${when(count.value % 2 === 0, '(Even)')}</span>
+      <span class="count-odd">${unless(count.value % 2 === 0, '(Odd)')}</span>
+      <span class="count-cached">${cached(count.value % 2, (count) =>
+        count === 0 ? '(Even)' : '(Odd)',
+      )}</span>
+      ${slot(
+        count.value % 2 === 0 ? 'strong' : 'em',
+        { style: style({ color: 'blue' }) },
+        context.html`<span>Hello World!</span>`,
+      )}
     </h1>
   `;
 }
@@ -177,6 +200,6 @@ function shuffle<T>(elements: T[]): T[] {
   return elements;
 }
 
-const updater = new AsyncUpdater(new Scope());
+const updater = new AsyncUpdater(new LocalScope());
 
-mount(new Block(App, {}), document.body, updater);
+boot(new Block(App, {}), document.body, updater);

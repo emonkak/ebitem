@@ -1,15 +1,14 @@
-import { Renderable, shouldSkipRender } from '../renderable.js';
-import type { ScopeInterface } from '../scope.js';
-import type { Effect, Updater } from '../updater.js';
+import type { Scope } from '../scope.js';
+import { Effect, Renderable, Updater, shouldSkipRender } from '../updater.js';
 
 export class SyncUpdater<TContext> implements Updater<TContext> {
-  private readonly _scope: ScopeInterface<TContext>;
+  private readonly _scope: Scope<TContext>;
 
   private _currentRenderable: Renderable<TContext> | null = null;
 
-  private _pendingLayoutEffects: Effect[] = [];
-
   private _pendingMutationEffects: Effect[] = [];
+
+  private _pendingLayoutEffects: Effect[] = [];
 
   private _pendingPassiveEffects: Effect[] = [];
 
@@ -17,7 +16,7 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
 
   private _isRunning = false;
 
-  constructor(scope: ScopeInterface<TContext>) {
+  constructor(scope: Scope<TContext>) {
     this._scope = scope;
   }
 
@@ -25,23 +24,23 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
     return this._currentRenderable;
   }
 
-  get scope(): ScopeInterface<TContext> {
+  get scope(): Scope<TContext> {
     return this._scope;
   }
 
-  enqueueLayoutEffect(effect: Effect<TContext>): void {
+  enqueueLayoutEffect(effect: Effect): void {
     this._pendingLayoutEffects.push(effect);
   }
 
-  enqueueMutationEffect(effect: Effect<TContext>): void {
+  enqueueMutationEffect(effect: Effect): void {
     this._pendingMutationEffects.push(effect);
   }
 
-  enqueuePassiveEffect(effect: Effect<TContext>): void {
+  enqueuePassiveEffect(effect: Effect): void {
     this._pendingPassiveEffects.push(effect);
   }
 
-  enqueueRenderable(renderable: Renderable<TContext>): void {
+  enqueueRenderable(renderable: Renderable): void {
     this._pendingRenderables.push(renderable);
   }
 
@@ -62,9 +61,10 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
   }
 
   _runUpdateLoop(): void {
+    console.group('Update Loop');
     do {
       if (this._hasRenderable()) {
-        console.time('Rendering phase');
+        console.time('(1) Rendering phase');
 
         do {
           const renderables = this._pendingRenderables;
@@ -85,11 +85,11 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
           }
         } while (this._pendingRenderables.length > 0);
 
-        console.timeEnd('Rendering phase');
+        console.timeEnd('(1) Rendering phase');
       }
 
       if (this._hasBlockingEffect()) {
-        console.time('Blocking phase');
+        console.time('(2) Blocking phase');
 
         const mutationEffects = this._pendingMutationEffects;
         const layoutEffects = this._pendingLayoutEffects;
@@ -98,34 +98,35 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
         this._pendingLayoutEffects = [];
 
         for (let i = 0, l = mutationEffects.length; i < l; i++) {
-          mutationEffects[i]!.commit(this);
+          mutationEffects[i]!.commit('mutation');
         }
 
         for (let i = 0, l = layoutEffects.length; i < l; i++) {
-          layoutEffects[i]!.commit(this);
+          layoutEffects[i]!.commit('layout');
         }
 
-        console.timeEnd('Blocking phase');
+        console.timeEnd('(2) Blocking phase');
       }
 
       if (this._hasPassiveEffect()) {
-        console.time('Background phase');
+        console.time('(3) Background phase');
 
         const passiveEffects = this._pendingPassiveEffects;
 
         this._pendingPassiveEffects = [];
 
         for (let i = 0, l = passiveEffects.length; i < l; i++) {
-          passiveEffects[i]!.commit(this);
+          passiveEffects[i]!.commit('passive');
         }
 
-        console.timeEnd('Background phase');
+        console.timeEnd('(3) Background phase');
       }
     } while (
       this._hasRenderable() ||
       this._hasBlockingEffect() ||
       this._hasPassiveEffect()
     );
+    console.groupEnd();
   }
 
   private _hasBlockingEffect(): boolean {

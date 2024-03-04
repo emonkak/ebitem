@@ -1,10 +1,13 @@
-import type { Context } from '../context.js';
-import { Directive, directiveTag } from '../directive.js';
-import type { Part } from '../part.js';
-import { AttributePart } from '../part/attribute.js';
+import {
+  AttributePart,
+  Binding,
+  Directive,
+  Part,
+  directiveTag,
+} from '../part.js';
 import type { Effect, Updater } from '../updater.js';
 
-export type Style = Record<StyleProperty, string>;
+export type StyleMap = { [P in StyleProperty]?: string };
 
 export type StyleProperty = ExtractStringProperty<CSSStyleDeclaration>;
 
@@ -12,41 +15,80 @@ type ExtractStringProperty<T> = {
   [P in keyof T]: P extends string ? (T[P] extends string ? P : never) : never;
 }[keyof T];
 
-export function style(styleDeclaration: Style): StyleDirective {
+export function style(styleDeclaration: StyleMap): StyleDirective {
   return new StyleDirective(styleDeclaration);
 }
 
-export class StyleDirective implements Directive<Context> {
-  private readonly _style: Style;
+export class StyleDirective implements Directive<StyleMap> {
+  private readonly _styleMap: StyleMap;
 
-  constructor(style: Style) {
-    this._style = style;
+  constructor(styleMap: StyleMap) {
+    this._styleMap = styleMap;
   }
 
-  [directiveTag](
-    _context: Context,
-    part: Part,
-    updater: Updater<unknown>,
-  ): void {
-    if (!(part instanceof AttributePart) || part.name !== 'style') {
-      throw new Error('Style directive must be used in the "style" attribute.');
+  [directiveTag](part: Part, updater: Updater): StyleBinding {
+    if (part.type !== 'attribute' || part.name !== 'style') {
+      throw new Error(
+        `${this.constructor.name} directive must be used in the "style" attribute.`,
+      );
     }
 
-    updater.enqueueMutationEffect(new UpdateStyle(part, this._style));
+    const binding = new StyleBinding(part);
+
+    binding.bind(this._styleMap, updater);
+
+    return binding;
+  }
+
+  valueOf(): StyleMap {
+    return this._styleMap;
   }
 }
 
-class UpdateStyle implements Effect {
+export class StyleBinding implements Binding<StyleMap>, Effect {
   private readonly _part: AttributePart;
 
-  private readonly _style: Style;
+  private _styleMap = {} as StyleMap;
 
-  constructor(part: AttributePart, style: Style) {
+  private _dirty = false;
+
+  constructor(part: AttributePart) {
     this._part = part;
-    this._style = style;
   }
 
-  commit(_updater: Updater): void {
+  get part(): AttributePart {
+    return this._part;
+  }
+
+  get startNode(): ChildNode {
+    return this._part.node;
+  }
+
+  get endNode(): ChildNode {
+    return this._part.node;
+  }
+
+  bind(styleMap: StyleMap, updater: Updater): void {
+    this._styleMap = styleMap;
+
+    if (!this._dirty) {
+      updater.enqueueMutationEffect(this);
+      this._dirty = true;
+    }
+  }
+
+  unbind(updater: Updater): void {
+    this._styleMap = {} as StyleMap;
+
+    if (!this._dirty) {
+      updater.enqueueMutationEffect(this);
+      this._dirty = true;
+    }
+  }
+
+  disconnect() {}
+
+  commit() {
     const { style } = this._part.node as
       | HTMLElement
       | MathMLElement
@@ -55,16 +97,16 @@ class UpdateStyle implements Effect {
     for (let i = 0, l = style.length; i < l; i++) {
       const property = style.item(i);
 
-      if (!Object.hasOwn(this._style, property)) {
+      if (!Object.hasOwn(this._styleMap, property)) {
         style.removeProperty(property);
       }
     }
 
-    const newProperties = Object.keys(this._style) as StyleProperty[];
+    const newProperties = Object.keys(this._styleMap) as StyleProperty[];
 
     for (let i = 0, l = newProperties.length; i < l; i++) {
       const newProperty = newProperties[i]!;
-      const newValue = this._style[newProperty]!;
+      const newValue = this._styleMap[newProperty]!;
 
       style.setProperty(newProperty, newValue);
     }

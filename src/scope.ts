@@ -1,17 +1,11 @@
 import { Context } from './context.js';
 import type { Hook } from './hook.js';
-import type { Part } from './part.js';
-import type { Renderable } from './renderable.js';
-import { Template, TemplateInterface } from './template.js';
-import type { Updater } from './updater.js';
+import { TaggedTemplate, Template } from './template.js';
+import type { Renderable, Updater } from './updater.js';
 
 type Varibales = { [key: PropertyKey]: unknown };
 
-export interface ScopeInterface<TContext> {
-  getHooks(part: Part): Hook[] | undefined;
-
-  setHooks(part: Part, hooks: Hook[]): void;
-
+export interface Scope<TContext = unknown> {
   getVariable(key: PropertyKey, renderable: Renderable<TContext>): unknown;
 
   setVariable(
@@ -27,17 +21,14 @@ export interface ScopeInterface<TContext> {
   ): TContext;
 
   createHTMLTemplate(
-    strings: TemplateStringsArray,
+    tokens: ReadonlyArray<string>,
     values: unknown[],
-  ): TemplateInterface;
+  ): Template;
 
-  createSVGTemplate(
-    strings: TemplateStringsArray,
-    values: unknown[],
-  ): TemplateInterface;
+  createSVGTemplate(tokens: ReadonlyArray<string>, values: unknown[]): Template;
 }
 
-export class Scope implements ScopeInterface<Context> {
+export class LocalScope implements Scope<Context> {
   private readonly _globalVariables: Varibales;
 
   private readonly _marker: string;
@@ -45,28 +36,20 @@ export class Scope implements ScopeInterface<Context> {
   private readonly _variableScope: WeakMap<Renderable<Context>, Varibales> =
     new WeakMap();
 
-  private readonly _templateCaches: WeakMap<TemplateStringsArray, Template> =
-    new WeakMap();
-
-  private readonly _hooksInParts: WeakMap<Part, Hook[]> = new WeakMap();
+  private readonly _templateCaches: WeakMap<
+    TemplateStringsArray,
+    TaggedTemplate
+  > = new WeakMap();
 
   constructor(globalVariables: Varibales = {}) {
     this._globalVariables = globalVariables;
     this._marker = `?${getUUID()}?`;
   }
 
-  getHooks(part: Part): Hook[] | undefined {
-    return this._hooksInParts.get(part);
-  }
-
   getVariable(key: PropertyKey, renderable: Renderable<Context>): unknown {
     return (
       this._variableScope.get(renderable)?.[key] ?? this._globalVariables[key]
     );
-  }
-
-  setHooks(part: Part, hooks: Hook[]): void {
-    this._hooksInParts.set(part, hooks);
   }
 
   setVariable(
@@ -91,28 +74,28 @@ export class Scope implements ScopeInterface<Context> {
   }
 
   createHTMLTemplate(
-    strings: TemplateStringsArray,
+    tokens: TemplateStringsArray,
     _values: unknown[],
-  ): TemplateInterface {
-    let template = this._templateCaches.get(strings);
+  ): Template {
+    let template = this._templateCaches.get(tokens);
 
     if (template === undefined) {
-      template = Template.parseHTML(strings, this._marker);
-      this._templateCaches.set(strings, template);
+      template = TaggedTemplate.parseHTML(tokens, this._marker);
+      this._templateCaches.set(tokens, template);
     }
 
     return template;
   }
 
   createSVGTemplate(
-    strings: TemplateStringsArray,
+    tokens: TemplateStringsArray,
     _values: unknown[],
-  ): TemplateInterface {
-    let template = this._templateCaches.get(strings);
+  ): Template {
+    let template = this._templateCaches.get(tokens);
 
     if (template === undefined) {
-      template = Template.parseSVG(strings, this._marker);
-      this._templateCaches.set(strings, template);
+      template = TaggedTemplate.parseSVG(tokens, this._marker);
+      this._templateCaches.set(tokens, template);
     }
 
     return template;

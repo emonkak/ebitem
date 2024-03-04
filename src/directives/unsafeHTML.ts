@@ -1,6 +1,10 @@
-import { Directive, directiveTag } from '../directive.js';
-import { Part, PartChild } from '../part.js';
-import { ChildPart } from '../part/child.js';
+import {
+  Binding,
+  ChildNodePart,
+  Directive,
+  Part,
+  directiveTag,
+} from '../part.js';
 import type { Updater } from '../updater.js';
 
 export function unsafeHTML(content: string): UnsafeHTMLDirective {
@@ -8,71 +12,92 @@ export function unsafeHTML(content: string): UnsafeHTMLDirective {
 }
 
 export class UnsafeHTMLDirective implements Directive<unknown> {
-  private readonly _content: string;
+  private readonly _unsafeContent: string;
 
-  constructor(content: string) {
-    this._content = content;
+  constructor(unsafeContent: string) {
+    this._unsafeContent = unsafeContent;
   }
 
-  [directiveTag](_context: unknown, part: Part, updater: Updater): void {
-    if (!(part instanceof ChildPart)) {
+  [directiveTag](part: Part, updater: Updater): UnsafeHTMLBinding {
+    if (part.type !== 'childNode') {
       throw new Error(
-        'UnsafeHTML directive must be used in an arbitrary child.',
+        `${this.constructor.name} must be used in ChildNodePart.`,
       );
     }
 
-    part.value = new UnsafeHTML(this._content);
+    const binding = new UnsafeHTMLBinding(part);
 
-    updater.enqueueMutationEffect(part);
+    binding.bind(this._unsafeContent, updater);
+
+    return binding;
+  }
+
+  valueOf(): string {
+    return this._unsafeContent;
   }
 }
 
-class UnsafeHTML extends PartChild {
-  private readonly _content: string;
+export class UnsafeHTMLBinding implements Binding<string> {
+  private readonly _part: ChildNodePart;
 
-  private _startNode: ChildNode | null = null;
+  private _unsafeContent = '';
 
-  private _endNode: ChildNode | null = null;
+  private _childNodes: ChildNode[] = [];
 
-  constructor(content: string) {
-    super();
-    this._content = content;
+  private _dirty = false;
+
+  constructor(part: ChildNodePart) {
+    this._part = part;
   }
 
-  get startNode(): ChildNode | null {
-    return this._startNode;
+  get part(): ChildNodePart {
+    return this._part;
   }
 
-  get endNode(): ChildNode | null {
-    return this._endNode;
+  get startNode(): ChildNode {
+    return this._childNodes[0] ?? this._part.node;
   }
 
-  mount(part: Part, _updater: Updater): void {
-    const template = document.createElement('template');
-    template.innerHTML = this._content;
-
-    const fragment = template.content;
-    this._startNode = fragment.firstChild;
-    this._endNode = fragment.lastChild;
-
-    const reference = part.node;
-    reference.parentNode?.insertBefore(fragment, reference);
+  get endNode(): ChildNode {
+    return this._part.node;
   }
 
-  unmount(part: Part, _updater: Updater): void {
-    const { parentNode } = part.node;
+  bind(unsafeContent: string, updater: Updater): void {
+    this._unsafeContent = unsafeContent;
 
-    if (parentNode !== null) {
-      let currentNode = this._startNode;
-
-      while (currentNode !== null) {
-        const nextNode = currentNode.nextSibling;
-        parentNode.removeChild(currentNode);
-        if (currentNode === this._endNode) {
-          break;
-        }
-        currentNode = nextNode;
-      }
+    if (!this._dirty) {
+      updater.enqueueMutationEffect(this);
+      this._dirty = true;
     }
+  }
+
+  unbind(updater: Updater): void {
+    this._unsafeContent = '';
+
+    if (!this._dirty) {
+      updater.enqueueMutationEffect(this);
+      this._dirty = true;
+    }
+  }
+
+  disconnect() {}
+
+  commit() {
+    for (let i = 0, l = this._childNodes.length; i < l; i++) {
+      this._childNodes[i]!.remove();
+    }
+
+    if (this._unsafeContent !== '') {
+      const template = document.createElement('template');
+      template.innerHTML = this._unsafeContent;
+
+      const fragment = template.content;
+      this._childNodes = [...fragment.childNodes];
+
+      const reference = this._part.node;
+      reference.before(fragment);
+    }
+
+    this._dirty = false;
   }
 }
