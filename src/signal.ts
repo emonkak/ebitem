@@ -44,6 +44,10 @@ export abstract class Signal<T> {
   toJSON(): T {
     return this.value;
   }
+
+  valueOf(): T {
+    return this.value;
+  }
 }
 
 export class ArraySignal<T> extends Signal<ReadonlyArray<T>> {
