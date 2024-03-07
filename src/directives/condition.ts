@@ -9,7 +9,7 @@ import {
   updateBinding,
 } from '../part.js';
 import type { Updater } from '../updater.js';
-import { nullDirective } from './null.js';
+import { NullDirective } from './null.js';
 
 type ValueOrFunction<T> = T extends Function ? never : T | (() => T);
 
@@ -24,15 +24,15 @@ export function condition<TTrue, TFalse>(
 export function when<TTrue>(
   condition: ValueOrFunction<boolean>,
   trueCase: ValueOrFunction<TTrue>,
-): ConditionDirective<TTrue, typeof nullDirective> {
-  return new ConditionDirective(condition, trueCase, nullDirective);
+): ConditionDirective<TTrue, NullDirective> {
+  return new ConditionDirective(condition, trueCase, new NullDirective());
 }
 
 export function unless<TFalse>(
   condition: ValueOrFunction<boolean>,
   falseCase: ValueOrFunction<TFalse>,
-): ConditionDirective<typeof nullDirective, TFalse> {
-  return new ConditionDirective(condition, nullDirective, falseCase);
+): ConditionDirective<NullDirective, TFalse> {
+  return new ConditionDirective(condition, new NullDirective(), falseCase);
 }
 
 export class ConditionDirective<TTrue, TFalse>

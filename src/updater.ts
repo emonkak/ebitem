@@ -1,4 +1,4 @@
-import type { ChildNodePart } from './part.js';
+import type { Part } from './part.js';
 import type { Scope } from './scope.js';
 
 export interface Updater<TContext = unknown> {
@@ -12,7 +12,7 @@ export interface Updater<TContext = unknown> {
 
 export interface Renderable<TContext = unknown> {
   get dirty(): boolean;
-  get part(): ChildNodePart;
+  get part(): Part;
   get parent(): Renderable<TContext> | null;
   forceUpdate(updater: Updater<TContext>): void;
   render(updater: Updater<TContext>, scope: Scope<TContext>): void;
@@ -21,7 +21,7 @@ export interface Renderable<TContext = unknown> {
 export type CommitMode = 'mutation' | 'layout' | 'passive';
 
 export interface Effect {
-  commit(mode: CommitMode): void;
+  commit(mode: CommitMode, updater: Updater): void;
 }
 
 export interface Disconnectable {

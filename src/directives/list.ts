@@ -259,7 +259,9 @@ export class ListBinding<TItem, TValue, TKey>
 const ListItemFlags = {
   NONE: 0,
   MUTATING: 1 << 0,
-  REORDERED: 1 << 1,
+  UNMOUNTING: 1 << 1,
+  REORDERING: 1 << 2,
+  MOUNTED: 1 << 3,
 };
 
 class ListItemBinding<T> implements Binding<T>, Effect {
@@ -269,7 +271,7 @@ class ListItemBinding<T> implements Binding<T>, Effect {
 
   private _value: T | null = null;
 
-  private _binding: Binding<BindValueOf<T>> | null = null;
+  private _itemBinding: Binding<BindValueOf<T>> | null = null;
 
   private _referenceBinding: ListItemBinding<T> | null = null;
 
@@ -285,7 +287,9 @@ class ListItemBinding<T> implements Binding<T>, Effect {
   }
 
   get startNode(): ChildNode {
-    return this._binding?.startNode ?? this._part.node;
+    return this._flags & ListItemFlags.MOUNTED
+      ? this._itemBinding?.startNode ?? this._part.node
+      : this._part.node;
   }
 
   get endNode(): ChildNode {
@@ -294,79 +298,89 @@ class ListItemBinding<T> implements Binding<T>, Effect {
 
   reorder(newReferenceBinding: ListItemBinding<T> | null) {
     this._referenceBinding = newReferenceBinding;
-    this._flags |= ListItemFlags.REORDERED;
+    this._flags |= ListItemFlags.REORDERING;
   }
 
   bind(value: T, updater: Updater): void {
-    if (this._binding !== null) {
-      this._binding = updateBinding(
-        this._binding,
+    if (this._itemBinding !== null) {
+      this._itemBinding = updateBinding(
+        this._itemBinding,
         this._value!,
         value,
         updater,
       );
 
-      if (
-        !(this._flags & ListItemFlags.MUTATING) &&
-        this._flags & ListItemFlags.REORDERED
-      ) {
-        updater.enqueueMutationEffect(this);
-        this._flags |= ListItemFlags.MUTATING;
+      if (this._flags & ListItemFlags.REORDERING) {
+        if (!(this._flags & ListItemFlags.MUTATING)) {
+          updater.enqueueMutationEffect(this);
+          this._flags |= ListItemFlags.MUTATING;
+        }
       }
     } else {
       if (!(this._flags & ListItemFlags.MUTATING)) {
         updater.enqueueMutationEffect(this);
-        this._flags |= ListItemFlags.MUTATING;
       }
 
-      this._binding = createBinding(this._part, value, updater);
+      this._itemBinding = createBinding(this._part, value, updater);
+      this._flags |= ListItemFlags.MUTATING;
     }
 
     this._value = value;
+    this._flags &= ~ListItemFlags.UNMOUNTING;
   }
 
   unbind(updater: Updater): void {
-    this._binding?.unbind(updater);
+    this._itemBinding?.unbind(updater);
 
     if (!(this._flags & ListItemFlags.MUTATING)) {
       updater.enqueueMutationEffect(this);
       this._flags |= ListItemFlags.MUTATING;
     }
 
-    this._binding = null;
-    this._value = null;
+    this._flags |= ListItemFlags.UNMOUNTING;
   }
 
   disconnect(): void {
-    this._binding?.disconnect();
+    this._itemBinding?.disconnect();
   }
 
   commit() {
-    if (this._binding !== null) {
-      if (this._flags & ListItemFlags.REORDERED) {
+    if (this._flags & ListItemFlags.MOUNTED) {
+      if (this._flags & ListItemFlags.UNMOUNTING) {
+        this._part.node.remove();
+        this._flags &= ~ListItemFlags.MOUNTED;
+      } else if (this._flags & ListItemFlags.REORDERING) {
         const referenceNode =
           this._referenceBinding?.startNode ?? this._listPart.node;
-        const { startNode, endNode } = this._binding;
 
-        let currentNode: Node | null = startNode;
-        do {
-          const nextNode: Node | null = currentNode.nextSibling;
-          referenceNode.before(currentNode);
-          if (currentNode === endNode) {
-            break;
-          }
-          currentNode = nextNode;
-        } while (currentNode !== null);
+        if (this._itemBinding !== null) {
+          const { startNode, endNode } = this._itemBinding;
+
+          let currentNode: Node | null = startNode;
+          do {
+            const nextNode: Node | null = currentNode.nextSibling;
+            referenceNode.before(currentNode);
+            if (currentNode === endNode) {
+              break;
+            }
+            currentNode = nextNode;
+          } while (currentNode !== null);
+        }
 
         referenceNode.before(this._part.node);
-      } else {
-        this._listPart.node.before(this._part.node);
       }
     } else {
-      this._part.node.remove();
+      if (!(this._flags & ListItemFlags.UNMOUNTING)) {
+        this._listPart.node.before(this._part.node);
+        this._flags |= ListItemFlags.MOUNTED;
+      }
     }
 
-    this._flags &= ~(ListItemFlags.MUTATING | ListItemFlags.REORDERED);
+    this._flags &= ~(
+      ListItemFlags.MUTATING |
+      ListItemFlags.UNMOUNTING |
+      ListItemFlags.REORDERING
+    );
   }
 }
 

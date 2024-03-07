@@ -73,7 +73,7 @@ export class BlockBinding<TProps, TContext>
   }
 
   get startNode(): ChildNode {
-    return this._block !== null && this._block.isMounted
+    return this._block?.root?.isMounted
       ? this._block.root?.childNodes[0] ?? this._part.node
       : this._part.node;
   }

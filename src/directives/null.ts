@@ -1,16 +1,17 @@
 import { Binding, Directive, Part, directiveTag } from '../part.js';
 import type { Updater } from '../updater.js';
 
-export const nullDirective: Directive<null> = {
+export class NullDirective implements Directive<NullDirective> {
   [directiveTag](part: Part, _updater: Updater): NullBinding {
     return new NullBinding(part);
-  },
-  valueOf(): null {
-    return null;
-  },
-};
+  }
 
-export class NullBinding implements Binding<null> {
+  valueOf(): this {
+    return this;
+  }
+}
+
+export class NullBinding implements Binding<NullDirective> {
   private readonly _part: Part;
 
   constructor(part: Part) {
@@ -29,7 +30,7 @@ export class NullBinding implements Binding<null> {
     return this._part.node;
   }
 
-  bind(_value: null, _updater: Updater): void {}
+  bind(_value: NullDirective, _updater: Updater): void {}
 
   unbind(_updater: Updater): void {}
 

@@ -3,16 +3,20 @@ import type { ChildNodePart } from './part.js';
 import type { Scope } from './scope.js';
 import type { Template } from './template.js';
 import type { TemplateResult } from './templateResult.js';
-import type { TemplateRoot } from './templateRoot.js';
-import { CommitMode, Effect, Renderable, Updater } from './updater.js';
+import { TemplateRoot } from './templateRoot.js';
+import {
+  CommitMode,
+  Disconnect,
+  Effect,
+  Renderable,
+  Updater,
+} from './updater.js';
 
 const BlockFlags = {
   NONE: 0,
   UPDATING: 1 << 0,
   MUTATING: 1 << 1,
   UNMOUNTING: 1 << 2,
-  DISCONNECTING: 1 << 3,
-  MOUNTED: 1 << 4,
 };
 
 export type BlockType<TProps, TContext> = (
@@ -78,10 +82,6 @@ export class Block<TProps, TContext> implements Effect, Renderable {
     );
   }
 
-  get isMounted(): boolean {
-    return !!(this._flags & BlockFlags.MOUNTED);
-  }
-
   get root(): TemplateRoot | null {
     return this._memoizedRoot;
   }
@@ -91,38 +91,29 @@ export class Block<TProps, TContext> implements Effect, Renderable {
   }
 
   forceUpdate(updater: Updater): void {
-    if (
-      this._flags & BlockFlags.UPDATING ||
-      this._flags & BlockFlags.UNMOUNTING
-    ) {
-      return;
+    if (!(this._flags & BlockFlags.UPDATING)) {
+      updater.enqueueRenderable(this);
+      updater.requestUpdate();
+      this._flags |= BlockFlags.UPDATING;
     }
 
-    updater.enqueueRenderable(this);
-    updater.requestUpdate();
-
-    this._flags |= BlockFlags.UPDATING;
+    this._flags &= ~BlockFlags.UNMOUNTING;
   }
 
   forceUnmount(updater: Updater): void {
-    if (!(this._flags & BlockFlags.MUTATING)) {
-      updater.enqueueMutationEffect(this);
+    if (!(this._flags & BlockFlags.UNMOUNTING)) {
+      if (!(this._flags & BlockFlags.MUTATING)) {
+        updater.enqueueMutationEffect(this);
+        this._flags |= BlockFlags.MUTATING;
+      }
+
+      this._flags |= BlockFlags.UNMOUNTING;
     }
 
-    if (!(this._flags & BlockFlags.DISCONNECTING)) {
-      updater.enqueuePassiveEffect(this);
-    }
-
-    this._flags |=
-      BlockFlags.MUTATING | BlockFlags.DISCONNECTING | BlockFlags.UNMOUNTING;
-    this._flags &= ~BlockFlags.UPDATING;
+    this._pendingRoot = null;
   }
 
   render(updater: Updater<TContext>, scope: Scope<TContext>): void {
-    if (!(this._flags & BlockFlags.UPDATING)) {
-      return;
-    }
-
     const previousNumberOfHooks = this._hooks.length;
     const render = this._type;
     const context = scope.createContext(this, this._hooks, updater);
@@ -154,13 +145,8 @@ export class Block<TProps, TContext> implements Effect, Renderable {
 
         if (!(this._flags & BlockFlags.MUTATING)) {
           updater.enqueueMutationEffect(this);
+          this._flags |= BlockFlags.MUTATING;
         }
-
-        if (!(this._flags & BlockFlags.DISCONNECTING)) {
-          updater.enqueuePassiveEffect(this);
-        }
-
-        this._flags |= BlockFlags.MUTATING | BlockFlags.DISCONNECTING;
       } else {
         this._memoizedRoot.patch(values, updater);
       }
@@ -169,39 +155,45 @@ export class Block<TProps, TContext> implements Effect, Renderable {
 
       if (!(this._flags & BlockFlags.MUTATING)) {
         updater.enqueueMutationEffect(this);
+        this._flags |= BlockFlags.MUTATING;
       }
-
-      this._flags |= BlockFlags.MUTATING;
     }
 
     this._memoizedTemplate = template;
     this._flags &= ~BlockFlags.UPDATING;
   }
 
-  commit(mode: CommitMode): void {
+  commit(mode: CommitMode, updater: Updater): void {
     switch (mode) {
-      case 'mutation':
-        if (this._flags & BlockFlags.UNMOUNTING) {
-          this._memoizedRoot?.unmount(this._part);
-          this._flags &= ~BlockFlags.MOUNTED;
-        } else {
-          this._memoizedRoot?.unmount(this._part);
-          this._pendingRoot?.mount(this._part);
+      case 'mutation': {
+        if (this._memoizedRoot !== this._pendingRoot) {
+          if (this._memoizedRoot !== null) {
+            this._memoizedRoot.unmount(this._part);
+
+            updater.enqueuePassiveEffect(new Disconnect(this._memoizedRoot));
+          }
+
+          if (this._pendingRoot !== null) {
+            this._pendingRoot.mount(this._part);
+          }
+
           this._memoizedRoot = this._pendingRoot;
-          this._flags |= BlockFlags.MOUNTED;
         }
-        this._flags &= ~BlockFlags.MUTATING;
+
+        if (this._flags & BlockFlags.UNMOUNTING) {
+          updater.enqueuePassiveEffect(this);
+        }
+
+        this._flags &= ~(BlockFlags.MUTATING | BlockFlags.UNMOUNTING);
         break;
-      case 'passive':
-        if (this._flags & BlockFlags.DISCONNECTING) {
-          this._memoizedRoot?.disconnect();
-        }
+      }
+      case 'passive': {
         if (this._flags & BlockFlags.UNMOUNTING) {
           cleanHooks(this._hooks);
           this._hooks = [];
         }
-        this._flags &= ~(BlockFlags.UNMOUNTING | BlockFlags.DISCONNECTING);
-        break;
+        this._flags &= ~BlockFlags.UNMOUNTING;
+      }
     }
   }
 

@@ -1,8 +1,14 @@
 import { ChildNodePart } from './part.js';
 import type { Scope } from './scope.js';
 import type { Template } from './template.js';
-import type { TemplateRoot } from './templateRoot.js';
-import { CommitMode, Effect, Renderable, Updater } from './updater.js';
+import { TemplateRoot } from './templateRoot.js';
+import {
+  CommitMode,
+  Disconnect,
+  Effect,
+  Renderable,
+  Updater,
+} from './updater.js';
 
 const FragmentFlags = {
   NONE: 0,
@@ -63,12 +69,12 @@ export class Fragment implements Effect, Renderable {
     );
   }
 
-  get isMounted(): boolean {
-    return !!(this._flags & FragmentFlags.MOUNTED);
-  }
-
   get root(): TemplateRoot | null {
     return this._root;
+  }
+
+  get isMounted(): boolean {
+    return !!(this._flags & FragmentFlags.MOUNTED);
   }
 
   set values(newValues: unknown[]) {
@@ -76,37 +82,25 @@ export class Fragment implements Effect, Renderable {
   }
 
   forceUpdate(updater: Updater): void {
-    if (
-      this._flags & FragmentFlags.UPDATING ||
-      this._flags & FragmentFlags.UNMOUNTING
-    ) {
-      return;
+    if (!(this._flags & FragmentFlags.UPDATING)) {
+      updater.enqueueRenderable(this);
+      updater.requestUpdate();
+      this._flags |= FragmentFlags.UPDATING;
     }
 
-    this._flags |= FragmentFlags.UPDATING;
-
-    updater.enqueueRenderable(this);
-    updater.requestUpdate();
+    this._flags &= ~FragmentFlags.UNMOUNTING;
   }
 
   forceUnmount(updater: Updater): void {
     if (!(this._flags & FragmentFlags.MUTATING)) {
       updater.enqueueMutationEffect(this);
+      this._flags |= FragmentFlags.MUTATING;
     }
 
-    if (!(this._flags & FragmentFlags.UNMOUNTING)) {
-      updater.enqueuePassiveEffect(this);
-    }
-
-    this._flags |= FragmentFlags.MUTATING | FragmentFlags.UNMOUNTING;
-    this._flags &= ~FragmentFlags.UPDATING;
+    this._flags |= FragmentFlags.UNMOUNTING;
   }
 
   render(updater: Updater, _scope: Scope): void {
-    if (!(this._flags & FragmentFlags.UPDATING)) {
-      return;
-    }
-
     if (this._root !== null) {
       this._root.patch(this._values, updater);
     } else {
@@ -114,30 +108,33 @@ export class Fragment implements Effect, Renderable {
 
       if (!(this._flags & FragmentFlags.MUTATING)) {
         updater.enqueueMutationEffect(this);
+        this._flags |= FragmentFlags.MUTATING;
       }
-
-      this._flags |= FragmentFlags.MUTATING;
     }
 
     this._flags &= ~FragmentFlags.UPDATING;
   }
 
-  commit(mode: CommitMode): void {
-    switch (mode) {
-      case 'mutation':
+  commit(_mode: CommitMode, updater: Updater): void {
+    if (this._root !== null) {
+      if (this._flags & FragmentFlags.MOUNTED) {
         if (this._flags & FragmentFlags.UNMOUNTING) {
-          this._root?.unmount(this._part);
+          this._root.unmount(this._part);
+
           this._flags &= ~FragmentFlags.MOUNTED;
-        } else {
+
+          updater.enqueuePassiveEffect(new Disconnect(this._root));
+        }
+      } else {
+        if (!(this._flags & FragmentFlags.UNMOUNTING)) {
           this._root?.mount(this._part);
+
           this._flags |= FragmentFlags.MOUNTED;
         }
-        this._flags &= ~FragmentFlags.MUTATING;
-        break;
-      case 'passive':
-        this._root?.disconnect();
-        this._flags &= ~FragmentFlags.UNMOUNTING;
+      }
     }
+
+    this._flags &= ~(FragmentFlags.MUTATING | FragmentFlags.UNMOUNTING);
   }
 
   disconnect(): void {

@@ -125,7 +125,8 @@ export class AttributeBinding implements Binding<unknown>, Effect {
 const ChildNodeBindingFlags = {
   NONE: 0,
   MUTATING: 1 << 0,
-  MOUNTED: 1 << 1,
+  UNMOUNTING: 1 << 1,
+  MOUNTED: 1 << 2,
 };
 
 export class ChildNodeBinding implements Binding<unknown>, Effect {
@@ -155,23 +156,25 @@ export class ChildNodeBinding implements Binding<unknown>, Effect {
   bind(value: unknown, updater: Updater): void {
     this._nodeBinding.bind(value, updater);
 
-    if (
-      !(this._flags & ChildNodeBindingFlags.MUTATING) &&
-      !(this._flags & ChildNodeBindingFlags.MOUNTED)
-    ) {
-      updater.enqueueMutationEffect(this);
+    if (!(this._flags & ChildNodeBindingFlags.MOUNTED)) {
+      if (!(this._flags & ChildNodeBindingFlags.MUTATING)) {
+        updater.enqueueMutationEffect(this);
+      }
       this._flags |= ChildNodeBindingFlags.MUTATING;
     }
+
+    this._flags &= ~ChildNodeBindingFlags.UNMOUNTING;
   }
 
   unbind(updater: Updater) {
-    if (
-      !(this._flags & ChildNodeBindingFlags.MUTATING) &&
-      this._flags & ChildNodeBindingFlags.MOUNTED
-    ) {
-      updater.enqueueMutationEffect(this);
-      this._flags |= ChildNodeBindingFlags.MUTATING;
+    if (this._flags & ChildNodeBindingFlags.MOUNTED) {
+      if (!(this._flags & ChildNodeBindingFlags.MUTATING)) {
+        updater.enqueueMutationEffect(this);
+      }
     }
+
+    this._flags |=
+      ChildNodeBindingFlags.MUTATING | ChildNodeBindingFlags.UNMOUNTING;
   }
 
   disconnect(): void {}
@@ -179,16 +182,20 @@ export class ChildNodeBinding implements Binding<unknown>, Effect {
   commit(): void {
     const node = this._nodeBinding.part.node;
 
-    if (this._flags & ChildNodeBindingFlags.MOUNTED) {
+    if (this._flags & ChildNodeBindingFlags.UNMOUNTING) {
       node.remove();
       this._flags &= ~ChildNodeBindingFlags.MOUNTED;
     } else {
-      const reference = this._part.node;
-      reference.before(node);
-      this._flags |= ChildNodeBindingFlags.MOUNTED;
+      if (!(this._flags & ChildNodeBindingFlags.MOUNTED)) {
+        const reference = this._part.node;
+        reference.before(node);
+        this._flags |= ChildNodeBindingFlags.MOUNTED;
+      }
     }
 
-    this._flags &= ~ChildNodeBindingFlags.MUTATING;
+    this._flags &= ~(
+      ChildNodeBindingFlags.MUTATING | ChildNodeBindingFlags.UNMOUNTING
+    );
   }
 }
 
