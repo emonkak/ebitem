@@ -62,6 +62,7 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
     }
     this._runningUpdateLoop = this._runUpdateLoop();
     try {
+      await this._scheduler.yieldToMain();
       await this._runningUpdateLoop;
     } finally {
       this._runningUpdateLoop = null;
