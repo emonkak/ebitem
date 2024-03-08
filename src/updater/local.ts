@@ -1,4 +1,4 @@
-import { CommitMode, Effect, Renderable, Updater } from '../updater.js';
+import type { CommitMode, Effect, Renderable, Updater } from '../types.js';
 
 export class LocalUpdater<TContext> implements Updater<TContext>, Effect {
   private readonly _currentRenderable: Renderable<TContext> | null;

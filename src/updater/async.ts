@@ -1,6 +1,6 @@
 import { Scheduler, getDefaultScheduler } from '../scheduler.js';
-import type { Scope } from '../scope.js';
-import { Effect, Renderable, Updater, shouldSkipRender } from '../updater.js';
+import type { Effect, Renderable, Scope, Updater } from '../types.js';
+import { shouldSkipRender } from '../updater.js';
 
 export interface AsyncUpdaterOptions {
   scheduler?: Scheduler;

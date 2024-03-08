@@ -1,47 +1,15 @@
-import { Effect, Updater } from './updater.js';
-
-export type Part =
-  | AttributePart
-  | ChildNodePart
-  | ElementPart
-  | EventPart
-  | NodePart
-  | PropertyPart;
-
-export type NamedPart = AttributePart | EventPart | PropertyPart;
-
-export interface AttributePart {
-  type: 'attribute';
-  node: Element;
-  name: string;
-}
-
-export interface ChildNodePart {
-  type: 'childNode';
-  node: ChildNode;
-}
-
-export interface ElementPart {
-  type: 'element';
-  node: Element;
-}
-
-export interface EventPart {
-  type: 'event';
-  node: Element;
-  name: string;
-}
-
-export interface PropertyPart {
-  type: 'property';
-  node: Element;
-  name: string;
-}
-
-export interface NodePart {
-  type: 'node';
-  node: ChildNode;
-}
+import type {
+  AttributePart,
+  ChildNodePart,
+  Effect,
+  ElementPart,
+  EventPart,
+  NamedPart,
+  NodePart,
+  Part,
+  PropertyPart,
+  Updater,
+} from './types.js';
 
 export type PrimitiveBinding<TContext = unknown> = Binding<any, TContext>;
 
@@ -186,10 +154,7 @@ export class ChildNodeBinding implements Binding<unknown>, Effect {
     this._nodeBinding.bind(updater);
 
     if (!(this._flags & ChildNodeBindingFlags.MOUNTED)) {
-      if (!(this._flags & ChildNodeBindingFlags.MUTATING)) {
-        updater.enqueueMutationEffect(this);
-      }
-      this._flags |= ChildNodeBindingFlags.MUTATING;
+      this._requestMutation(updater);
     }
 
     this._flags &= ~ChildNodeBindingFlags.UNMOUNTING;
@@ -197,13 +162,10 @@ export class ChildNodeBinding implements Binding<unknown>, Effect {
 
   unbind(updater: Updater) {
     if (this._flags & ChildNodeBindingFlags.MOUNTED) {
-      if (!(this._flags & ChildNodeBindingFlags.MUTATING)) {
-        updater.enqueueMutationEffect(this);
-      }
+      this._requestMutation(updater);
     }
 
-    this._flags |=
-      ChildNodeBindingFlags.MUTATING | ChildNodeBindingFlags.UNMOUNTING;
+    this._flags |= ChildNodeBindingFlags.UNMOUNTING;
   }
 
   disconnect(): void {}
@@ -225,6 +187,13 @@ export class ChildNodeBinding implements Binding<unknown>, Effect {
     this._flags &= ~(
       ChildNodeBindingFlags.MUTATING | ChildNodeBindingFlags.UNMOUNTING
     );
+  }
+
+  _requestMutation(updater: Updater): void {
+    if (!(this._flags & ChildNodeBindingFlags.MUTATING)) {
+      updater.enqueueMutationEffect(this);
+      this._flags |= ChildNodeBindingFlags.MUTATING;
+    }
   }
 }
 

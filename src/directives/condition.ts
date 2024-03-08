@@ -1,12 +1,11 @@
 import {
   Binding,
   Directive,
-  Part,
   createBinding,
   directiveTag,
   updateBinding,
-} from '../part.js';
-import type { Updater } from '../updater.js';
+} from '../binding.js';
+import type { Part, Updater } from '../types.js';
 import { NullDirective } from './null.js';
 
 type ValueOrFunction<T> = T extends Function ? never : T | (() => T);

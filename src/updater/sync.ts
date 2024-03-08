@@ -1,5 +1,5 @@
-import type { Scope } from '../scope.js';
-import { Effect, Renderable, Updater, shouldSkipRender } from '../updater.js';
+import type { Effect, Renderable, Scope, Updater } from '../types.js';
+import { shouldSkipRender } from '../updater.js';
 
 export class SyncUpdater<TContext> implements Updater<TContext> {
   private readonly _scope: Scope<TContext>;

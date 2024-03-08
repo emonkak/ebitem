@@ -1,11 +1,5 @@
-import {
-  AttributePart,
-  Binding,
-  Directive,
-  Part,
-  directiveTag,
-} from '../part.js';
-import type { Effect, Updater } from '../updater.js';
+import { Binding, Directive, directiveTag } from '../binding.js';
+import type { AttributePart, Effect, Part, Updater } from '../types.js';
 
 export type StyleMap = { [P in StyleProperty]?: string };
 

@@ -1,10 +1,5 @@
-import { Part, createBinding } from './part.js';
-import { TemplateRoot } from './templateRoot.js';
-import type { Updater } from './updater.js';
-
-export interface Template {
-  hydrate(values: unknown[], updater: Updater): TemplateRoot;
-}
+import { Binding, createBinding, updateBinding } from './binding.js';
+import type { Part, Template, TemplateRoot, Updater } from './types.js';
 
 export type Hole =
   | AttributeHole
@@ -102,7 +97,7 @@ export class TaggedTemplate implements Template {
     return this._holes;
   }
 
-  hydrate(values: unknown[], updater: Updater): TemplateRoot {
+  hydrate(values: unknown[], updater: Updater): TaggedTemplateRoot {
     const holes = this._holes;
     const bindings = new Array(holes.length);
     const rootNode = document.importNode(this._element.content, true);
@@ -174,7 +169,56 @@ export class TaggedTemplate implements Template {
       }
     }
 
-    return new TemplateRoot(bindings, [...rootNode.childNodes]);
+    return new TaggedTemplateRoot(bindings, [...rootNode.childNodes]);
+  }
+}
+
+export class TaggedTemplateRoot implements TemplateRoot {
+  private readonly _bindings: Binding<unknown>[];
+
+  private readonly _childNodes: ChildNode[];
+
+  constructor(bindings: Binding<unknown>[], childNodes: ChildNode[]) {
+    this._bindings = bindings;
+    this._childNodes = childNodes;
+  }
+
+  get childNodes(): ChildNode[] {
+    return this._childNodes;
+  }
+
+  get bindings(): Binding<unknown>[] {
+    return this._bindings;
+  }
+
+  patch(newValues: unknown[], updater: Updater): void {
+    for (let i = 0, l = this._bindings.length; i < l; i++) {
+      this._bindings[i] = updateBinding(
+        this._bindings[i]!,
+        newValues[i],
+        updater,
+      );
+    }
+  }
+
+  mount(part: Part): void {
+    const reference = part.node;
+
+    for (let i = 0, l = this._childNodes.length; i < l; i++) {
+      reference.before(this._childNodes[i]!);
+    }
+  }
+
+  unmount(_part: Part): void {
+    for (let i = 0, l = this._childNodes.length; i < l; i++) {
+      this._childNodes[i]!.remove();
+    }
+  }
+
+  disconnect(): void {
+    for (let i = 0, l = this._bindings.length; i < l; i++) {
+      this._bindings[i]!.disconnect();
+    }
   }
 }
 

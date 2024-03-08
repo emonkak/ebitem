@@ -1,10 +1,15 @@
-import { Hook } from '../hook.js';
-import { Binding, Directive, Part, directiveTag } from '../part.js';
-import type { ChildNodePart } from '../part.js';
-import type { Scope } from '../scope.js';
-import type { Template } from '../template.js';
-import { TemplateRoot } from '../templateRoot.js';
-import { Effect, Renderable, Updater } from '../updater.js';
+import { Binding, Directive, directiveTag } from '../binding.js';
+import type {
+  ChildNodePart,
+  Effect,
+  Hook,
+  Part,
+  Renderable,
+  Scope,
+  Template,
+  TemplateRoot,
+  Updater,
+} from '../types.js';
 import type { TemplateDirective } from './template.js';
 
 export type BlockType<TProps, TContext> = (
@@ -126,6 +131,12 @@ export class BlockBinding<TProps, TContext>
     this._pendingDirective = newDirective;
   }
 
+  forceUpdate(updater: Updater): void {
+    this._requestUpdate(updater);
+
+    this._flags &= ~BlockFlags.UNMOUNTING;
+  }
+
   bind(updater: Updater): void {
     this._requestUpdate(updater);
 
@@ -227,7 +238,7 @@ export class BlockBinding<TProps, TContext>
     this._flags &= ~(BlockFlags.MUTATING | BlockFlags.UNMOUNTING);
   }
 
-  private _requestUpdate(updater: Updater) {
+  private _requestUpdate(updater: Updater): void {
     if (!(this._flags & BlockFlags.UPDATING)) {
       updater.enqueueRenderable(this);
       updater.requestUpdate();
@@ -235,7 +246,7 @@ export class BlockBinding<TProps, TContext>
     }
   }
 
-  private _requestMutation(updater: Updater) {
+  private _requestMutation(updater: Updater): void {
     if (!(this._flags & BlockFlags.MUTATING)) {
       updater.enqueueMutationEffect(this);
       this._flags |= BlockFlags.MUTATING;

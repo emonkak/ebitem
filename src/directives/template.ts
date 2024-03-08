@@ -1,14 +1,14 @@
-import {
-  Binding,
+import { Binding, Directive, directiveTag } from '../binding.js';
+import type {
   ChildNodePart,
-  Directive,
+  Effect,
   Part,
-  directiveTag,
-} from '../part.js';
-import type { Scope } from '../scope.js';
-import type { Template } from '../template.js';
-import { TemplateRoot } from '../templateRoot.js';
-import { Effect, Renderable, Updater } from '../updater.js';
+  Renderable,
+  Scope,
+  Template,
+  TemplateRoot,
+  Updater,
+} from '../types.js';
 
 const FragmentFlags = {
   NONE: 0,
@@ -109,6 +109,12 @@ export class TemplateBinding
     this._directive = directive;
   }
 
+  forceUpdate(updater: Updater): void {
+    this._requestUpdate(updater);
+
+    this._flags &= ~FragmentFlags.UNMOUNTING;
+  }
+
   bind(updater: Updater): void {
     this._requestUpdate(updater);
 
@@ -118,7 +124,7 @@ export class TemplateBinding
   unbind(updater: Updater): void {
     this.disconnect();
 
-    this._requestMutationEffect(updater);
+    this._requestMutation(updater);
 
     this._flags |= FragmentFlags.UNMOUNTING;
     this._flags &= ~FragmentFlags.UPDATING;
@@ -140,7 +146,7 @@ export class TemplateBinding
       this._pendingRoot.patch(values, updater);
     } else {
       this._pendingRoot = template.hydrate(values, updater);
-      this._requestMutationEffect(updater);
+      this._requestMutation(updater);
     }
 
     this._template = template;
@@ -179,7 +185,7 @@ export class TemplateBinding
     }
   }
 
-  private _requestMutationEffect(updater: Updater) {
+  private _requestMutation(updater: Updater) {
     if (!(this._flags & FragmentFlags.MUTATING)) {
       updater.enqueueMutationEffect(this);
       this._flags |= FragmentFlags.MUTATING;

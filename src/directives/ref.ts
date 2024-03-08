@@ -1,12 +1,5 @@
-import type { Ref } from '../hook.js';
-import {
-  Binding,
-  Directive,
-  ElementPart,
-  Part,
-  directiveTag,
-} from '../part.js';
-import { Effect, Updater } from '../updater.js';
+import { Binding, Directive, directiveTag } from '../binding.js';
+import type { Effect, ElementPart, Part, Ref, Updater } from '../types.js';
 
 type ElementRef = Ref<Element | null>;
 

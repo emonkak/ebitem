@@ -1,13 +1,12 @@
 import {
   Binding,
   Directive,
-  Part,
   createBinding,
   directiveTag,
   updateBinding,
-} from '../part.js';
+} from '../binding.js';
 import type { Signal, Subscription } from '../signal.js';
-import { Updater } from '../updater.js';
+import type { Part, Updater } from '../types.js';
 
 export function signal<T>(value: Signal<T>): SignalDirective<T> {
   return new SignalDirective(value);
@@ -87,10 +86,10 @@ export class SignalBinding<T> implements Binding<SignalDirective<T>> {
   }
 
   unbind(updater: Updater) {
-    this._binding.unbind(updater);
-
     this._subscription?.();
     this._subscription = null;
+
+    this._binding.unbind(updater);
   }
 
   disconnect(): void {

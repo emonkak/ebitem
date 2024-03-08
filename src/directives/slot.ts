@@ -1,13 +1,11 @@
 import {
   Binding,
-  ChildNodePart,
   Directive,
-  Part,
   createBinding,
   directiveTag,
   updateBinding,
-} from '../part.js';
-import { Effect, Updater } from '../updater.js';
+} from '../binding.js';
+import type { ChildNodePart, Effect, Part, Updater } from '../types.js';
 
 export function slot<TElementValue, TChildNodeValue>(
   type: string,
@@ -91,7 +89,7 @@ export class SlotDirective<TElementValue, TChildNodeValue>
 
 const SlotBindingFlags = {
   NONE: 0,
-  DIRTY: 1 << 0,
+  MUTATING: 1 << 0,
   MOUNTING: 1 << 1,
   UNMOUNTING: 1 << 2,
   REPARENTING: 1 << 3,
@@ -222,7 +220,7 @@ export class SlotBinding<TElementValue, TChildNodeValue>
     }
 
     this._flags &= ~(
-      SlotBindingFlags.DIRTY |
+      SlotBindingFlags.MUTATING |
       SlotBindingFlags.MOUNTING |
       SlotBindingFlags.UNMOUNTING |
       SlotBindingFlags.REPARENTING
@@ -230,9 +228,9 @@ export class SlotBinding<TElementValue, TChildNodeValue>
   }
 
   private _requestMutation(updater: Updater) {
-    if (!(this._flags & SlotBindingFlags.DIRTY)) {
+    if (!(this._flags & SlotBindingFlags.MUTATING)) {
       updater.enqueueMutationEffect(this);
-      this._flags |= SlotBindingFlags.DIRTY;
+      this._flags |= SlotBindingFlags.MUTATING;
     }
   }
 }

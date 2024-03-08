@@ -1,32 +1,8 @@
 import { Context } from './context.js';
-import type { Hook } from './hook.js';
-import { TaggedTemplate, Template } from './template.js';
-import type { Renderable, Updater } from './updater.js';
+import { TaggedTemplate } from './taggedTemplate.js';
+import type { Hook, Renderable, Scope, Template, Updater } from './types.js';
 
 type Varibales = { [key: PropertyKey]: unknown };
-
-export interface Scope<TContext = unknown> {
-  getVariable(key: PropertyKey, renderable: Renderable<TContext>): unknown;
-
-  setVariable(
-    key: PropertyKey,
-    value: unknown,
-    renderable: Renderable<TContext>,
-  ): void;
-
-  createContext(
-    renderable: Renderable<TContext>,
-    hooks: Hook[],
-    updater: Updater<TContext>,
-  ): TContext;
-
-  createHTMLTemplate(
-    tokens: ReadonlyArray<string>,
-    values: unknown[],
-  ): Template;
-
-  createSVGTemplate(tokens: ReadonlyArray<string>, values: unknown[]): Template;
-}
 
 export class LocalScope implements Scope<Context> {
   private readonly _globalVariables: Varibales;

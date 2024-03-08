@@ -1,17 +1,18 @@
 import { TemplateDirective } from './directives/template.js';
-import {
+import { AtomSignal, Signal } from './signal.js';
+import type {
   Cleanup,
+  Effect,
   EffectCallback,
   EffectHook,
+  Hook,
   MemoHook,
   ReducerHook,
   RefObject,
-  ensureHookType,
-} from './hook.js';
-import type { Hook } from './hook.js';
-import type { Scope } from './scope.js';
-import { AtomSignal, Signal } from './signal.js';
-import type { Effect, Renderable, Updater } from './updater.js';
+  Renderable,
+  Scope,
+  Updater,
+} from './types.js';
 
 type ValueOrFunction<T> = T extends Function ? never : T | (() => T);
 
@@ -65,7 +66,7 @@ export class Context {
   }
 
   requestUpdate(): void {
-    this._renderable.bind(this._updater);
+    this._renderable.forceUpdate(this._updater);
   }
 
   setContextValue(key: PropertyKey, value: unknown): void {
@@ -224,7 +225,7 @@ export class Context {
           typeof initialState === 'function' ? initialState() : initialState,
         dispatch: (action: TAction) => {
           newHook.state = reducer(newHook.state, action);
-          renderable.bind(updater);
+          renderable.forceUpdate(updater);
         },
       };
       currentHook = newHook;
@@ -246,7 +247,7 @@ export class Context {
     this.useEffect(
       () =>
         signal.subscribe(() => {
-          renderable.bind(updater);
+          renderable.forceUpdate(updater);
         }),
       [signal],
     );
@@ -272,7 +273,7 @@ export class Context {
     this.useEffect(
       () =>
         subscribe(() => {
-          renderable.bind(updater);
+          renderable.forceUpdate(updater);
         }),
       [subscribe],
     );
@@ -311,4 +312,15 @@ function dependenciesAreChanged(
       (dependencies, index) => !Object.is(dependencies, oldDependencies[index]),
     )
   );
+}
+
+function ensureHookType<TExpectedHook extends Hook>(
+  expectedType: TExpectedHook['type'],
+  hook: Hook,
+): asserts hook is TExpectedHook {
+  if (hook.type !== expectedType) {
+    throw new Error(
+      `Invalid hook type. Expected "${expectedType}" but got "${hook.type}".`,
+    );
+  }
 }

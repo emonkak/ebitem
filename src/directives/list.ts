@@ -1,12 +1,5 @@
-import {
-  Binding,
-  ChildNodePart,
-  Directive,
-  Part,
-  createBinding,
-  directiveTag,
-} from '../part.js';
-import { Effect, Updater } from '../updater.js';
+import { Binding, Directive, createBinding, directiveTag } from '../binding.js';
+import type { ChildNodePart, Effect, Part, Updater } from '../types.js';
 
 type Selector<TItem, TResult> = (item: TItem, index: number) => TResult;
 
@@ -282,7 +275,6 @@ const ListItemFlags = {
   MUTATING: 1 << 0,
   UNMOUNTING: 1 << 1,
   REORDERING: 1 << 2,
-  MOUNTED: 1 << 3,
 };
 
 class ListItemBinding<T> implements Binding<T>, Effect {
@@ -319,21 +311,17 @@ class ListItemBinding<T> implements Binding<T>, Effect {
     this._binding.value = newValue;
   }
 
-  init(updater: Updater) {
-    if (!(this._flags & ListItemFlags.MUTATING)) {
-      updater.enqueueMutationEffect(this);
-    }
-
-    this._flags |= ListItemFlags.MUTATING;
+  init(updater: Updater): void {
+    this._requestMutation(updater);
   }
 
-  reorder(newReferenceBinding: ListItemBinding<T> | null, updater: Updater) {
+  reorder(
+    newReferenceBinding: ListItemBinding<T> | null,
+    updater: Updater,
+  ): void {
     this._referenceBinding = newReferenceBinding;
 
-    if (!(this._flags & ListItemFlags.MUTATING)) {
-      updater.enqueueMutationEffect(this);
-      this._flags |= ListItemFlags.MUTATING;
-    }
+    this._requestMutation(updater);
 
     this._flags |= ListItemFlags.REORDERING;
   }
@@ -347,10 +335,7 @@ class ListItemBinding<T> implements Binding<T>, Effect {
   unbind(updater: Updater): void {
     this._binding.unbind(updater);
 
-    if (!(this._flags & ListItemFlags.MUTATING)) {
-      updater.enqueueMutationEffect(this);
-      this._flags |= ListItemFlags.MUTATING;
-    }
+    this._requestMutation(updater);
 
     this._flags |= ListItemFlags.UNMOUNTING;
   }
@@ -360,14 +345,13 @@ class ListItemBinding<T> implements Binding<T>, Effect {
   }
 
   commit() {
-    if (this._flags & ListItemFlags.MOUNTED) {
-      if (this._flags & ListItemFlags.UNMOUNTING) {
-        this._binding.part.node.remove();
-        this._flags &= ~ListItemFlags.MOUNTED;
-      } else if (this._flags & ListItemFlags.REORDERING) {
-        const referenceNode =
-          this._referenceBinding?.startNode ?? this._listPart.node;
+    if (this._flags & ListItemFlags.UNMOUNTING) {
+      this._binding.part.node.remove();
+    } else {
+      const referenceNode =
+        this._referenceBinding?.startNode ?? this._listPart.node;
 
+      if (this._flags & ListItemFlags.REORDERING) {
         const { startNode, endNode } = this._binding;
 
         let currentNode: Node | null = startNode;
@@ -379,14 +363,9 @@ class ListItemBinding<T> implements Binding<T>, Effect {
           }
           currentNode = nextNode;
         } while (currentNode !== null);
+      }
 
-        referenceNode.before(this._binding.part.node);
-      }
-    } else {
-      if (!(this._flags & ListItemFlags.UNMOUNTING)) {
-        this._listPart.node.before(this._binding.part.node);
-        this._flags |= ListItemFlags.MOUNTED;
-      }
+      this._listPart.node.before(this._binding.part.node);
     }
 
     this._flags &= ~(
@@ -394,6 +373,13 @@ class ListItemBinding<T> implements Binding<T>, Effect {
       ListItemFlags.UNMOUNTING |
       ListItemFlags.REORDERING
     );
+  }
+
+  private _requestMutation(updater: Updater): void {
+    if (!(this._flags & ListItemFlags.MUTATING)) {
+      updater.enqueueMutationEffect(this);
+      this._flags |= ListItemFlags.MUTATING;
+    }
   }
 }
 
