@@ -7,15 +7,15 @@ import {
 } from '../binding.js';
 import type { Part, Updater } from '../types.js';
 
-export function choose<TKey, TValue>(
+export function choice<TKey, TValue>(
   key: TKey,
   factory: (key: TKey) => TValue,
-): ChooseDirective<TKey, TValue> {
-  return new ChooseDirective(key, factory);
+): ChoiceDirective<TKey, TValue> {
+  return new ChoiceDirective(key, factory);
 }
 
-export class ChooseDirective<TKey, TValue>
-  implements Directive<ChooseDirective<TKey, TValue>>
+export class ChoiceDirective<TKey, TValue>
+  implements Directive<ChoiceDirective<TKey, TValue>>
 {
   private readonly _key: TKey;
 
@@ -34,29 +34,29 @@ export class ChooseDirective<TKey, TValue>
     return this._factory;
   }
 
-  [directiveTag](part: Part, updater: Updater): ChooseBinding<TKey, TValue> {
+  [directiveTag](part: Part, updater: Updater): ChoiceBinding<TKey, TValue> {
     const factory = this._factory;
     const key = this._key;
     const value = factory(key);
     const initialBinding = createBinding(part, value, updater);
-    return new ChooseBinding(initialBinding, this);
+    return new ChoiceBinding(initialBinding, this);
   }
 }
 
-export class ChooseBinding<TKey, TValue>
-  implements Binding<ChooseDirective<TKey, TValue>>
+export class ChoiceBinding<TKey, TValue>
+  implements Binding<ChoiceDirective<TKey, TValue>>
 {
   private _currentBinding: Binding<TValue>;
 
   private _currentKey: TKey;
 
-  private _directive: ChooseDirective<TKey, TValue>;
+  private _directive: ChoiceDirective<TKey, TValue>;
 
   private _cachedBindings: Map<TKey, Binding<TValue>> = new Map();
 
   constructor(
     binding: Binding<TValue>,
-    directive: ChooseDirective<TKey, TValue>,
+    directive: ChoiceDirective<TKey, TValue>,
   ) {
     this._currentBinding = binding;
     this._currentKey = directive.key;
@@ -75,11 +75,11 @@ export class ChooseBinding<TKey, TValue>
     return this._currentBinding.endNode;
   }
 
-  get value(): ChooseDirective<TKey, TValue> {
+  get value(): ChoiceDirective<TKey, TValue> {
     return this._directive;
   }
 
-  set value(directive: ChooseDirective<TKey, TValue>) {
+  set value(directive: ChoiceDirective<TKey, TValue>) {
     this._directive = directive;
   }
 

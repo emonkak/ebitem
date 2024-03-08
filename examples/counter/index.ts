@@ -7,7 +7,7 @@ import {
 } from '@emonkak/tempura';
 import {
   block,
-  choose,
+  choice,
   classNames,
   condition,
   list,
@@ -173,7 +173,7 @@ function Counter({ count }: CounterProps, context: Context): TemplateDirective {
       )}</span>
       <span class="count-even">${when(count.value % 2 === 0, '(Even)')}</span>
       <span class="count-odd">${unless(count.value % 2 === 0, '(Odd)')}</span>
-      <span class="count-choose">${choose(count.value % 2, (count) =>
+      <span class="count-choose">${choice(count.value % 2, (count) =>
         count === 0 ? '(Even)' : '(Odd)',
       )}</span>
       ${slot(
