@@ -22,14 +22,14 @@ export function when<TTrue>(
   condition: ValueOrFunction<boolean>,
   trueCase: ValueOrFunction<TTrue>,
 ): ConditionDirective<TTrue, NullDirective> {
-  return new ConditionDirective(condition, trueCase, new NullDirective());
+  return new ConditionDirective(condition, trueCase, NullDirective.instance);
 }
 
 export function unless<TFalse>(
   condition: ValueOrFunction<boolean>,
   falseCase: ValueOrFunction<TFalse>,
 ): ConditionDirective<NullDirective, TFalse> {
-  return new ConditionDirective(condition, new NullDirective(), falseCase);
+  return new ConditionDirective(condition, NullDirective.instance, falseCase);
 }
 
 export class ConditionDirective<TTrue, TFalse>
