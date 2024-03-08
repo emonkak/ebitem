@@ -26,6 +26,10 @@ export class StyleDirective implements Directive<StyleMap> {
     this._styleMap = styleMap;
   }
 
+  get styleMap(): StyleMap {
+    return this._styleMap;
+  }
+
   [directiveTag](part: Part, updater: Updater): StyleBinding {
     if (part.type !== 'attribute' || part.name !== 'style') {
       throw new Error(
@@ -33,9 +37,9 @@ export class StyleDirective implements Directive<StyleMap> {
       );
     }
 
-    const binding = new StyleBinding(part);
+    const binding = new StyleBinding(part, this);
 
-    binding.bind(this._styleMap, updater);
+    binding.bind(updater);
 
     return binding;
   }
@@ -45,15 +49,16 @@ export class StyleDirective implements Directive<StyleMap> {
   }
 }
 
-export class StyleBinding implements Binding<StyleMap>, Effect {
+export class StyleBinding implements Binding<StyleDirective>, Effect {
   private readonly _part: AttributePart;
 
-  private _styleMap = {} as StyleMap;
+  private _directive: StyleDirective;
 
   private _dirty = false;
 
-  constructor(part: AttributePart) {
+  constructor(part: AttributePart, directive: StyleDirective) {
     this._part = part;
+    this._directive = directive;
   }
 
   get part(): AttributePart {
@@ -68,9 +73,15 @@ export class StyleBinding implements Binding<StyleMap>, Effect {
     return this._part.node;
   }
 
-  bind(styleMap: StyleMap, updater: Updater): void {
-    this._styleMap = styleMap;
+  get value(): StyleDirective {
+    return this._directive;
+  }
 
+  set value(newValue: StyleDirective) {
+    this._directive = newValue;
+  }
+
+  bind(updater: Updater): void {
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
       this._dirty = true;
@@ -78,7 +89,7 @@ export class StyleBinding implements Binding<StyleMap>, Effect {
   }
 
   unbind(updater: Updater): void {
-    this._styleMap = {} as StyleMap;
+    this._directive = new StyleDirective({});
 
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
@@ -93,20 +104,21 @@ export class StyleBinding implements Binding<StyleMap>, Effect {
       | HTMLElement
       | MathMLElement
       | SVGElement;
+    const { styleMap } = this._directive;
 
     for (let i = 0, l = style.length; i < l; i++) {
       const property = style.item(i);
 
-      if (!Object.hasOwn(this._styleMap, property)) {
+      if (!Object.hasOwn(styleMap, property)) {
         style.removeProperty(property);
       }
     }
 
-    const newProperties = Object.keys(this._styleMap) as StyleProperty[];
+    const newProperties = Object.keys(styleMap) as StyleProperty[];
 
     for (let i = 0, l = newProperties.length; i < l; i++) {
       const newProperty = newProperties[i]!;
-      const newValue = this._styleMap[newProperty]!;
+      const newValue = styleMap[newProperty]!;
 
       style.setProperty(newProperty, newValue);
     }

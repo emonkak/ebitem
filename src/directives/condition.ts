@@ -1,9 +1,7 @@
 import {
-  BindValueOf,
   Binding,
   Directive,
   Part,
-  checkAndUpdateBinding,
   createBinding,
   directiveTag,
   updateBinding,
@@ -70,9 +68,9 @@ export class ConditionDirective<TTrue, TFalse>
     part: Part,
     updater: Updater,
   ): ConditionBinding<TTrue, TFalse> {
-    const binding = new ConditionBinding<TTrue, TFalse>(part);
+    const binding = new ConditionBinding<TTrue, TFalse>(part, this);
 
-    binding.bind(this, updater);
+    binding.bind(updater);
 
     return binding;
   }
@@ -87,18 +85,15 @@ export class ConditionBinding<TTrue, TFalse>
 {
   private readonly _part: Part;
 
-  private _trueBinding: Binding<BindValueOf<TTrue>> | null = null;
+  private _directive: ConditionDirective<TTrue, TFalse>;
 
-  private _falseBinding: Binding<BindValueOf<TFalse>> | null = null;
+  private _trueBinding: Binding<TTrue> | null = null;
 
-  private _trueValue: TTrue | null = null;
+  private _falseBinding: Binding<TFalse> | null = null;
 
-  private _falseValue: TFalse | null = null;
-
-  private _conditionValue = false;
-
-  constructor(part: Part) {
+  constructor(part: Part, directive: ConditionDirective<TTrue, TFalse>) {
     this._part = part;
+    this._directive = directive;
   }
 
   get part(): Part {
@@ -106,7 +101,7 @@ export class ConditionBinding<TTrue, TFalse>
   }
 
   get startNode(): ChildNode {
-    const binding = this._conditionValue
+    const binding = this._directive.condition
       ? this._trueBinding
       : this._falseBinding;
     return binding?.startNode ?? this._part.node;
@@ -116,52 +111,45 @@ export class ConditionBinding<TTrue, TFalse>
     return this._part.node;
   }
 
-  bind(
-    { condition, trueCase, falseCase }: ConditionDirective<TTrue, TFalse>,
-    updater: Updater,
-  ): void {
-    const conditionValue =
-      typeof condition === 'function' ? condition() : condition;
+  get value(): ConditionDirective<TTrue, TFalse> {
+    return this._directive;
+  }
 
-    if (conditionValue) {
+  set value(newDirective: ConditionDirective<TTrue, TFalse>) {
+    this._directive = newDirective;
+  }
+
+  bind(updater: Updater): void {
+    const { condition, trueCase, falseCase } = this._directive;
+
+    if (typeof condition === 'function' ? condition() : condition) {
       const newValue = typeof trueCase === 'function' ? trueCase() : trueCase;
       this._falseBinding?.unbind(updater);
       if (this._trueBinding !== null) {
-        this._trueBinding = updateBinding(
-          this._trueBinding,
-          this._trueValue,
-          newValue,
-          updater,
-        );
+        this._trueBinding = updateBinding(this._trueBinding, newValue, updater);
       } else {
         this._trueBinding = createBinding(this._part, newValue, updater);
       }
-      this._trueValue = newValue;
     } else {
       const newValue =
         typeof falseCase === 'function' ? falseCase() : falseCase;
       this._trueBinding?.unbind(updater);
       if (this._falseBinding !== null) {
-        const updateBindingFn = this._conditionValue
-          ? updateBinding
-          : checkAndUpdateBinding;
-        this._falseBinding = updateBindingFn(
+        this._falseBinding = updateBinding(
           this._falseBinding,
-          this._falseValue,
           newValue,
           updater,
         );
       } else {
         this._falseBinding = createBinding(this._part, newValue, updater);
       }
-      this._falseValue = newValue;
     }
-
-    this._conditionValue = conditionValue;
   }
 
   unbind(updater: Updater): void {
-    if (this._conditionValue) {
+    const { condition } = this._directive;
+
+    if (condition) {
       this._trueBinding?.unbind(updater);
       this._falseBinding?.disconnect();
     } else {

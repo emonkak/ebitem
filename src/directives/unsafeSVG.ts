@@ -18,6 +18,10 @@ export class UnsafeSVGDirective implements Directive<unknown> {
     this._unsafeContent = unsafeContent;
   }
 
+  get unsafeContent(): string {
+    return this._unsafeContent;
+  }
+
   [directiveTag](part: Part, updater: Updater): UnsafeSVGBinding {
     if (part.type !== 'childNode') {
       throw new Error(
@@ -25,9 +29,9 @@ export class UnsafeSVGDirective implements Directive<unknown> {
       );
     }
 
-    const binding = new UnsafeSVGBinding(part);
+    const binding = new UnsafeSVGBinding(part, this);
 
-    binding.bind(this._unsafeContent, updater);
+    binding.bind(updater);
 
     return binding;
   }
@@ -37,17 +41,18 @@ export class UnsafeSVGDirective implements Directive<unknown> {
   }
 }
 
-export class UnsafeSVGBinding implements Binding<string> {
+export class UnsafeSVGBinding implements Binding<UnsafeSVGDirective> {
   private readonly _part: ChildNodePart;
 
-  private _unsafeContent = '';
+  private _directive: UnsafeSVGDirective;
 
   private _childNodes: ChildNode[] = [];
 
   private _dirty = false;
 
-  constructor(part: ChildNodePart) {
+  constructor(part: ChildNodePart, directive: UnsafeSVGDirective) {
     this._part = part;
+    this._directive = directive;
   }
 
   get part(): ChildNodePart {
@@ -62,9 +67,15 @@ export class UnsafeSVGBinding implements Binding<string> {
     return this._part.node;
   }
 
-  bind(unsafeContent: string, updater: Updater): void {
-    this._unsafeContent = unsafeContent;
+  get value(): UnsafeSVGDirective {
+    return this._directive;
+  }
 
+  set value(newDirective: UnsafeSVGDirective) {
+    this._directive = newDirective;
+  }
+
+  bind(updater: Updater): void {
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
       this._dirty = true;
@@ -72,7 +83,7 @@ export class UnsafeSVGBinding implements Binding<string> {
   }
 
   unbind(updater: Updater): void {
-    this._unsafeContent = '';
+    this._directive = new UnsafeSVGDirective('');
 
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
@@ -83,13 +94,15 @@ export class UnsafeSVGBinding implements Binding<string> {
   disconnect() {}
 
   commit() {
+    const { unsafeContent } = this._directive;
+
     for (let i = 0, l = this._childNodes.length; i < l; i++) {
       this._childNodes[i]!.remove();
     }
 
-    if (this._unsafeContent !== '') {
+    if (unsafeContent !== '') {
       const template = document.createElement('template');
-      template.innerHTML = `<svg>${this._unsafeContent}</svg>`;
+      template.innerHTML = `<svg>${unsafeContent}</svg>`;
 
       const fragment = template.content;
       this._childNodes = [...fragment.firstChild!.childNodes];
@@ -97,8 +110,6 @@ export class UnsafeSVGBinding implements Binding<string> {
 
       const reference = this._part.node;
       reference.before(fragment);
-    } else {
-      this._childNodes = [];
     }
 
     this._dirty = false;

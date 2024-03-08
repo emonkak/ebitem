@@ -61,19 +61,19 @@ export class LocalUpdater<TContext> implements Updater<TContext>, Effect {
     switch (mode) {
       case 'mutation':
         for (let i = 0, l = this._mutationEffects.length; i < l; i++) {
-          this._mutationEffects[i]!.commit(mode, this);
+          this._mutationEffects[i]!.commit(mode);
         }
         this._mutationEffects = [];
         break;
       case 'layout':
         for (let i = 0, l = this._layoutEffects.length; i < l; i++) {
-          this._layoutEffects[i]!.commit(mode, this);
+          this._layoutEffects[i]!.commit(mode);
         }
         this._layoutEffects = [];
         break;
       case 'passive':
         for (let i = 0, l = this._passiveEffects.length; i < l; i++) {
-          this._passiveEffects[i]!.commit(mode, this);
+          this._passiveEffects[i]!.commit(mode);
         }
         this._passiveEffects = [];
         break;

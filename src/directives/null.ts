@@ -2,20 +2,21 @@ import { Binding, Directive, Part, directiveTag } from '../part.js';
 import type { Updater } from '../updater.js';
 
 export class NullDirective implements Directive<NullDirective> {
-  [directiveTag](part: Part, _updater: Updater): NullBinding {
-    return new NullBinding(part);
-  }
+  static instance = new NullDirective();
 
-  valueOf(): this {
-    return this;
+  [directiveTag](part: Part, _updater: Updater): NullBinding {
+    return new NullBinding(part, this);
   }
 }
 
 export class NullBinding implements Binding<NullDirective> {
   private readonly _part: Part;
 
-  constructor(part: Part) {
+  private _directive: NullDirective;
+
+  constructor(part: Part, directive: NullDirective) {
     this._part = part;
+    this._directive = directive;
   }
 
   get part(): Part {
@@ -30,7 +31,15 @@ export class NullBinding implements Binding<NullDirective> {
     return this._part.node;
   }
 
-  bind(_value: NullDirective, _updater: Updater): void {}
+  get value(): NullDirective {
+    return this._directive;
+  }
+
+  set value(newDirective: NullDirective) {
+    this._directive = newDirective;
+  }
+
+  bind(_updater: Updater): void {}
 
   unbind(_updater: Updater): void {}
 

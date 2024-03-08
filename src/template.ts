@@ -85,9 +85,9 @@ export class TaggedTemplate implements Template {
     return new TaggedTemplate(template, holes);
   }
 
-  private _element: HTMLTemplateElement;
+  private readonly _element: HTMLTemplateElement;
 
-  private _holes: Hole[];
+  private readonly _holes: Hole[];
 
   constructor(element: HTMLTemplateElement, holes: Hole[]) {
     this._element = element;
@@ -174,7 +174,7 @@ export class TaggedTemplate implements Template {
       }
     }
 
-    return new TemplateRoot(bindings, values, [...rootNode.childNodes]);
+    return new TemplateRoot(bindings, [...rootNode.childNodes]);
   }
 }
 

@@ -43,20 +43,24 @@ export interface NodePart {
   node: ChildNode;
 }
 
+export type PrimitiveBinding<TContext = unknown> = Binding<any, TContext>;
+
 export interface Binding<TValue, TContext = unknown> {
   get part(): Part;
   get startNode(): ChildNode;
   get endNode(): ChildNode;
-  bind(value: TValue, updater: Updater<TContext>): void;
+  set value(newValue: TValue);
+  get value(): TValue;
+  bind(updater: Updater<TContext>): void;
   unbind(updater: Updater): void;
   disconnect(): void;
 }
 
-export type BindValueOf<T> = T extends Directive<infer Value> ? Value : T;
-
-export interface Directive<TValue, TContext = unknown> {
-  [directiveTag](part: Part, updater: Updater<TContext>): Binding<TValue>;
-  valueOf(): TValue;
+export interface Directive<TContext = unknown> {
+  [directiveTag](
+    part: Part,
+    updater: Updater<TContext>,
+  ): Binding<ThisType<this>>;
 }
 
 export type SpreadProps = { [key: string]: unknown };
@@ -66,12 +70,13 @@ export const directiveTag = Symbol('Directive.createBinding');
 export class AttributeBinding implements Binding<unknown>, Effect {
   private readonly _part: AttributePart;
 
-  private _value: unknown = null;
+  private _value: unknown;
 
   private _dirty = false;
 
-  constructor(part: AttributePart) {
+  constructor(part: AttributePart, value: unknown) {
     this._part = part;
+    this._value = value;
   }
 
   get part(): AttributePart {
@@ -86,8 +91,22 @@ export class AttributeBinding implements Binding<unknown>, Effect {
     return this._part.node;
   }
 
-  bind(value: unknown, updater: Updater): void {
-    this._value = value;
+  get value(): unknown {
+    return this._value;
+  }
+
+  set value(newValue: unknown) {
+    this._value = newValue;
+  }
+
+  init(updater: Updater): void {
+    if (!this._dirty) {
+      updater.enqueueMutationEffect(this);
+      this._dirty = true;
+    }
+  }
+
+  bind(updater: Updater): void {
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
       this._dirty = true;
@@ -136,9 +155,9 @@ export class ChildNodeBinding implements Binding<unknown>, Effect {
 
   private _flags = ChildNodeBindingFlags.NONE;
 
-  constructor(part: ChildNodePart, node: ChildNode) {
+  constructor(part: ChildNodePart, value: unknown, node: ChildNode) {
     this._part = part;
-    this._nodeBinding = new NodeBinding({ type: 'node', node });
+    this._nodeBinding = new NodeBinding({ type: 'node', node }, value);
   }
 
   get part(): ChildNodePart {
@@ -146,15 +165,25 @@ export class ChildNodeBinding implements Binding<unknown>, Effect {
   }
 
   get startNode(): ChildNode {
-    return this._nodeBinding.part.node;
+    return this._flags & ChildNodeBindingFlags.MOUNTED
+      ? this._nodeBinding.part.node
+      : this._part.node;
   }
 
   get endNode(): ChildNode {
     return this._part.node;
   }
 
-  bind(value: unknown, updater: Updater): void {
-    this._nodeBinding.bind(value, updater);
+  get value(): unknown {
+    return this._nodeBinding.value;
+  }
+
+  set value(newValue: unknown) {
+    this._nodeBinding.value = newValue;
+  }
+
+  bind(updater: Updater): void {
+    this._nodeBinding.bind(updater);
 
     if (!(this._flags & ChildNodeBindingFlags.MOUNTED)) {
       if (!(this._flags & ChildNodeBindingFlags.MUTATING)) {
@@ -202,14 +231,24 @@ export class ChildNodeBinding implements Binding<unknown>, Effect {
 export class EventBinding implements Binding<unknown>, Effect {
   private readonly _part: EventPart;
 
-  private _pendingListener: EventListenerOrEventListenerObject | null = null;
+  private _pendingListener: EventListenerOrEventListenerObject | null;
 
   private _memoizedListener: EventListenerOrEventListenerObject | null = null;
 
   private _dirty = false;
 
-  constructor(part: EventPart) {
+  constructor(part: EventPart, value: unknown) {
     this._part = part;
+
+    if (value == null) {
+      this._pendingListener = null;
+    } else if (isEventListener(value)) {
+      this._pendingListener = value;
+    } else {
+      throw new Error(
+        `A value that ${this.constructor.name} binds must be EventListener, EventListenerObject or null.`,
+      );
+    }
   }
 
   get part(): EventPart {
@@ -224,24 +263,30 @@ export class EventBinding implements Binding<unknown>, Effect {
     return this._part.node;
   }
 
-  bind(value: unknown, updater: Updater): void {
-    if (value == null) {
+  get value(): unknown {
+    return this._memoizedListener;
+  }
+
+  set value(newValue: unknown) {
+    if (newValue == null) {
       this._pendingListener = null;
-    } else if (isEventListener(value)) {
-      this._pendingListener = value;
+    } else if (isEventListener(newValue)) {
+      this._pendingListener = newValue;
     } else {
       throw new Error(
         `A value that ${this.constructor.name} binds must be EventListener, EventListenerObject or null.`,
       );
     }
+  }
 
+  bind(updater: Updater): void {
     if (
       typeof this._memoizedListener === 'function' &&
-      typeof value === 'function'
+      typeof this._pendingListener === 'function'
     ) {
       // If both are functions, the event listener options are the same.
       // Therefore, there is no need to re-register the event listener.
-      this._memoizedListener = value;
+      this._memoizedListener = this._pendingListener;
     } else {
       if (!this._dirty) {
         updater.enqueueMutationEffect(this);
@@ -308,12 +353,13 @@ export class EventBinding implements Binding<unknown>, Effect {
 export class NodeBinding implements Binding<unknown>, Effect {
   private readonly _part: NodePart;
 
-  private _value: unknown = null;
+  private _value: unknown;
 
   private _dirty = false;
 
-  constructor(part: NodePart) {
+  constructor(part: NodePart, value: unknown) {
     this._part = part;
+    this._value = value;
   }
 
   get part(): NodePart {
@@ -328,9 +374,15 @@ export class NodeBinding implements Binding<unknown>, Effect {
     return this._part.node;
   }
 
-  bind(value: unknown, updater: Updater): void {
-    this._value = value;
+  get value(): unknown {
+    return this._value;
+  }
 
+  set value(newValue: unknown) {
+    this._value = newValue;
+  }
+
+  bind(updater: Updater): void {
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
       this._dirty = true;
@@ -358,12 +410,13 @@ export class NodeBinding implements Binding<unknown>, Effect {
 export class PropertyBinding implements Binding<unknown>, Effect {
   private readonly _part: PropertyPart;
 
-  private _value: unknown = null;
+  private _value: unknown;
 
   private _dirty = false;
 
-  constructor(part: PropertyPart) {
+  constructor(part: PropertyPart, value: unknown) {
     this._part = part;
+    this._value = value;
   }
 
   get part(): PropertyPart {
@@ -378,8 +431,15 @@ export class PropertyBinding implements Binding<unknown>, Effect {
     return this._part.node;
   }
 
-  bind(value: unknown, updater: Updater): void {
-    this._value = value;
+  get value(): unknown {
+    return this._value;
+  }
+
+  set value(newValue: unknown) {
+    this._value = newValue;
+  }
+
+  bind(updater: Updater): void {
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
       this._dirty = true;
@@ -400,12 +460,17 @@ export class PropertyBinding implements Binding<unknown>, Effect {
 export class SpreadBinding implements Binding<unknown> {
   private readonly _part: ElementPart;
 
-  private _props: SpreadProps = {};
+  private _props: SpreadProps;
 
   private _bindings: Map<PropertyKey, Binding<unknown>> = new Map();
 
-  constructor(part: ElementPart) {
+  constructor(part: ElementPart, value: unknown) {
+    if (!isSpreadProps(value)) {
+      throw new Error(`A value of ${this.constructor.name} must be an object.`);
+    }
+
     this._part = part;
+    this._props = value;
   }
 
   get part(): ElementPart {
@@ -420,26 +485,28 @@ export class SpreadBinding implements Binding<unknown> {
     return this._part.node;
   }
 
-  bind(newProps: unknown, updater: Updater): void {
-    if (!isSpreadProps(newProps)) {
+  get value(): unknown {
+    return this._props;
+  }
+
+  set value(newValue: unknown) {
+    if (!isSpreadProps(newValue)) {
       throw new Error(`A value of ${this.constructor.name} must be an object.`);
     }
 
-    const oldProps = this._props;
-    const newKeys = Object.keys(newProps);
-    const oldKeys = Object.keys(oldProps);
+    this._props = newValue;
+  }
+
+  bind(updater: Updater): void {
+    const newProps = this._props;
+    const newKeys = Object.keys(this._props);
 
     for (let i = 0, l = newKeys.length; i < l; i++) {
       const key = newKeys[i]!;
       let binding = this._bindings.get(key);
 
       if (binding !== undefined) {
-        binding = checkAndUpdateBinding(
-          binding,
-          oldProps[key],
-          newProps[key],
-          updater,
-        );
+        binding = updateBinding(binding, newProps[key], updater);
       } else {
         const part = resolveNamedPart(this._part.node, key);
         binding = createBinding(part, newProps[key], updater);
@@ -447,11 +514,8 @@ export class SpreadBinding implements Binding<unknown> {
       this._bindings.set(key, binding);
     }
 
-    for (let i = 0, l = oldKeys.length; i < l; i++) {
-      const oldKey = oldKeys[i]!;
-
+    for (const [oldKey, oldBinding] of this._bindings.entries()) {
       if (!Object.hasOwn(newProps, oldKey)) {
-        const oldBinding = this._bindings.get(oldKey)!;
         oldBinding.unbind(updater);
         this._bindings.delete(oldKey);
       }
@@ -479,75 +543,63 @@ export function createBinding<T>(
   part: Part,
   value: T,
   updater: Updater,
-): Binding<BindValueOf<T>> {
-  let binding: Binding<unknown>;
-
+): Binding<T> {
   if (isDirective(value)) {
-    binding = value[directiveTag](part, updater);
+    return value[directiveTag](part, updater) as Binding<T>;
   } else {
-    binding = resolvePrimitiveBinding(part);
-    binding.bind(value, updater);
+    const binding = resolvePrimitiveBinding(part, value);
+    binding.bind(updater);
+    return binding;
   }
-
-  return binding;
 }
 
 export function updateBinding<T>(
-  binding: Binding<BindValueOf<T>>,
-  oldValue: T,
+  binding: Binding<T>,
   newValue: T,
   updater: Updater,
-): Binding<BindValueOf<T>> {
+): Binding<T> {
+  const oldValue = binding.value;
+
   if (isDirective(newValue)) {
     if (isDirective(oldValue) && isPrototypeOf(newValue, oldValue)) {
-      binding.bind(newValue.valueOf(), updater);
+      binding.value = newValue;
+      binding.bind(updater);
     } else {
       binding.unbind(updater);
-      binding = newValue[directiveTag](binding.part, updater);
+      binding = newValue[directiveTag](binding.part, updater) as Binding<T>;
     }
   } else {
     if (isDirective(oldValue)) {
       binding.unbind(updater);
-      binding = resolvePrimitiveBinding(binding.part);
+      binding = resolvePrimitiveBinding(binding.part, newValue);
     }
-    binding.bind(newValue as BindValueOf<T>, updater);
+    binding.value = newValue;
+    binding.bind(updater);
   }
 
   return binding;
 }
 
-export function checkAndUpdateBinding<T>(
-  binding: Binding<BindValueOf<T>>,
-  oldValue: T,
-  newValue: T,
-  updater: Updater,
-): Binding<BindValueOf<T>> {
-  if (Object.is(oldValue, newValue)) {
-    return binding;
-  }
+export function boot<TContext>(
+  directive: Directive<TContext>,
+  container: ChildNode,
+  updater: Updater<TContext>,
+) {
+  const part = {
+    type: 'childNode',
+    node: document.createComment(''),
+  } as const;
 
-  if (isDirective(newValue)) {
-    if (isDirective(oldValue) && isPrototypeOf(newValue, oldValue)) {
-      if (Object.is(newValue.valueOf(), oldValue.valueOf())) {
-        return binding;
-      }
-      binding.bind(newValue.valueOf(), updater);
-    } else {
-      binding.unbind(updater);
-      binding = newValue[directiveTag](binding.part, updater);
-    }
-  } else {
-    if (isDirective(oldValue)) {
-      binding.unbind(updater);
-      binding = resolvePrimitiveBinding(binding.part);
-    }
-    binding.bind(newValue as BindValueOf<T>, updater);
-  }
+  updater.enqueueMutationEffect({
+    commit() {
+      container.appendChild(part.node);
+    },
+  });
 
-  return binding;
+  directive[directiveTag](part, updater);
 }
 
-function isDirective(value: unknown): value is Directive<any> {
+function isDirective(value: unknown): value is Directive<unknown> {
   return value !== null && typeof value === 'object' && directiveTag in value;
 }
 
@@ -582,19 +634,19 @@ function resolveNamedPart(element: Element, name: string): NamedPart {
   }
 }
 
-function resolvePrimitiveBinding(part: Part): Binding<unknown> {
+function resolvePrimitiveBinding(part: Part, value: unknown): PrimitiveBinding {
   switch (part.type) {
     case 'attribute':
-      return new AttributeBinding(part);
+      return new AttributeBinding(part, value);
     case 'childNode':
-      return new ChildNodeBinding(part, document.createTextNode(''));
+      return new ChildNodeBinding(part, value, document.createTextNode(''));
     case 'element':
-      return new SpreadBinding(part);
+      return new SpreadBinding(part, value);
     case 'event':
-      return new EventBinding(part);
+      return new EventBinding(part, value);
     case 'node':
-      return new NodeBinding(part);
+      return new NodeBinding(part, value);
     case 'property':
-      return new PropertyBinding(part);
+      return new PropertyBinding(part, value);
   }
 }

@@ -1,14 +1,13 @@
 import {
   AsyncUpdater,
-  Block,
   Context,
   LocalScope,
-  TemplateResult,
+  TemplateDirective,
   boot,
 } from '@emonkak/tempura';
 import {
   block,
-  cached,
+  choose,
   classNames,
   condition,
   list,
@@ -24,7 +23,7 @@ import { Signal, atom } from '@emonkak/tempura/signal.js';
 
 const counterSignal = atom(0);
 
-function App(_props: {}, context: Context): TemplateResult {
+function App(_props: {}, context: Context): TemplateDirective {
   const [items, setItems] = context.useState([
     'foo',
     'bar',
@@ -120,7 +119,7 @@ interface CircleProps {
 function Circle(
   { cx, cy, r, fill }: CircleProps,
   context: Context,
-): TemplateResult {
+): TemplateDirective {
   return context.svg`
     <circle cx=${cx} cy=${cy} r=${r} fill=${fill} />
   `;
@@ -136,7 +135,7 @@ interface ItemProps {
 function Item(
   { title, onUp, onDown, onDelete }: ItemProps,
   context: Context,
-): TemplateResult {
+): TemplateDirective {
   const state = context.getContextValue('state');
 
   return context.html`
@@ -153,7 +152,7 @@ interface CounterProps {
   count: Signal<number>;
 }
 
-function Counter({ count }: CounterProps, context: Context): TemplateResult {
+function Counter({ count }: CounterProps, context: Context): TemplateDirective {
   const countLabelRef = context.useRef<Element | null>(null);
 
   context.useSignal(count);
@@ -166,7 +165,7 @@ function Counter({ count }: CounterProps, context: Context): TemplateResult {
           'is-odd': count.value % 2 !== 0,
           'is-even': count.value % 2 === 0,
         })}
-        data-count=${count}>${signal(count)}</span>
+        data-count=${count.value}>${signal(count)}</span>
       <span class="count-condition">${condition(
         count.value % 2 === 0,
         '(Even)',
@@ -174,7 +173,7 @@ function Counter({ count }: CounterProps, context: Context): TemplateResult {
       )}</span>
       <span class="count-even">${when(count.value % 2 === 0, '(Even)')}</span>
       <span class="count-odd">${unless(count.value % 2 === 0, '(Odd)')}</span>
-      <span class="count-cached">${cached(count.value % 2, (count) =>
+      <span class="count-choose">${choose(count.value % 2, (count) =>
         count === 0 ? '(Even)' : '(Odd)',
       )}</span>
       ${slot(
@@ -202,4 +201,4 @@ function shuffle<T>(elements: T[]): T[] {
 
 const updater = new AsyncUpdater(new LocalScope());
 
-boot(new Block(App, {}), document.body, updater);
+boot(block(App, {}), document.body, updater);

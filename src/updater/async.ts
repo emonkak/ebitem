@@ -125,11 +125,11 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
           this._pendingLayoutEffects = [];
 
           for (let i = 0, l = mutationEffects.length; i < l; i++) {
-            mutationEffects[i]!.commit('mutation', this);
+            mutationEffects[i]!.commit('mutation');
           }
 
           for (let i = 0, l = layoutEffects.length; i < l; i++) {
-            layoutEffects[i]!.commit('layout', this);
+            layoutEffects[i]!.commit('layout');
           }
 
           console.timeEnd('(2) Blocking phase');
@@ -151,7 +151,7 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
               await this._scheduler.yieldToMain();
               startTime = this._scheduler.getCurrentTime();
             }
-            passiveEffects[i]!.commit('passive', this);
+            passiveEffects[i]!.commit('passive');
           }
 
           console.timeEnd('(3) Background phase');

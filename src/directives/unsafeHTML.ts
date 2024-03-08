@@ -18,6 +18,10 @@ export class UnsafeHTMLDirective implements Directive<unknown> {
     this._unsafeContent = unsafeContent;
   }
 
+  get unsafeContent(): string {
+    return this._unsafeContent;
+  }
+
   [directiveTag](part: Part, updater: Updater): UnsafeHTMLBinding {
     if (part.type !== 'childNode') {
       throw new Error(
@@ -25,9 +29,9 @@ export class UnsafeHTMLDirective implements Directive<unknown> {
       );
     }
 
-    const binding = new UnsafeHTMLBinding(part);
+    const binding = new UnsafeHTMLBinding(part, this);
 
-    binding.bind(this._unsafeContent, updater);
+    binding.bind(updater);
 
     return binding;
   }
@@ -37,17 +41,18 @@ export class UnsafeHTMLDirective implements Directive<unknown> {
   }
 }
 
-export class UnsafeHTMLBinding implements Binding<string> {
+export class UnsafeHTMLBinding implements Binding<UnsafeHTMLDirective> {
   private readonly _part: ChildNodePart;
 
-  private _unsafeContent = '';
+  private _directive: UnsafeHTMLDirective;
 
   private _childNodes: ChildNode[] = [];
 
   private _dirty = false;
 
-  constructor(part: ChildNodePart) {
+  constructor(part: ChildNodePart, directive: UnsafeHTMLDirective) {
     this._part = part;
+    this._directive = directive;
   }
 
   get part(): ChildNodePart {
@@ -62,9 +67,15 @@ export class UnsafeHTMLBinding implements Binding<string> {
     return this._part.node;
   }
 
-  bind(unsafeContent: string, updater: Updater): void {
-    this._unsafeContent = unsafeContent;
+  get value(): UnsafeHTMLDirective {
+    return this._directive;
+  }
 
+  set value(newDirective: UnsafeHTMLDirective) {
+    this._directive = newDirective;
+  }
+
+  bind(updater: Updater): void {
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
       this._dirty = true;
@@ -72,7 +83,7 @@ export class UnsafeHTMLBinding implements Binding<string> {
   }
 
   unbind(updater: Updater): void {
-    this._unsafeContent = '';
+    this._directive = new UnsafeHTMLDirective('');
 
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
@@ -83,13 +94,15 @@ export class UnsafeHTMLBinding implements Binding<string> {
   disconnect() {}
 
   commit() {
+    const { unsafeContent } = this._directive;
+
     for (let i = 0, l = this._childNodes.length; i < l; i++) {
       this._childNodes[i]!.remove();
     }
 
-    if (this._unsafeContent !== '') {
+    if (unsafeContent !== '') {
       const template = document.createElement('template');
-      template.innerHTML = this._unsafeContent;
+      template.innerHTML = unsafeContent;
 
       const fragment = template.content;
       this._childNodes = [...fragment.childNodes];

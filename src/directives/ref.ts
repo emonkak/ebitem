@@ -6,19 +6,23 @@ import {
   Part,
   directiveTag,
 } from '../part.js';
-import type { Effect, Updater } from '../updater.js';
+import { Effect, Updater } from '../updater.js';
 
 type ElementRef = Ref<Element | null>;
 
-export function ref(ref: Ref<Element | null>): RefDirective {
+export function ref(ref: ElementRef | null): RefDirective {
   return new RefDirective(ref);
 }
 
-export class RefDirective implements Directive<ElementRef> {
-  private readonly _ref: ElementRef;
+export class RefDirective implements Directive<ElementRef | null> {
+  private readonly _ref: ElementRef | null;
 
-  constructor(ref: ElementRef) {
+  constructor(ref: ElementRef | null) {
     this._ref = ref;
+  }
+
+  get ref(): ElementRef | null {
+    return this._ref;
   }
 
   [directiveTag](part: Part, updater: Updater): RefBinding {
@@ -26,29 +30,26 @@ export class RefDirective implements Directive<ElementRef> {
       throw new Error(`${this.constructor.name} must be used in SpreadPart.`);
     }
 
-    const binding = new RefBinding(part);
+    const binding = new RefBinding(part, this);
 
-    binding.bind(this._ref, updater);
+    binding.bind(updater);
 
     return binding;
   }
-
-  valueOf(): ElementRef {
-    return this._ref;
-  }
 }
 
-export class RefBinding implements Binding<ElementRef>, Effect {
+export class RefBinding implements Binding<RefDirective>, Effect {
   private readonly _part: ElementPart;
 
-  private _pendingRef: ElementRef | null = null;
+  private _pendingDirective: RefDirective;
 
-  private _memoizedRef: ElementRef | null = null;
+  private _memoizedDirective: RefDirective | null = null;
 
   private _dirty = false;
 
-  constructor(part: ElementPart) {
+  constructor(part: ElementPart, directive: RefDirective) {
     this._part = part;
+    this._pendingDirective = directive;
   }
 
   get part(): ElementPart {
@@ -63,9 +64,15 @@ export class RefBinding implements Binding<ElementRef>, Effect {
     return this._part.node;
   }
 
-  bind(ref: ElementRef, updater: Updater): void {
-    this._pendingRef = ref;
+  get value(): RefDirective {
+    return this._pendingDirective;
+  }
 
+  set value(newDirective: RefDirective) {
+    this._pendingDirective = newDirective;
+  }
+
+  bind(updater: Updater): void {
     if (!this._dirty) {
       updater.enqueuePassiveEffect(this);
       this._dirty = true;
@@ -73,7 +80,7 @@ export class RefBinding implements Binding<ElementRef>, Effect {
   }
 
   unbind(updater: Updater): void {
-    this._pendingRef = null;
+    this._pendingDirective = new RefDirective(null);
 
     if (!this._dirty) {
       updater.enqueuePassiveEffect(this);
@@ -84,9 +91,10 @@ export class RefBinding implements Binding<ElementRef>, Effect {
   disconnect() {}
 
   commit(): void {
-    if (this._memoizedRef !== null) {
-      const oldRef = this._memoizedRef;
+    const oldRef = this._memoizedDirective?.ref ?? null;
+    const newRef = this._pendingDirective.ref;
 
+    if (oldRef !== null) {
       if (typeof oldRef === 'function') {
         oldRef(null);
       } else {
@@ -94,16 +102,14 @@ export class RefBinding implements Binding<ElementRef>, Effect {
       }
     }
 
-    if (this._pendingRef !== null) {
-      const newRef = this._pendingRef;
-
+    if (newRef !== null) {
       if (typeof newRef === 'function') {
         newRef(this._part.node);
       } else {
         newRef.current = this._part.node;
       }
-    }
 
-    this._memoizedRef = this._pendingRef;
+      this._memoizedDirective = this._pendingDirective;
+    }
   }
 }

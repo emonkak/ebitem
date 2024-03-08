@@ -1,40 +1,39 @@
 import {
-  BindValueOf,
   Binding,
   ChildNodePart,
   Directive,
   Part,
-  checkAndUpdateBinding,
   createBinding,
   directiveTag,
+  updateBinding,
 } from '../part.js';
-import { CommitMode, Disconnect, Effect, Updater } from '../updater.js';
+import { Effect, Updater } from '../updater.js';
 
-export function slot<TElementValue, TChildValue>(
+export function slot<TElementValue, TChildNodeValue>(
   type: string,
   elementValue: TElementValue,
-  childValue: TChildValue,
-): SlotDirective<TElementValue, TChildValue> {
-  return new SlotDirective(type, elementValue, childValue);
+  childNodeValue: TChildNodeValue,
+): SlotDirective<TElementValue, TChildNodeValue> {
+  return new SlotDirective(type, elementValue, childNodeValue);
 }
 
-export class SlotDirective<TElementValue, TChildValue>
-  implements Directive<SlotDirective<TElementValue, TChildValue>>
+export class SlotDirective<TElementValue, TChildNodeValue>
+  implements Directive<SlotDirective<TElementValue, TChildNodeValue>>
 {
   private readonly _type: string;
 
   private readonly _elementValue: TElementValue;
 
-  private readonly _childValue: TChildValue;
+  private readonly _childNodeValue: TChildNodeValue;
 
   constructor(
     type: string,
     elementValue: TElementValue,
-    childValue: TChildValue,
+    childNodeValue: TChildNodeValue,
   ) {
     this._type = type;
     this._elementValue = elementValue;
-    this._childValue = childValue;
+    this._childNodeValue = childNodeValue;
   }
 
   get type(): string {
@@ -45,41 +44,83 @@ export class SlotDirective<TElementValue, TChildValue>
     return this._elementValue;
   }
 
-  get childValue(): TChildValue {
-    return this._childValue;
+  get childNodeValue(): TChildNodeValue {
+    return this._childNodeValue;
   }
 
   [directiveTag](
     part: Part,
     updater: Updater,
-  ): SlotBinding<TElementValue, TChildValue> {
+  ): SlotBinding<TElementValue, TChildNodeValue> {
     if (part.type !== 'childNode') {
       throw new Error(
         `${this.constructor.name} must be used in ChildNodePart.`,
       );
     }
 
-    const binding = new SlotBinding<TElementValue, TChildValue>(part);
+    const element = document.createElement(this._type);
+    const childMarker = document.createComment('');
 
-    binding.bind(this, updater);
+    element.appendChild(childMarker);
+
+    const elementPart = { type: 'element', node: element } as const;
+    const elementBinding = createBinding(
+      elementPart,
+      this._elementValue,
+      updater,
+    );
+    const childNodePart = { type: 'childNode', node: childMarker } as const;
+    const childNodeBinding = createBinding(
+      childNodePart,
+      this._childNodeValue,
+      updater,
+    );
+
+    const binding = new SlotBinding(
+      part,
+      this,
+      elementBinding,
+      childNodeBinding,
+    );
+
+    binding.init(updater);
 
     return binding;
   }
-
-  valueOf(): this {
-    return this;
-  }
 }
 
-export class SlotBinding<TElementValue, TChildValue>
-  implements Binding<SlotDirective<TElementValue, TChildValue>>
+const SlotBindingFlags = {
+  NONE: 0,
+  DIRTY: 1 << 0,
+  MOUNTING: 1 << 1,
+  UNMOUNTING: 1 << 2,
+  REPARENTING: 1 << 3,
+  MOUNTED: 1 << 4,
+};
+
+export class SlotBinding<TElementValue, TChildNodeValue>
+  implements Binding<SlotDirective<TElementValue, TChildNodeValue>>, Effect
 {
   private readonly _part: ChildNodePart;
 
-  private _slot: Slot<TElementValue, TChildValue> | null = null;
+  private _directive: SlotDirective<TElementValue, TChildNodeValue>;
 
-  constructor(part: ChildNodePart) {
+  private _elementBinding: Binding<TElementValue>;
+
+  private _childNodeBinding: Binding<TChildNodeValue>;
+
+  private _flags = SlotBindingFlags.NONE;
+
+  constructor(
+    part: ChildNodePart,
+    directive: SlotDirective<TElementValue, TChildNodeValue>,
+    elementBinding: Binding<TElementValue>,
+    childNodeBinding: Binding<TChildNodeValue>,
+  ) {
     this._part = part;
+    this._directive = directive;
+    this._elementBinding = elementBinding;
+    this._childNodeBinding = childNodeBinding;
   }
 
   get part(): ChildNodePart {
@@ -87,230 +128,111 @@ export class SlotBinding<TElementValue, TChildValue>
   }
 
   get startNode(): ChildNode {
-    return this._slot?.node ?? this._part.node;
+    return this._flags & SlotBindingFlags.MOUNTED
+      ? this._elementBinding.part.node
+      : this._part.node;
   }
 
   get endNode(): ChildNode {
     return this._part.node;
   }
 
-  bind(
-    {
-      type,
-      elementValue,
-      childValue,
-    }: SlotDirective<TElementValue, TChildValue>,
-    updater: Updater,
-  ): void {
-    if (this._slot !== null) {
-      this._slot.update(type, elementValue, childValue, updater);
+  get value(): SlotDirective<TElementValue, TChildNodeValue> {
+    return this._directive;
+  }
+
+  set value(newDirective: SlotDirective<TElementValue, TChildNodeValue>) {
+    this._directive = newDirective;
+  }
+
+  init(updater: Updater): void {
+    this._requestMutation(updater);
+    this._flags |= SlotBindingFlags.MOUNTING;
+  }
+
+  bind(updater: Updater): void {
+    const { type, elementValue, childNodeValue } = this._directive;
+    const element = this._elementBinding.part.node;
+
+    if (element.nodeName !== type.toUpperCase()) {
+      const elementPart = {
+        type: 'element',
+        node: document.createElement(this._directive.type),
+      } as const;
+
+      this._elementBinding.disconnect();
+      this._elementBinding = createBinding(elementPart, elementValue, updater);
+
+      this._requestMutation(updater);
+      this._flags |= SlotBindingFlags.REPARENTING | SlotBindingFlags.MOUNTING;
     } else {
-      const newSlot = Slot.create(
-        type,
+      this._elementBinding = updateBinding(
+        this._elementBinding,
         elementValue,
-        childValue,
-        this._part,
         updater,
       );
-      newSlot.forceMount(updater);
-      this._slot = newSlot;
+
+      if (!(this._flags & SlotBindingFlags.MOUNTED)) {
+        this._requestMutation(updater);
+        this._flags |= SlotBindingFlags.MOUNTING;
+      }
     }
+
+    this._childNodeBinding = updateBinding(
+      this._childNodeBinding,
+      childNodeValue,
+      updater,
+    );
   }
 
   unbind(updater: Updater) {
-    this._slot?.forceUnmount(updater);
-  }
-
-  disconnect(): void {
-    this._slot?.disconnect();
-  }
-}
-
-const SlotFlags = {
-  NONE: 0,
-  MUTATING: 1 << 0,
-  UNMOUNTING: 1 << 1,
-  REPARENTING: 1 << 2,
-  MOUNTED: 1 << 3,
-};
-
-class Slot<TElementValue, TChildValue> implements Effect {
-  private readonly _part: ChildNodePart;
-
-  private _elementBinding: Binding<BindValueOf<TElementValue>>;
-
-  private _childNodeBinding: Binding<BindValueOf<TChildValue>>;
-
-  private _type: string;
-
-  private _elementValue: TElementValue;
-
-  private _childValue: TChildValue;
-
-  private _flags = SlotFlags.NONE;
-
-  static create<TElementValue, TChildValue>(
-    type: string,
-    elementValue: TElementValue,
-    childValue: TChildValue,
-    part: ChildNodePart,
-    updater: Updater,
-  ): Slot<TElementValue, TChildValue> {
-    const element = document.createElement(type);
-    const childMarker = document.createComment('');
-
-    element.appendChild(childMarker);
-
-    const elementPart = {
-      type: 'element',
-      node: element,
-    } as const;
-    const childNodePart = {
-      type: 'childNode',
-      node: childMarker,
-    } as const;
-
-    const elementBinding = createBinding(elementPart, elementValue, updater);
-    const childNodeBinding = createBinding(childNodePart, childValue, updater);
-
-    return new Slot(
-      elementBinding,
-      childNodeBinding,
-      part,
-      type,
-      elementValue,
-      childValue,
-    );
-  }
-
-  constructor(
-    elementBinding: Binding<BindValueOf<TElementValue>>,
-    childNodeBinding: Binding<BindValueOf<TChildValue>>,
-    part: ChildNodePart,
-    type: string,
-    elementValue: TElementValue,
-    childValue: TChildValue,
-  ) {
-    this._elementBinding = elementBinding;
-    this._childNodeBinding = childNodeBinding;
-    this._part = part;
-    this._type = type;
-    this._elementValue = elementValue;
-    this._childValue = childValue;
-  }
-
-  get node(): ChildNode {
-    return this._elementBinding.part.node;
-  }
-
-  get isMounted(): boolean {
-    return !!(this._flags & SlotFlags.MOUNTED);
-  }
-
-  forceMount(updater: Updater) {
-    if (!(this._flags & SlotFlags.MUTATING)) {
-      updater.enqueueMutationEffect(this);
-      this._flags |= SlotFlags.MUTATING;
-    }
-
-    this._flags &= ~SlotFlags.UNMOUNTING;
-  }
-
-  forceUnmount(updater: Updater) {
-    if (!(this._flags & SlotFlags.MUTATING)) {
-      updater.enqueueMutationEffect(this);
-      this._flags |= SlotFlags.MUTATING;
-    }
-
-    this._flags |= SlotFlags.UNMOUNTING;
-  }
-
-  update(
-    newType: string,
-    newElementValue: TElementValue,
-    newChildValue: TChildValue,
-    updater: Updater,
-  ): void {
-    if (this._type !== newType) {
-      const elementPart = {
-        type: 'element',
-        node: document.createElement(newType),
-      } as const;
-      const newElementBinding = createBinding(
-        elementPart,
-        newElementValue,
-        updater,
-      );
-
-      if (!(this._flags & SlotFlags.MUTATING)) {
-        updater.enqueueMutationEffect(this);
-        this._flags |= SlotFlags.MUTATING;
-      }
-
-      updater.enqueuePassiveEffect(new Disconnect(this._elementBinding));
-
-      this._elementBinding = newElementBinding;
-      this._flags |= SlotFlags.REPARENTING;
-    } else {
-      this._elementBinding = checkAndUpdateBinding(
-        this._elementBinding,
-        this._elementValue,
-        newElementValue,
-        updater,
-      );
-    }
-
-    this._childNodeBinding = checkAndUpdateBinding(
-      this._childNodeBinding,
-      this._childValue,
-      newChildValue,
-      updater,
-    );
-
-    this._type = newType;
-    this._elementValue = newElementValue;
-    this._childValue = newChildValue;
-  }
-
-  commit(_mode: CommitMode, updater: Updater): void {
-    if (this._flags & SlotFlags.MOUNTED) {
-      if (this._flags & SlotFlags.REPARENTING) {
-        const oldElement = this._childNodeBinding.part.node
-          .parentNode as Element | null;
-        const newElement = this._elementBinding.part.node as Element;
-
-        if (oldElement !== null && oldElement !== newElement) {
-          newElement.replaceChildren(...oldElement.childNodes);
-          oldElement.replaceWith(newElement);
-        }
-      }
-
-      if (this._flags & SlotFlags.UNMOUNTING) {
-        const element = this._elementBinding.part.node;
-
-        element.remove();
-
-        updater.enqueuePassiveEffect(new Disconnect(this._elementBinding));
-        updater.enqueuePassiveEffect(new Disconnect(this._childNodeBinding));
-
-        this._flags &= ~SlotFlags.MOUNTED;
-      }
-    } else {
-      if (!(this._flags & SlotFlags.UNMOUNTING)) {
-        const element = this._elementBinding.part.node;
-        const reference = this._part.node;
-
-        reference.before(element);
-
-        this._flags |= SlotFlags.MOUNTED;
-      }
-    }
-
-    this._flags &= ~(SlotFlags.MUTATING | SlotFlags.REPARENTING);
+    this._requestMutation(updater);
+    this._flags |= SlotBindingFlags.UNMOUNTING;
   }
 
   disconnect(): void {
     this._elementBinding.disconnect();
     this._childNodeBinding.disconnect();
+  }
+
+  commit(): void {
+    if (this._flags & SlotBindingFlags.REPARENTING) {
+      const oldElement = this._childNodeBinding.part.node.parentNode as Element;
+      const newElement = this._elementBinding.part.node as Element;
+
+      newElement.replaceChildren(...oldElement.childNodes);
+      oldElement.replaceWith(newElement);
+    }
+
+    if (this._flags & SlotBindingFlags.UNMOUNTING) {
+      const element = this._elementBinding.part.node;
+
+      element.remove();
+
+      this._flags &= ~SlotBindingFlags.MOUNTED;
+    } else {
+      if (this._flags & SlotBindingFlags.MOUNTING) {
+        const element = this._elementBinding.part.node;
+        const reference = this._part.node;
+
+        reference.before(element);
+
+        this._flags |= SlotBindingFlags.MOUNTED;
+      }
+    }
+
+    this._flags &= ~(
+      SlotBindingFlags.DIRTY |
+      SlotBindingFlags.MOUNTING |
+      SlotBindingFlags.UNMOUNTING |
+      SlotBindingFlags.REPARENTING
+    );
+  }
+
+  private _requestMutation(updater: Updater) {
+    if (!(this._flags & SlotBindingFlags.DIRTY)) {
+      updater.enqueueMutationEffect(this);
+      this._flags |= SlotBindingFlags.DIRTY;
+    }
   }
 }

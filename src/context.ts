@@ -1,3 +1,4 @@
+import { TemplateDirective } from './directives/template.js';
 import {
   Cleanup,
   EffectCallback,
@@ -10,7 +11,6 @@ import {
 import type { Hook } from './hook.js';
 import type { Scope } from './scope.js';
 import { AtomSignal, Signal } from './signal.js';
-import { TemplateResult } from './templateResult.js';
 import type { Effect, Renderable, Updater } from './updater.js';
 
 type ValueOrFunction<T> = T extends Function ? never : T | (() => T);
@@ -59,22 +59,22 @@ export class Context {
     return undefined;
   }
 
-  html(tokens: ReadonlyArray<string>, ...values: unknown[]): TemplateResult {
+  html(tokens: ReadonlyArray<string>, ...values: unknown[]): TemplateDirective {
     const template = this._scope.createHTMLTemplate(tokens, values);
-    return new TemplateResult(template, values);
+    return new TemplateDirective(template, values);
   }
 
   requestUpdate(): void {
-    this._renderable.forceUpdate(this._updater);
+    this._renderable.bind(this._updater);
   }
 
   setContextValue(key: PropertyKey, value: unknown): void {
     this._scope.setVariable(key, value, this._renderable);
   }
 
-  svg(tokens: ReadonlyArray<string>, ...values: unknown[]): TemplateResult {
+  svg(tokens: ReadonlyArray<string>, ...values: unknown[]): TemplateDirective {
     const template = this._scope.createSVGTemplate(tokens, values);
-    return new TemplateResult(template, values);
+    return new TemplateDirective(template, values);
   }
 
   useCallback<TCallback extends Function>(
@@ -224,7 +224,7 @@ export class Context {
           typeof initialState === 'function' ? initialState() : initialState,
         dispatch: (action: TAction) => {
           newHook.state = reducer(newHook.state, action);
-          renderable.forceUpdate(updater);
+          renderable.bind(updater);
         },
       };
       currentHook = newHook;
@@ -246,7 +246,7 @@ export class Context {
     this.useEffect(
       () =>
         signal.subscribe(() => {
-          renderable.forceUpdate(updater);
+          renderable.bind(updater);
         }),
       [signal],
     );
@@ -272,7 +272,7 @@ export class Context {
     this.useEffect(
       () =>
         subscribe(() => {
-          renderable.forceUpdate(updater);
+          renderable.bind(updater);
         }),
       [subscribe],
     );

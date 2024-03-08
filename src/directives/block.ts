@@ -1,12 +1,24 @@
-import { Block, BlockType } from '../block.js';
-import {
-  Binding,
-  ChildNodePart,
-  Directive,
-  Part,
-  directiveTag,
-} from '../part.js';
-import { Updater } from '../updater.js';
+import { Hook } from '../hook.js';
+import { Binding, Directive, Part, directiveTag } from '../part.js';
+import type { ChildNodePart } from '../part.js';
+import type { Scope } from '../scope.js';
+import type { Template } from '../template.js';
+import { TemplateRoot } from '../templateRoot.js';
+import { Effect, Renderable, Updater } from '../updater.js';
+import type { TemplateDirective } from './template.js';
+
+export type BlockType<TProps, TContext> = (
+  props: TProps,
+  context: TContext,
+) => TemplateDirective;
+
+const BlockFlags = {
+  NONE: 0,
+  UPDATING: 1 << 0,
+  MUTATING: 1 << 1,
+  UNMOUNTING: 1 << 2,
+  TYPE_CHANGED: 1 << 3,
+};
 
 export function block<TProps, TContext>(
   type: BlockType<TProps, TContext>,
@@ -15,9 +27,7 @@ export function block<TProps, TContext>(
   return new BlockDirective(type, props);
 }
 
-export class BlockDirective<TProps, TContext>
-  implements Directive<BlockDirective<TProps, TContext>>
-{
+export class BlockDirective<TProps, TContext> implements Directive<TContext> {
   private readonly _type: BlockType<TProps, TContext>;
 
   private readonly _props: TProps;
@@ -45,27 +55,45 @@ export class BlockDirective<TProps, TContext>
       );
     }
 
-    const binding = new BlockBinding<TProps, TContext>(part);
+    const binding = new BlockBinding(this, part, updater.currentRenderable);
 
-    binding.bind(this, updater);
+    binding.bind(updater);
 
     return binding;
-  }
-
-  valueOf(): this {
-    return this;
   }
 }
 
 export class BlockBinding<TProps, TContext>
-  implements Binding<BlockDirective<TProps, TContext>>
+  implements Binding<BlockDirective<TProps, TContext>>, Effect, Renderable
 {
   private readonly _part: ChildNodePart;
 
-  private _block: Block<TProps, TContext> | null = null;
+  private readonly _parent: Renderable<TContext> | null;
 
-  constructor(part: ChildNodePart) {
+  private _pendingDirective: BlockDirective<TProps, TContext>;
+
+  private _memoizedDirective: BlockDirective<TProps, TContext> | null = null;
+
+  private _template: Template | null = null;
+
+  private _pendingRoot: TemplateRoot | null = null;
+
+  private _memoizedRoot: TemplateRoot | null = null;
+
+  private _cachedRoots: WeakMap<Template, TemplateRoot> | null = null;
+
+  private _hooks: Hook[] = [];
+
+  private _flags = BlockFlags.NONE;
+
+  constructor(
+    directive: BlockDirective<TProps, TContext>,
+    part: ChildNodePart,
+    parent: Renderable<TContext> | null = null,
+  ) {
+    this._pendingDirective = directive;
     this._part = part;
+    this._parent = parent;
   }
 
   get part(): ChildNodePart {
@@ -73,44 +101,153 @@ export class BlockBinding<TProps, TContext>
   }
 
   get startNode(): ChildNode {
-    return this._block?.root?.isMounted
-      ? this._block.root?.childNodes[0] ?? this._part.node
-      : this._part.node;
+    return this._memoizedRoot?.childNodes[0] ?? this._part.node;
   }
 
   get endNode(): ChildNode {
     return this._part.node;
   }
 
-  bind(
-    { type, props }: BlockDirective<TProps, TContext>,
-    updater: Updater<TContext>,
-  ): void {
-    if (this._block !== null && this._block.type !== type) {
-      this._block.forceUnmount(updater);
-      this._block = null;
-    }
+  get parent(): Renderable<TContext> | null {
+    return this._parent;
+  }
 
-    if (this._block !== null) {
-      this._block.props = props;
-    } else {
-      this._block = new Block(
-        type,
-        props,
-        this._part,
-        updater.currentRenderable,
-      );
-    }
+  get dirty(): boolean {
+    return !!(
+      this._flags & BlockFlags.UPDATING || this._flags & BlockFlags.UNMOUNTING
+    );
+  }
 
-    this._block.forceUpdate(updater);
+  get value(): BlockDirective<TProps, TContext> {
+    return this._pendingDirective;
+  }
+
+  set value(newDirective: BlockDirective<TProps, TContext>) {
+    this._pendingDirective = newDirective;
+  }
+
+  bind(updater: Updater): void {
+    this._requestUpdate(updater);
+
+    this._flags &= ~BlockFlags.UNMOUNTING;
   }
 
   unbind(updater: Updater): void {
-    this._block?.forceUnmount(updater);
-    this._block = null;
+    this.disconnect();
+
+    this._requestMutation(updater);
+
+    this._flags |= BlockFlags.UNMOUNTING;
+    this._flags &= ~BlockFlags.UPDATING;
+  }
+
+  render(updater: Updater<TContext>, scope: Scope<TContext>): void {
+    if (!(this._flags & BlockFlags.UPDATING)) {
+      return;
+    }
+
+    const { type, props } = this._pendingDirective;
+
+    if (type !== this._memoizedDirective?.type) {
+      this._hooks = [];
+      cleanHooks(this._hooks);
+    }
+
+    const previousNumberOfHooks = this._hooks.length;
+    const context = scope.createContext(this, this._hooks, updater);
+    const { template, values } = type(props, context);
+
+    if (this._pendingRoot !== null) {
+      if (this._hooks.length !== previousNumberOfHooks) {
+        throw new Error(
+          'The block has been rendered different number of hooks than during the previous render.',
+        );
+      }
+
+      if (this._template !== template) {
+        let newPendingRoot;
+
+        // The new template is different from the previous one. The previous
+        // mount point is saved for future renders.
+        if (this._cachedRoots !== null) {
+          // Since it is rare that different templates are returned, we defer
+          // creating mount point caches.
+          newPendingRoot =
+            this._cachedRoots.get(template) ??
+            template.hydrate(values, updater);
+        } else {
+          this._cachedRoots = new WeakMap();
+          newPendingRoot = template.hydrate(values, updater);
+        }
+
+        // Save and disconnect the previous pending template for future
+        // renderings.
+        this._cachedRoots.set(this._template!, this._pendingRoot);
+        this._pendingRoot.disconnect();
+
+        this._pendingRoot = newPendingRoot;
+
+        this._requestMutation(updater);
+      } else {
+        this._pendingRoot.patch(values, updater);
+      }
+    } else {
+      this._pendingRoot = template.hydrate(values, updater);
+
+      this._requestMutation(updater);
+    }
+
+    this._template = template;
+    this._memoizedDirective = this._pendingDirective;
+    this._flags &= ~BlockFlags.UPDATING;
   }
 
   disconnect(): void {
-    this._block?.disconnect();
+    this._pendingRoot?.disconnect();
+
+    if (this._memoizedRoot !== this._pendingRoot) {
+      this._memoizedRoot?.disconnect();
+    }
+
+    cleanHooks(this._hooks);
+
+    this._pendingRoot = null;
+    this._hooks = [];
+  }
+
+  commit(): void {
+    if (this._flags & BlockFlags.UNMOUNTING) {
+      this._memoizedRoot?.unmount(this._part);
+    } else {
+      this._memoizedRoot?.unmount(this._part);
+      this._pendingRoot?.mount(this._part);
+      this._memoizedRoot = this._pendingRoot;
+    }
+
+    this._flags &= ~(BlockFlags.MUTATING | BlockFlags.UNMOUNTING);
+  }
+
+  private _requestUpdate(updater: Updater) {
+    if (!(this._flags & BlockFlags.UPDATING)) {
+      updater.enqueueRenderable(this);
+      updater.requestUpdate();
+      this._flags |= BlockFlags.UPDATING;
+    }
+  }
+
+  private _requestMutation(updater: Updater) {
+    if (!(this._flags & BlockFlags.MUTATING)) {
+      updater.enqueueMutationEffect(this);
+      this._flags |= BlockFlags.MUTATING;
+    }
+  }
+}
+
+function cleanHooks(hooks: Hook[]): void {
+  for (let i = 0, l = hooks.length; i < l; i++) {
+    const hook = hooks[i]!;
+    if (hook.type === 'effect') {
+      hook.cleanup?.();
+    }
   }
 }

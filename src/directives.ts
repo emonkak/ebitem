@@ -1,5 +1,5 @@
 export { block } from './directives/block.js';
-export { cached } from './directives/cached.js';
+export { choose } from './directives/choose.js';
 export { classNames } from './directives/classNames.js';
 export { condition, when, unless } from './directives/condition.js';
 export { list } from './directives/list.js';
