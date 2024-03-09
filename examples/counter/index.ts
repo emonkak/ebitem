@@ -4,7 +4,7 @@ import {
   LocalScope,
   TemplateDirective,
   boot,
-} from '@emonkak/tempura';
+} from '@emonkak/ebitem';
 import {
   block,
   choice,
@@ -18,8 +18,8 @@ import {
   unless,
   unsafeHTML,
   when,
-} from '@emonkak/tempura/directives.js';
-import { Signal, atom } from '@emonkak/tempura/signal.js';
+} from '@emonkak/ebitem/directives.js';
+import { Signal, atom } from '@emonkak/ebitem/signal.js';
 
 const counterSignal = atom(0);
 
