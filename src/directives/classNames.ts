@@ -107,7 +107,9 @@ export class ClassNamesBinding implements Effect, Binding<ClassNamesDirective> {
       }
     }
 
-    if (addedClasses.length < classList.length) {
+    if (addedClasses.length === 0) {
+      classList.value = '';
+    } else if (addedClasses.length < classList.length) {
       for (let i = classList.length - 1; i >= 0; i--) {
         const className = classList[i]!;
         if (!addedClasses.includes(className)) {
