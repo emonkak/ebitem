@@ -110,11 +110,12 @@ export class ListBinding<TItem, TValue, TKey>
   }
 
   init(updater: Updater): void {
+    const { items, keySelector, valueSelector } = this._directive;
     const bindings = new Array<ListItemBinding<TValue>>(
       this._directive.items.length,
     );
-    const keys = this._directive.items.map(this._directive.keySelector);
-    const values = this._directive.items.map(this._directive.valueSelector);
+    const keys = items.map(keySelector);
+    const values = items.map(valueSelector);
 
     for (let i = 0, l = bindings.length; i < l; i++) {
       bindings[i] = createItemBinding(values[i]!, this._part, updater);
