@@ -96,13 +96,25 @@ export class ChoiceBinding<TKey, TValue>
         updater,
       );
     } else {
-      this._cachedBindings.set(this._currentKey, this._currentBinding);
       this._currentBinding.unbind(updater);
-      this._currentBinding = createBinding(
-        this._currentBinding.part,
-        newValue,
-        updater,
-      );
+      this._cachedBindings.set(oldKey, this._currentBinding);
+
+      const cachedBinding = this._cachedBindings.get(newKey);
+
+      if (cachedBinding !== undefined) {
+        this._currentBinding = updateBinding(
+          cachedBinding,
+          newValue,
+          updater,
+          true,
+        );
+      } else {
+        this._currentBinding = createBinding(
+          this._currentBinding.part,
+          newValue,
+          updater,
+        );
+      }
       this._currentKey = newKey;
     }
   }

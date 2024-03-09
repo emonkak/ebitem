@@ -11,7 +11,7 @@ import { NullDirective } from './null.js';
 type ValueOrFunction<T> = T extends Function ? never : T | (() => T);
 
 export function condition<TTrue, TFalse>(
-  condition: ValueOrFunction<boolean>,
+  condition: boolean,
   trueCase: ValueOrFunction<TTrue>,
   falseCase: ValueOrFunction<TFalse>,
 ): ConditionDirective<TTrue, TFalse> {
@@ -19,14 +19,14 @@ export function condition<TTrue, TFalse>(
 }
 
 export function when<TTrue>(
-  condition: ValueOrFunction<boolean>,
+  condition: boolean,
   trueCase: ValueOrFunction<TTrue>,
 ): ConditionDirective<TTrue, NullDirective> {
   return new ConditionDirective(condition, trueCase, NullDirective.instance);
 }
 
 export function unless<TFalse>(
-  condition: ValueOrFunction<boolean>,
+  condition: boolean,
   falseCase: ValueOrFunction<TFalse>,
 ): ConditionDirective<NullDirective, TFalse> {
   return new ConditionDirective(condition, NullDirective.instance, falseCase);
@@ -35,14 +35,14 @@ export function unless<TFalse>(
 export class ConditionDirective<TTrue, TFalse>
   implements Directive<ConditionDirective<TTrue, TFalse>>
 {
-  private readonly _condition: ValueOrFunction<boolean>;
+  private readonly _condition: boolean;
 
   private readonly _trueCase: ValueOrFunction<TTrue>;
 
   private readonly _falseCase: ValueOrFunction<TFalse>;
 
   constructor(
-    condition: ValueOrFunction<boolean>,
+    condition: boolean,
     trueCase: ValueOrFunction<TTrue>,
     falseCase: ValueOrFunction<TFalse>,
   ) {
@@ -51,7 +51,7 @@ export class ConditionDirective<TTrue, TFalse>
     this._falseCase = falseCase;
   }
 
-  get condition(): ValueOrFunction<boolean> {
+  get condition(): boolean {
     return this._condition;
   }
 
@@ -90,6 +90,8 @@ export class ConditionBinding<TTrue, TFalse>
 
   private _falseBinding: Binding<TFalse> | null = null;
 
+  private _condition = false;
+
   constructor(part: Part, directive: ConditionDirective<TTrue, TFalse>) {
     this._part = part;
     this._directive = directive;
@@ -121,28 +123,40 @@ export class ConditionBinding<TTrue, TFalse>
   bind(updater: Updater): void {
     const { condition, trueCase, falseCase } = this._directive;
 
-    if (typeof condition === 'function' ? condition() : condition) {
+    if (condition) {
       const newValue = typeof trueCase === 'function' ? trueCase() : trueCase;
-      this._falseBinding?.unbind(updater);
+      if (this._condition !== condition) {
+        this._falseBinding?.unbind(updater);
+      }
       if (this._trueBinding !== null) {
-        this._trueBinding = updateBinding(this._trueBinding, newValue, updater);
+        this._trueBinding = updateBinding(
+          this._trueBinding,
+          newValue,
+          updater,
+          this._condition !== condition,
+        );
       } else {
         this._trueBinding = createBinding(this._part, newValue, updater);
       }
     } else {
       const newValue =
         typeof falseCase === 'function' ? falseCase() : falseCase;
-      this._trueBinding?.unbind(updater);
+      if (this._condition !== condition) {
+        this._trueBinding?.unbind(updater);
+      }
       if (this._falseBinding !== null) {
         this._falseBinding = updateBinding(
           this._falseBinding,
           newValue,
           updater,
+          this._condition !== condition,
         );
       } else {
         this._falseBinding = createBinding(this._part, newValue, updater);
       }
     }
+
+    this._condition = condition;
   }
 
   unbind(updater: Updater): void {

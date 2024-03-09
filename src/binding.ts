@@ -526,8 +526,13 @@ export function updateBinding<T>(
   binding: Binding<T>,
   newValue: T,
   updater: Updater,
+  force = false,
 ): Binding<T> {
   const oldValue = binding.value;
+
+  if (!force && Object.is(oldValue, newValue)) {
+    return binding;
+  }
 
   if (isDirective(newValue)) {
     if (isDirective(oldValue) && isPrototypeOf(newValue, oldValue)) {
