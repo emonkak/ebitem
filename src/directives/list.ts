@@ -355,15 +355,20 @@ class ListItemBinding<T> implements Binding<T>, Effect {
       if (this._flags & ListItemFlags.REORDERING) {
         const { startNode, endNode } = this._binding;
 
+        // elements must be collected first to avoid infinite loop.
+        const nodes = [];
         let currentNode: Node | null = startNode;
+
         do {
           const nextNode: Node | null = currentNode.nextSibling;
-          referenceNode.before(currentNode);
+          nodes.push(currentNode);
           if (currentNode === endNode) {
             break;
           }
           currentNode = nextNode;
         } while (currentNode !== null);
+
+        referenceNode.before(...nodes);
       }
 
       this._listPart.node.before(this._binding.part.node);
