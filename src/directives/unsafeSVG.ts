@@ -5,7 +5,7 @@ export function unsafeSVG(content: string): UnsafeSVGDirective {
   return new UnsafeSVGDirective(content);
 }
 
-export class UnsafeSVGDirective implements Directive<unknown> {
+export class UnsafeSVGDirective implements Directive {
   private readonly _unsafeContent: string;
 
   constructor(unsafeContent: string) {

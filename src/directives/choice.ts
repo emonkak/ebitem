@@ -14,9 +14,7 @@ export function choice<TKey, TValue>(
   return new ChoiceDirective(key, factory);
 }
 
-export class ChoiceDirective<TKey, TValue>
-  implements Directive<ChoiceDirective<TKey, TValue>>
-{
+export class ChoiceDirective<TKey, TValue> implements Directive {
   private readonly _key: TKey;
 
   private readonly _factory: (key: TKey) => TValue;

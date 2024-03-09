@@ -32,9 +32,7 @@ export function unless<TFalse>(
   return new ConditionDirective(condition, NullDirective.instance, falseCase);
 }
 
-export class ConditionDirective<TTrue, TFalse>
-  implements Directive<ConditionDirective<TTrue, TFalse>>
-{
+export class ConditionDirective<TTrue, TFalse> implements Directive {
   private readonly _condition: boolean;
 
   private readonly _trueCase: ValueOrFunction<TTrue>;

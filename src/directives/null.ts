@@ -1,7 +1,7 @@
 import { Binding, Directive, directiveTag } from '../binding.js';
 import type { Part, Updater } from '../types.js';
 
-export class NullDirective implements Directive<NullDirective> {
+export class NullDirective implements Directive {
   static instance = new NullDirective();
 
   [directiveTag](part: Part, _updater: Updater): NullBinding {

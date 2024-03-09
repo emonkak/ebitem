@@ -12,7 +12,7 @@ export function signal<T>(value: Signal<T>): SignalDirective<T> {
   return new SignalDirective(value);
 }
 
-export class SignalDirective<T> implements Directive<Signal<T>> {
+export class SignalDirective<T> implements Directive {
   private _signal: Signal<T>;
 
   constructor(signal: Signal<T>) {

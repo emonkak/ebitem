@@ -18,7 +18,7 @@ const FragmentFlags = {
   MOUNTED: 1 << 3,
 };
 
-export class TemplateDirective implements Directive<TemplateDirective> {
+export class TemplateDirective implements Directive {
   private readonly _template: Template;
 
   private readonly _values: unknown[];

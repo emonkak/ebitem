@@ -7,7 +7,7 @@ export function ref(ref: ElementRef | null): RefDirective {
   return new RefDirective(ref);
 }
 
-export class RefDirective implements Directive<ElementRef | null> {
+export class RefDirective implements Directive {
   private readonly _ref: ElementRef | null;
 
   constructor(ref: ElementRef | null) {

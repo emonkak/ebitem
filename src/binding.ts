@@ -11,7 +11,7 @@ import type {
   Updater,
 } from './types.js';
 
-export type PrimitiveBinding<TContext = unknown> = Binding<any, TContext>;
+export type PrimitiveBinding = Binding<any, any>;
 
 export interface Binding<TValue, TContext = unknown> {
   get part(): Part;
@@ -573,7 +573,7 @@ export function boot<TContext>(
   directive[directiveTag](part, updater);
 }
 
-function isDirective(value: unknown): value is Directive<unknown> {
+function isDirective(value: unknown): value is Directive {
   return value !== null && typeof value === 'object' && directiveTag in value;
 }
 

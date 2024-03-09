@@ -17,9 +17,7 @@ export function slot<TChildNodeValue>(
   return new SlotDirective(type, props, childNodeValue);
 }
 
-export class SlotDirective<TChildNodeValue>
-  implements Directive<SlotDirective<TChildNodeValue>>
-{
+export class SlotDirective<TChildNodeValue> implements Directive {
   private readonly _type: string;
 
   private readonly _props: SpreadProps;

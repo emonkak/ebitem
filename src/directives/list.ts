@@ -23,9 +23,7 @@ export function list<TItem, TValue, TKey>(
   return new ListDirective(items, valueSelector, keySelector);
 }
 
-export class ListDirective<TItem, TValue, TKey>
-  implements Directive<ListDirective<TItem, TValue, TKey>>
-{
+export class ListDirective<TItem, TValue, TKey> implements Directive {
   private readonly _items: TItem[];
 
   private readonly _valueSelector: Selector<TItem, TValue>;

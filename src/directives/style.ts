@@ -13,7 +13,7 @@ export function style(styleDeclaration: StyleMap): StyleDirective {
   return new StyleDirective(styleDeclaration);
 }
 
-export class StyleDirective implements Directive<StyleMap> {
+export class StyleDirective implements Directive {
   private readonly _styleMap: StyleMap;
 
   constructor(styleMap: StyleMap) {

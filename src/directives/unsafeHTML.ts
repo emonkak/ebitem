@@ -5,7 +5,7 @@ export function unsafeHTML(content: string): UnsafeHTMLDirective {
   return new UnsafeHTMLDirective(content);
 }
 
-export class UnsafeHTMLDirective implements Directive<unknown> {
+export class UnsafeHTMLDirective implements Directive {
   private readonly _unsafeContent: string;
 
   constructor(unsafeContent: string) {
