@@ -66,36 +66,55 @@ export class SignalBinding<T> implements Binding<SignalDirective<T>> {
   }
 
   init(updater: Updater): void {
-    const { signal } = this._directive;
-
-    this._subscription?.();
-    this._subscription = signal.subscribe(() => {
-      this._binding = updateBinding(this._binding, signal.value, updater);
-    });
+    if (this._subscription === null) {
+      this._subscription = this._startSubscription(updater);
+    }
   }
 
   bind(updater: Updater): void {
     const { signal } = this._directive;
 
-    this._subscription?.();
-    this._subscription = signal.subscribe(() => {
-      this._binding = updateBinding(this._binding, signal.value, updater);
-    });
-
     this._binding = updateBinding(this._binding, signal.value, updater);
+
+    if (this._subscription === null) {
+      this._subscription = this._startSubscription(updater);
+    }
   }
 
   unbind(updater: Updater) {
+    this._binding.unbind(updater);
+
     this._subscription?.();
     this._subscription = null;
-
-    this._binding.unbind(updater);
   }
 
   disconnect(): void {
-    this._subscription?.();
-    this._subscription = null;
-
     this._binding.disconnect();
+  }
+
+  private _startSubscription(updater: Updater): Subscription {
+    const { signal } = this._directive;
+    const weakThis = new WeakRef(this);
+
+    const subscription = signal.subscribe(() => {
+      const that = weakThis.deref();
+
+      if (that !== undefined) {
+        // FIXME: The binding will be updated with the new value whether or not
+        // the target is connected to the document. Is is just a performance
+        // issue?
+        that._binding = updateBinding(
+          that._binding,
+          that._directive.signal.value,
+          updater,
+        );
+      } else {
+        // The signal will be automatically unsubscribed when this
+        // SignalBinding is garbage-collected.
+        subscription();
+      }
+    });
+
+    return subscription;
   }
 }
