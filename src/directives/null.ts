@@ -1,20 +1,24 @@
 import { Binding, Directive, directiveTag } from '../binding.js';
 import type { Part, Updater } from '../types.js';
 
-export class NullDirective implements Directive {
-  static instance = new NullDirective();
-
-  [directiveTag](part: Part, _updater: Updater): NullBinding {
-    return new NullBinding(part, this);
-  }
+function NullDirective() {
+  throw new Error('NullDirective constructor cannot be called directly.');
 }
 
-export class NullBinding implements Binding<NullDirective> {
+NullDirective.prototype = {
+  [directiveTag](part: Part, _updater: Updater): NullBinding {
+    return new NullBinding(part, this);
+  },
+};
+
+export const nullDirective: Directive = Object.create(NullDirective.prototype);
+
+export class NullBinding implements Binding<typeof nullDirective> {
   private readonly _part: Part;
 
-  private _directive: NullDirective;
+  private _directive: typeof nullDirective;
 
-  constructor(part: Part, directive: NullDirective) {
+  constructor(part: Part, directive: typeof nullDirective) {
     this._part = part;
     this._directive = directive;
   }
@@ -31,11 +35,11 @@ export class NullBinding implements Binding<NullDirective> {
     return this._part.node;
   }
 
-  get value(): NullDirective {
+  get value(): typeof nullDirective {
     return this._directive;
   }
 
-  set value(newDirective: NullDirective) {
+  set value(newDirective: typeof nullDirective) {
     this._directive = newDirective;
   }
 
