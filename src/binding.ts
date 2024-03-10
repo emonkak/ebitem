@@ -523,7 +523,7 @@ export function createBinding<T>(
 }
 
 export function updateBinding<T>(
-  binding: Binding<T>,
+  binding: Binding<unknown>,
   newValue: T,
   updater: Updater,
   force = false,
@@ -531,16 +531,16 @@ export function updateBinding<T>(
   const oldValue = binding.value;
 
   if (!force && Object.is(oldValue, newValue)) {
-    return binding;
+    return binding as Binding<T>;
   }
 
   if (isDirective(newValue)) {
-    if (isDirective(oldValue) && isPrototypeOf(newValue, oldValue)) {
+    if (isDirective(oldValue) && isPrototypeOf(oldValue, newValue)) {
       binding.value = newValue;
       binding.bind(updater);
     } else {
       binding.unbind(updater);
-      binding = newValue[directiveTag](binding.part, updater) as Binding<T>;
+      binding = newValue[directiveTag](binding.part, updater);
     }
   } else {
     if (isDirective(oldValue)) {
@@ -551,7 +551,7 @@ export function updateBinding<T>(
     binding.bind(updater);
   }
 
-  return binding;
+  return binding as Binding<T>;
 }
 
 export function boot<TContext>(
@@ -587,7 +587,10 @@ function isEventListener(
   );
 }
 
-function isPrototypeOf(first: object, second: object): boolean {
+function isPrototypeOf<T extends object>(
+  first: T,
+  second: object,
+): second is T {
   return Object.prototype.isPrototypeOf.call(
     Object.getPrototypeOf(first),
     second,
