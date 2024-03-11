@@ -79,7 +79,7 @@ export class BlockBinding<TProps, TContext>
 
   private _memoizedDirective: BlockDirective<TProps, TContext> | null = null;
 
-  private _template: Template | null = null;
+  private _memoizedTemplate: Template | null = null;
 
   private _pendingRoot: TemplateRoot | null = null;
 
@@ -160,8 +160,8 @@ export class BlockBinding<TProps, TContext>
     const { type, props } = this._pendingDirective;
 
     if (type !== this._memoizedDirective?.type) {
-      this._hooks = [];
       cleanHooks(this._hooks);
+      this._hooks = [];
     }
 
     const previousNumberOfHooks = this._hooks.length;
@@ -175,11 +175,11 @@ export class BlockBinding<TProps, TContext>
         );
       }
 
-      if (this._template !== template) {
+      if (this._memoizedTemplate !== template) {
         let newPendingRoot;
 
-        // The new template is different from the previous one. The previous
-        // mount point is saved for future renders.
+        // The new template is different from the previous one. Therefore, the
+        // previous mount point is saved for future renders.
         if (this._cachedRoots !== null) {
           // Since it is rare that different templates are returned, we defer
           // creating mount point caches.
@@ -193,7 +193,7 @@ export class BlockBinding<TProps, TContext>
 
         // Save and disconnect the previous pending template for future
         // renderings.
-        this._cachedRoots.set(this._template!, this._pendingRoot);
+        this._cachedRoots.set(this._memoizedTemplate!, this._pendingRoot);
         this._pendingRoot.disconnect();
 
         this._pendingRoot = newPendingRoot;
@@ -208,8 +208,8 @@ export class BlockBinding<TProps, TContext>
       this._requestMutation(updater);
     }
 
-    this._template = template;
     this._memoizedDirective = this._pendingDirective;
+    this._memoizedTemplate = template;
     this._flags &= ~BlockFlags.UPDATING;
   }
 
