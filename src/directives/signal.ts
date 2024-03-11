@@ -72,11 +72,10 @@ export class SignalBinding<T> implements Binding<SignalDirective<T>> {
   }
 
   bind(updater: Updater): void {
-    const { signal } = this._directive;
-
-    this._binding = updateBinding(this._binding, signal.value, updater);
-
     if (this._subscription === null) {
+      const { signal } = this._directive;
+
+      this._binding = updateBinding(this._binding, signal.value, updater);
       this._subscription = this._startSubscription(updater);
     }
   }
