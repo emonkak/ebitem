@@ -5,11 +5,17 @@ import { TaggedTemplate } from '../src/taggedTemplate.js';
 describe('Template', () => {
   const MARKER = `?${crypto.randomUUID()}?`;
 
-  function html(tokens: TemplateStringsArray, ..._values: unknown[]) {
+  function html(
+    tokens: TemplateStringsArray,
+    ..._values: unknown[]
+  ): TaggedTemplate {
     return TaggedTemplate.parseHTML(tokens, MARKER);
   }
 
-  function svg(tokens: TemplateStringsArray, ..._values: unknown[]) {
+  function svg(
+    tokens: TemplateStringsArray,
+    ..._values: unknown[]
+  ): TaggedTemplate {
     return TaggedTemplate.parseSVG(tokens, MARKER);
   }
 
@@ -50,11 +56,32 @@ describe('Template', () => {
       assert.strictEqual(template.element.innerHTML, '<input type="checkbox">');
     });
 
+    it('should parse a hole inside a tag name', () => {
+      const template = html`
+        <${0}>
+        <${1}/>
+        <${2} />
+      `;
+      assert.deepEqual(template.holes, [
+        { type: 'childNode', index: 0 },
+        { type: 'childNode', index: 2 },
+        { type: 'childNode', index: 4 },
+      ]);
+      assert.strictEqual(
+        template.element.innerHTML,
+        `
+        <!---->
+        <!---->
+        <!---->
+      `.trim(),
+      );
+    });
+
     it('should parse holes inside elements', () => {
       const template = html`
         <div id="foo" ${0}></div>
-        <div ${0} id="foo"></div>
-        <div id="foo" ${0} class="bar"></div>
+        <div ${1} id="foo"></div>
+        <div id="foo" ${2} class="bar"></div>
       `;
       assert.deepEqual(template.holes, [
         { type: 'element', index: 0 },
@@ -79,15 +106,15 @@ describe('Template', () => {
         </ul>
       `;
       assert.deepEqual(template.holes, [
-        { type: 'childNode', index: 3 },
-        { type: 'childNode', index: 6 },
+        { type: 'node', index: 3 },
+        { type: 'node', index: 6 },
       ]);
       assert.strictEqual(
         template.element.innerHTML,
         `
         <ul>
-          <li><!----></li>
-          <li><!----></li>
+          <li></li>
+          <li></li>
         </ul>
       `.trim(),
       );
@@ -99,21 +126,60 @@ describe('Template', () => {
         <div>${0}, ${1}</div>
       `;
       assert.deepEqual(template.holes, [
-        { type: 'childNode', index: 2 },
-        { type: 'childNode', index: 4 },
-        { type: 'childNode', index: 8 },
-        { type: 'childNode', index: 10 },
+        { type: 'node', index: 2 },
+        { type: 'node', index: 4 },
+        { type: 'node', index: 8 },
+        { type: 'node', index: 10 },
       ]);
       assert.strictEqual(
         template.element.innerHTML,
         `
-        <div>[<!---->, <!---->]</div>
-        <div><!---->, <!----></div>
+        <div>[, ]</div>
+        <div>, </div>
       `.trim(),
       );
     });
 
-    it('should throw an error when it is passed a marker in an invalid format', () => {
+    it('should parse a hole inside a comment as ChildNodeHole', () => {
+      const template = html`
+        <!--${0}-->
+        <!--${1}/-->
+        <!-- ${2} /-->
+      `;
+      assert.deepEqual(template.holes, [
+        { type: 'childNode', index: 0 },
+        { type: 'childNode', index: 2 },
+        { type: 'childNode', index: 4 },
+      ]);
+      assert.strictEqual(
+        template.element.innerHTML,
+        `
+        <!---->
+        <!---->
+        <!---->
+      `.trim(),
+      );
+    });
+
+    it('should parse a hole inside a tag with leading spaces as NodeHole', () => {
+      const template = html`
+        < ${0}>
+        < ${0}/>
+      `;
+      assert.deepEqual(template.holes, [
+        { type: 'node', index: 1 },
+        { type: 'node', index: 3 },
+      ]);
+      assert.strictEqual(
+        template.element.innerHTML,
+        `
+        &lt; &gt;
+        &lt; /&gt;
+      `.trim(),
+      );
+    });
+
+    it('should throw an error if passed a marker in an invalid format', () => {
       assert.throw(() => {
         TaggedTemplate.parseHTML([], 'INVALID_MARKER');
       }, 'The marker is in an invalid format:');
@@ -122,25 +188,7 @@ describe('Template', () => {
       }, 'The marker is in an invalid format:');
     });
 
-    it('should throw an error when there is a hole as a tag name', () => {
-      assert.throw(() => {
-        html`
-          <${0}>
-        `;
-      }, 'Expressions are not allowed inside a comment:');
-      assert.throw(() => {
-        html`
-          <x-${0}>
-        `;
-      }, 'Expressions are not allowed as a tag name:');
-      assert.throw(() => {
-        html`
-          <${0}-x>
-        `;
-      }, 'Expressions are not allowed inside a comment:');
-    });
-
-    it('should throw an error when there is a hole ad an attribute name', () => {
+    it('should throw an error when there is a hole as an attribute name', () => {
       assert.throw(() => {
         html`
           <div ${0}="foo"></div>
@@ -171,12 +219,40 @@ describe('Template', () => {
       }, 'Expressions inside an attribute must make up the entire attribute value:');
     });
 
-    it('should throw an error when there is a hole inside a comment', () => {
+    it('should throw an error when there is a hole with extra strings inside a tag name', () => {
       assert.throw(() => {
         html`
-          <!-- ${0} -->
+          <x-${0}>
         `;
-      }, 'Expressions are not allowed inside a comment:');
+      }, 'Expressions are not allowed as a tag name:');
+      assert.throw(() => {
+        html`
+          <${0}-x>
+        `;
+      }, 'Expressions inside a comment must make up the entire comment value:');
+      assert.throw(() => {
+        html`
+          <${0}/ >
+        `;
+      }, 'Expressions inside a comment must make up the entire comment value:');
+    });
+
+    it('should throw an error when there is a hole with extra strings inside a comment', () => {
+      assert.throw(() => {
+        html`
+          <!-- x-${0} -->
+        `;
+      }, 'Expressions inside a comment must make up the entire comment value:');
+      assert.throw(() => {
+        html`
+          <!-- ${0}-x -->
+        `;
+      }, 'Expressions inside a comment must make up the entire comment value:');
+      assert.throw(() => {
+        html`
+          <!-- ${0}/ -->
+        `;
+      }, 'Expressions inside a comment must make up the entire comment value:');
     });
   });
 

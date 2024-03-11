@@ -6,6 +6,7 @@ export type Hole =
   | ChildNodeHole
   | ElementHole
   | EventHole
+  | NodeHole
   | PropertyHole;
 
 export interface AttributeHole {
@@ -30,6 +31,11 @@ export interface EventHole {
   name: string;
 }
 
+export interface NodeHole {
+  type: 'node';
+  index: number;
+}
+
 export interface PropertyHole {
   type: 'property';
   index: number;
@@ -51,9 +57,7 @@ export class TaggedTemplate implements Template {
   ): TaggedTemplate {
     // biome-ignore lint: use DEBUG label
     DEBUG: {
-      if (!MARKER_REGEXP.test(marker)) {
-        throw new Error(`The marker is in an invalid format: ${marker}`);
-      }
+      ensureValidMarker(marker);
     }
     const template = document.createElement('template');
     template.innerHTML = tokens.join(marker).trim();
@@ -67,9 +71,7 @@ export class TaggedTemplate implements Template {
   ): TaggedTemplate {
     // biome-ignore lint: use DEBUG label
     DEBUG: {
-      if (!MARKER_REGEXP.test(marker)) {
-        throw new Error(`The marker is in an invalid format: ${marker}`);
-      }
+      ensureValidMarker(marker);
     }
     const template = document.createElement('template');
     template.innerHTML = `<svg>${tokens.join(marker).trim()}</svg>`;
@@ -146,6 +148,12 @@ export class TaggedTemplate implements Template {
                 name: currentHole.name,
               };
               break;
+            case 'node':
+              part = {
+                type: 'node',
+                node: currentNode as ChildNode,
+              };
+              break;
             case 'property':
               part = {
                 type: 'property',
@@ -167,6 +175,12 @@ export class TaggedTemplate implements Template {
 
         nodeIndex++;
       }
+    }
+
+    if (holes.length !== bindings.length) {
+      throw new Error(
+        'The number of holes and bindings do not match. There may be multiple holes indicating the same attribute.',
+      );
     }
 
     return new TaggedTemplateRoot(bindings, [...rootNode.childNodes]);
@@ -219,6 +233,12 @@ export class TaggedTemplateRoot implements TemplateRoot {
     for (let i = 0, l = this._bindings.length; i < l; i++) {
       this._bindings[i]!.disconnect();
     }
+  }
+}
+
+function ensureValidMarker(marker: string): void {
+  if (!MARKER_REGEXP.test(marker)) {
+    throw new Error(`The marker is in an invalid format: ${marker}`);
   }
 }
 
@@ -315,11 +335,18 @@ function parseChildren(rootNode: Node, marker: string): Hole[] {
         break;
       }
       case Node.COMMENT_NODE: {
+        if (trimTrailingSlash((currentNode as Comment).data) === marker) {
+          (currentNode as Comment).data = '';
+          holes.push({
+            type: 'childNode',
+            index,
+          });
+        }
         // biome-ignore lint: use DEBUG label
         DEBUG: {
           if ((currentNode as Comment).data.includes(marker)) {
             throw new Error(
-              `Expressions are not allowed inside a comment: <!--${
+              `Expressions inside a comment must make up the entire comment value: <!--${
                 (currentNode as Comment).data
               }-->`,
             );
@@ -342,10 +369,10 @@ function parseChildren(rootNode: Node, marker: string): Hole[] {
               index++;
             }
 
-            currentNode.before(document.createComment(''));
+            currentNode.before(document.createTextNode(''));
 
             holes.push({
-              type: 'childNode',
+              type: 'node',
               index,
             });
             index++;
@@ -370,4 +397,8 @@ function parseChildren(rootNode: Node, marker: string): Hole[] {
   }
 
   return holes;
+}
+
+function trimTrailingSlash(s: string): string {
+  return s.at(-1) === '/' ? s.slice(0, -1).trim() : s;
 }

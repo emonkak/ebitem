@@ -1,11 +1,9 @@
 import type {
   AttributePart,
-  ChildNodePart,
   Effect,
   ElementPart,
   EventPart,
   NamedPart,
-  NodePart,
   Part,
   PropertyPart,
   Updater,
@@ -106,94 +104,6 @@ export class AttributeBinding implements Binding<unknown>, Effect {
     }
 
     this._dirty = false;
-  }
-}
-
-const ChildNodeBindingFlags = {
-  NONE: 0,
-  MUTATING: 1 << 0,
-  UNMOUNTING: 1 << 1,
-  MOUNTED: 1 << 2,
-};
-
-export class ChildNodeBinding implements Binding<unknown>, Effect {
-  private readonly _part: ChildNodePart;
-
-  private readonly _nodeBinding: NodeBinding;
-
-  private _flags = ChildNodeBindingFlags.NONE;
-
-  constructor(part: ChildNodePart, value: unknown, node: ChildNode) {
-    this._part = part;
-    this._nodeBinding = new NodeBinding({ type: 'node', node }, value);
-  }
-
-  get part(): ChildNodePart {
-    return this._part;
-  }
-
-  get startNode(): ChildNode {
-    return this._flags & ChildNodeBindingFlags.MOUNTED
-      ? this._nodeBinding.part.node
-      : this._part.node;
-  }
-
-  get endNode(): ChildNode {
-    return this._part.node;
-  }
-
-  get value(): unknown {
-    return this._nodeBinding.value;
-  }
-
-  set value(newValue: unknown) {
-    this._nodeBinding.value = newValue;
-  }
-
-  bind(updater: Updater): void {
-    this._nodeBinding.bind(updater);
-
-    if (!(this._flags & ChildNodeBindingFlags.MOUNTED)) {
-      this._requestMutation(updater);
-    }
-
-    this._flags &= ~ChildNodeBindingFlags.UNMOUNTING;
-  }
-
-  unbind(updater: Updater) {
-    if (this._flags & ChildNodeBindingFlags.MOUNTED) {
-      this._requestMutation(updater);
-    }
-
-    this._flags |= ChildNodeBindingFlags.UNMOUNTING;
-  }
-
-  disconnect(): void {}
-
-  commit(): void {
-    const node = this._nodeBinding.part.node;
-
-    if (this._flags & ChildNodeBindingFlags.UNMOUNTING) {
-      node.remove();
-      this._flags &= ~ChildNodeBindingFlags.MOUNTED;
-    } else {
-      if (!(this._flags & ChildNodeBindingFlags.MOUNTED)) {
-        const reference = this._part.node;
-        reference.before(node);
-        this._flags |= ChildNodeBindingFlags.MOUNTED;
-      }
-    }
-
-    this._flags &= ~(
-      ChildNodeBindingFlags.MUTATING | ChildNodeBindingFlags.UNMOUNTING
-    );
-  }
-
-  _requestMutation(updater: Updater): void {
-    if (!(this._flags & ChildNodeBindingFlags.MUTATING)) {
-      updater.enqueueMutationEffect(this);
-      this._flags |= ChildNodeBindingFlags.MUTATING;
-    }
   }
 }
 
@@ -320,18 +230,18 @@ export class EventBinding implements Binding<unknown>, Effect {
 }
 
 export class NodeBinding implements Binding<unknown>, Effect {
-  private readonly _part: NodePart;
+  private readonly _part: Part;
 
   private _value: unknown;
 
   private _dirty = false;
 
-  constructor(part: NodePart, value: unknown) {
+  constructor(part: Part, value: unknown) {
     this._part = part;
     this._value = value;
   }
 
-  get part(): NodePart {
+  get part(): Part {
     return this._part;
   }
 
@@ -371,7 +281,7 @@ export class NodeBinding implements Binding<unknown>, Effect {
 
   commit(): void {
     this._part.node.nodeValue =
-      this._value == null ? null : this._value.toString();
+      this._value != null ? this._value.toString() : null;
     this._dirty = false;
   }
 }
@@ -616,7 +526,7 @@ function resolvePrimitiveBinding(part: Part, value: unknown): PrimitiveBinding {
     case 'attribute':
       return new AttributeBinding(part, value);
     case 'childNode':
-      return new ChildNodeBinding(part, value, document.createTextNode(''));
+      return new NodeBinding(part, value);
     case 'element':
       return new SpreadBinding(part, value);
     case 'event':

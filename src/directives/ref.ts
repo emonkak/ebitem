@@ -1,5 +1,5 @@
 import { Binding, Directive, directiveTag } from '../binding.js';
-import type { Effect, ElementPart, Part, Ref, Updater } from '../types.js';
+import type { AttributePart, Effect, Part, Ref, Updater } from '../types.js';
 
 type ElementRef = Ref<Element | null>;
 
@@ -19,8 +19,10 @@ export class RefDirective implements Directive {
   }
 
   [directiveTag](part: Part, updater: Updater): RefBinding {
-    if (part.type !== 'element') {
-      throw new Error(`${this.constructor.name} must be used in SpreadPart.`);
+    if (part.type !== 'attribute' || part.name !== 'ref') {
+      throw new Error(
+        `${this.constructor.name} must be used in "ref" attribute.`,
+      );
     }
 
     const binding = new RefBinding(part, this);
@@ -32,7 +34,7 @@ export class RefDirective implements Directive {
 }
 
 export class RefBinding implements Binding<RefDirective>, Effect {
-  private readonly _part: ElementPart;
+  private readonly _part: AttributePart;
 
   private _pendingDirective: RefDirective;
 
@@ -40,12 +42,12 @@ export class RefBinding implements Binding<RefDirective>, Effect {
 
   private _dirty = false;
 
-  constructor(part: ElementPart, directive: RefDirective) {
+  constructor(part: AttributePart, directive: RefDirective) {
     this._part = part;
     this._pendingDirective = directive;
   }
 
-  get part(): ElementPart {
+  get part(): AttributePart {
     return this._part;
   }
 

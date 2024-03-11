@@ -83,29 +83,27 @@ function App(_props: {}, context: Context): TemplateDirective {
 
   return context.html`
     <div ${{ class: 'root' }}>
-      ${block(Counter, {
-        count: counterSignal,
-      })}
-      <ul>${itemsList}</ul>
+      <${block(Counter, { count: counterSignal })} />
+      <ul><${itemsList}></ul>
       <p>
         <button type="button" @click=${onIncrement}>+1</button>
         <button type="button" @click=${onDecrement}>-1</button>
         <button type="button" @click=${onShuffle}>Shuffle</button>
       </p>
-      ${context.html`<div>Hello World!</div>`}
-      ${unsafeHTML('<div style="color: red">Hello World!</div>')}
-      ${slot(
+      <${context.html`<div>Hello World!</div>`} />
+      <${unsafeHTML('<div style="color: red">Hello World!</div>')} />
+      <${slot(
         'article',
         { style: style({ color: 'blue' }) },
         context.html`<span>Hello World!</span>`,
-      )}
+      )} />
     </div>
-    <svg width="100" height="100" viewBox="0 0 100 100">${block(Circle, {
+    <svg width="100" height="100" viewBox="0 0 100 100"><${block(Circle, {
       cx: 50,
       cy: 50,
       r: 50,
       fill: 'red',
-    })}</svg>
+    })} /></svg>
   `;
 }
 
@@ -159,7 +157,7 @@ function Counter({ count }: CounterProps, context: Context): TemplateDirective {
 
   return context.html`
     <h1>
-      <span class="count-label" ${ref(countLabelRef)}>COUNT: </span>
+      <span class="count-label" ref=${ref(countLabelRef)}>COUNT: </span>
       <span
         class=${classNames('count-value', {
           'is-odd': count.value % 2 !== 0,
@@ -176,11 +174,11 @@ function Counter({ count }: CounterProps, context: Context): TemplateDirective {
       <span class="count-choose">${choice(count.value % 2, (count) =>
         count === 0 ? '(Even)' : '(Odd)',
       )}</span>
-      ${slot(
+      <${slot(
         count.value % 2 === 0 ? 'strong' : 'em',
         { style: style({ color: 'blue' }) },
         context.html`<span>Hello World!</span>`,
-      )}
+      )} />
     </h1>
   `;
 }
