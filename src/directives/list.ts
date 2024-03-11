@@ -347,10 +347,9 @@ class ListItemBinding<T> implements Binding<T>, Effect {
     if (this._flags & ListItemFlags.UNMOUNTING) {
       this._binding.part.node.remove();
     } else {
-      const referenceNode =
-        this._referenceBinding?.startNode ?? this._listPart.node;
-
       if (this._flags & ListItemFlags.REORDERING) {
+        const referenceNode =
+          this._referenceBinding?.startNode ?? this._listPart.node;
         const { startNode, endNode } = this._binding;
 
         // elements must be collected first to avoid infinite loop.
@@ -367,9 +366,9 @@ class ListItemBinding<T> implements Binding<T>, Effect {
         } while (currentNode !== null);
 
         referenceNode.before(...nodes);
+      } else {
+        this._listPart.node.before(this._binding.part.node);
       }
-
-      this._listPart.node.before(this._binding.part.node);
     }
 
     this._flags &= ~(
@@ -402,14 +401,16 @@ function createItemBinding<T>(
   return binding;
 }
 
-function updateItemBinding<T>(
-  binding: ListItemBinding<T>,
-  newValue: T,
-  updater: Updater,
-): ListItemBinding<T> {
-  binding.value = newValue;
-  binding.bind(updater);
-  return binding;
+function generateIndexMap<T>(
+  elements: T[],
+  start: number,
+  end: number,
+): Map<T, number> {
+  const map = new Map();
+  for (let i = start; i <= end; i++) {
+    map.set(elements[i], i);
+  }
+  return map;
 }
 
 function updateAndReorderItemBinding<T>(
@@ -424,14 +425,12 @@ function updateAndReorderItemBinding<T>(
   return binding;
 }
 
-function generateIndexMap<T>(
-  elements: T[],
-  start: number,
-  end: number,
-): Map<T, number> {
-  const map = new Map();
-  for (let i = start; i <= end; i++) {
-    map.set(elements[i], i);
-  }
-  return map;
+function updateItemBinding<T>(
+  binding: ListItemBinding<T>,
+  newValue: T,
+  updater: Updater,
+): ListItemBinding<T> {
+  binding.value = newValue;
+  binding.bind(updater);
+  return binding;
 }
