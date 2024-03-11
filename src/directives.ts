@@ -7,5 +7,6 @@ export { ref } from './directives/ref.js';
 export { signal } from './directives/signal.js';
 export { slot } from './directives/slot.js';
 export { style } from './directives/style.js';
+export { unit } from './directives/unit.js';
 export { unsafeHTML } from './directives/unsafeHTML.js';
 export { unsafeSVG } from './directives/unsafeSVG.js';

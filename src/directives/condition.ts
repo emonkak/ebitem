@@ -6,7 +6,7 @@ import {
   updateBinding,
 } from '../binding.js';
 import type { Part, Updater } from '../types.js';
-import { nullDirective } from './null.js';
+import { UnitDirective, unit } from './unit.js';
 
 type ValueOrFunction<T> = T extends Function ? never : T | (() => T);
 
@@ -21,15 +21,15 @@ export function condition<TTrue, TFalse>(
 export function when<TTrue>(
   condition: boolean,
   trueCase: ValueOrFunction<TTrue>,
-): ConditionDirective<TTrue, typeof nullDirective> {
-  return new ConditionDirective(condition, trueCase, nullDirective);
+): ConditionDirective<TTrue, UnitDirective> {
+  return new ConditionDirective(condition, trueCase, unit);
 }
 
 export function unless<TFalse>(
   condition: boolean,
   falseCase: ValueOrFunction<TFalse>,
-): ConditionDirective<typeof nullDirective, TFalse> {
-  return new ConditionDirective(condition, nullDirective, falseCase);
+): ConditionDirective<UnitDirective, TFalse> {
+  return new ConditionDirective(condition, unit, falseCase);
 }
 
 export class ConditionDirective<TTrue, TFalse> implements Directive {
