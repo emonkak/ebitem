@@ -1,5 +1,4 @@
 import { TemplateDirective } from './directives/template.js';
-import { AtomSignal, Signal } from './signal.js';
 import type {
   Cleanup,
   Effect,
@@ -15,6 +14,16 @@ import type {
 } from './types.js';
 
 type ValueOrFunction<T> = T extends Function ? never : T | (() => T);
+
+export type Usable = UsableFunction | UsableObject;
+
+export type UsableFunction = (context: Context) => void;
+
+export interface UsableObject {
+  [usableTag](context: Context): void;
+}
+
+export const usableTag = Symbol('Usable');
 
 export class Context {
   private readonly _renderable: Renderable<Context>;
@@ -37,16 +46,6 @@ export class Context {
     this._hooks = hooks;
     this._updater = updater;
     this._scope = scope;
-  }
-
-  createSignal<T>(initialValue: ValueOrFunction<T>): AtomSignal<T> {
-    return this.useMemo(
-      () =>
-        new AtomSignal(
-          typeof initialValue === 'function' ? initialValue() : initialValue,
-        ),
-      [],
-    );
   }
 
   getContextValue<T>(key: PropertyKey): T | undefined {
@@ -76,6 +75,14 @@ export class Context {
   svg(tokens: ReadonlyArray<string>, ...values: unknown[]): TemplateDirective {
     const template = this._scope.createSVGTemplate(tokens, values);
     return new TemplateDirective(template, values);
+  }
+
+  use(usable: Usable): void {
+    if (isUsableObject(usable)) {
+      usable[usableTag](this);
+    } else {
+      usable(this);
+    }
   }
 
   useCallback<TCallback extends Function>(
@@ -241,19 +248,6 @@ export class Context {
     return this.useMemo(() => ({ current: initialValue }), []);
   }
 
-  useSignal<TSignal extends Signal<any>>(signal: TSignal): TSignal {
-    const renderable = this._renderable;
-    const updater = this._updater;
-    this.useEffect(
-      () =>
-        signal.subscribe(() => {
-          renderable.forceUpdate(updater);
-        }),
-      [signal],
-    );
-    return signal;
-  }
-
   useState<TState>(
     initialState: ValueOrFunction<TState>,
   ): [TState, (newState: TState) => void] {
@@ -323,4 +317,8 @@ function ensureHookType<TExpectedHook extends Hook>(
       `Invalid hook type. Expected "${expectedType}" but got "${hook.type}".`,
     );
   }
+}
+
+function isUsableObject(value: unknown): value is UsableObject {
+  return typeof value === 'object' && value !== null && usableTag in value;
 }

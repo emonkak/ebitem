@@ -1,4 +1,13 @@
+import {
+  Binding,
+  Directive,
+  createBinding,
+  directiveTag,
+  updateBinding,
+} from './binding.js';
+import { Context, UsableObject, usableTag } from './context.js';
 import { LinkedList } from './linkedList.js';
+import type { Part, Updater } from './types.js';
 
 export type Subscriber = () => void;
 
@@ -10,7 +19,7 @@ type UnwrapSignals<T> = T extends any[]
     }
   : never;
 
-export abstract class Signal<T> {
+export abstract class Signal<T> implements Directive, UsableObject {
   abstract get value(): T;
 
   abstract get version(): number;
@@ -33,6 +42,107 @@ export abstract class Signal<T> {
 
   valueOf(): T {
     return this.value;
+  }
+
+  [usableTag](context: Context): void {
+    context.useEffect(
+      () =>
+        this.subscribe(() => {
+          context.requestUpdate();
+        }),
+      [this],
+    );
+  }
+
+  [directiveTag](part: Part, updater: Updater): SignalBinding<T> {
+    const innerBinding = createBinding(part, this.value, updater);
+    const binding = new SignalBinding(innerBinding, this);
+
+    binding.init(updater);
+
+    return binding;
+  }
+}
+
+export class SignalBinding<T> implements Binding<Signal<T>> {
+  private _binding: Binding<T>;
+
+  private _signal: Signal<T>;
+
+  private _subscription: Subscription | null = null;
+
+  constructor(binding: Binding<T>, signal: Signal<T>) {
+    this._binding = binding;
+    this._signal = signal;
+  }
+
+  get part(): Part {
+    return this._binding.part;
+  }
+
+  get startNode(): ChildNode {
+    return this._binding.startNode;
+  }
+
+  get endNode(): ChildNode {
+    return this._binding.endNode;
+  }
+
+  get value(): Signal<T> {
+    return this._signal;
+  }
+
+  set value(directive: Signal<T>) {
+    this._signal = directive;
+  }
+
+  init(updater: Updater): void {
+    if (this._subscription === null) {
+      this._subscription = this._startSubscription(updater);
+    }
+  }
+
+  bind(updater: Updater): void {
+    if (this._subscription === null) {
+      this._binding = updateBinding(this._binding, this._signal.value, updater);
+      this._subscription = this._startSubscription(updater);
+    }
+  }
+
+  unbind(updater: Updater) {
+    this._binding.unbind(updater);
+
+    this._subscription?.();
+    this._subscription = null;
+  }
+
+  disconnect(): void {
+    this._binding.disconnect();
+  }
+
+  private _startSubscription(updater: Updater): Subscription {
+    const weakThis = new WeakRef(this);
+
+    const subscription = this._signal.subscribe(() => {
+      const that = weakThis.deref();
+
+      if (that !== undefined) {
+        // FIXME: The binding will be updated with the new value whether or not
+        // the target is connected to the document. Is is just a performance
+        // issue?
+        that._binding = updateBinding(
+          that._binding,
+          that._signal.value,
+          updater,
+        );
+      } else {
+        // The signal will be automatically unsubscribed when this
+        // SignalBinding is garbage-collected.
+        subscription();
+      }
+    });
+
+    return subscription;
   }
 }
 

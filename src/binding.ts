@@ -31,7 +31,7 @@ export interface Directive<TContext = unknown> {
 
 export type SpreadProps = { [key: string]: unknown };
 
-export const directiveTag = Symbol('Directive.createBinding');
+export const directiveTag = Symbol('Directive');
 
 export class AttributeBinding implements Binding<unknown>, Effect {
   private readonly _part: AttributePart;
@@ -183,9 +183,8 @@ export class EventBinding implements Binding<unknown>, Effect {
     // If both are functions, the event listener options are the same.
     // Therefore, there is no need to re-register the event listener.
     if (typeof oldListener === 'object' || typeof newListener === 'object') {
-      if (this._memoizedListener !== null) {
+      if (oldListener !== null) {
         const { node, name } = this._part;
-        const oldListener = this._memoizedListener;
 
         if (typeof oldListener === 'function') {
           node.removeEventListener(name, this);
@@ -198,9 +197,8 @@ export class EventBinding implements Binding<unknown>, Effect {
         }
       }
 
-      if (this._pendingListener !== null) {
+      if (newListener !== null) {
         const { node, name } = this._part;
-        const newListener = this._pendingListener;
 
         if (typeof newListener === 'function') {
           node.addEventListener(name, this);

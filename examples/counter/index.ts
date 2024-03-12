@@ -12,16 +12,15 @@ import {
   condition,
   list,
   ref,
-  signal,
   slot,
   style,
   unless,
   unsafeHTML,
   when,
 } from '@emonkak/ebitem/directives.js';
-import { Signal, atom } from '@emonkak/ebitem/signal.js';
+import { AtomSignal, Signal } from '@emonkak/ebitem/signal.js';
 
-const counterSignal = atom(0);
+const counterSignal = new AtomSignal(0);
 
 function App(_props: {}, context: Context): TemplateDirective {
   const [items, setItems] = context.useState([
@@ -153,7 +152,7 @@ interface CounterProps {
 function Counter({ count }: CounterProps, context: Context): TemplateDirective {
   const countLabelRef = context.useRef<Element | null>(null);
 
-  context.useSignal(count);
+  context.use(count);
 
   return context.html`
     <h1>
@@ -163,7 +162,7 @@ function Counter({ count }: CounterProps, context: Context): TemplateDirective {
           'is-odd': count.value % 2 !== 0,
           'is-even': count.value % 2 === 0,
         })}
-        data-count=${count.value}>${signal(count)}</span>
+        data-count=${count.value}>${count}</span>
       <span class="count-condition">${condition(
         count.value % 2 === 0,
         '(Even)',
