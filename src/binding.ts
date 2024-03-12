@@ -159,18 +159,9 @@ export class EventBinding implements Binding<unknown>, Effect {
   }
 
   bind(updater: Updater): void {
-    if (
-      typeof this._memoizedListener === 'function' &&
-      typeof this._pendingListener === 'function'
-    ) {
-      // If both are functions, the event listener options are the same.
-      // Therefore, there is no need to re-register the event listener.
-      this._memoizedListener = this._pendingListener;
-    } else {
-      if (!this._dirty) {
-        updater.enqueueMutationEffect(this);
-        this._dirty = true;
-      }
+    if (!this._dirty) {
+      updater.enqueueMutationEffect(this);
+      this._dirty = true;
     }
   }
 
@@ -186,33 +177,40 @@ export class EventBinding implements Binding<unknown>, Effect {
   disconnect(): void {}
 
   commit(): void {
-    if (this._memoizedListener !== null) {
-      const { node, name } = this._part;
-      const oldListener = this._memoizedListener;
+    const oldListener = this._memoizedListener;
+    const newListener = this._pendingListener;
 
-      if (typeof oldListener === 'function') {
-        node.removeEventListener(name, this);
-      } else {
-        node.removeEventListener(
-          name,
-          this,
-          oldListener as AddEventListenerOptions,
-        );
+    // If both are functions, the event listener options are the same.
+    // Therefore, there is no need to re-register the event listener.
+    if (typeof oldListener === 'object' || typeof newListener === 'object') {
+      if (this._memoizedListener !== null) {
+        const { node, name } = this._part;
+        const oldListener = this._memoizedListener;
+
+        if (typeof oldListener === 'function') {
+          node.removeEventListener(name, this);
+        } else {
+          node.removeEventListener(
+            name,
+            this,
+            oldListener as AddEventListenerOptions,
+          );
+        }
       }
-    }
 
-    if (this._pendingListener !== null) {
-      const { node, name } = this._part;
-      const newListener = this._pendingListener;
+      if (this._pendingListener !== null) {
+        const { node, name } = this._part;
+        const newListener = this._pendingListener;
 
-      if (typeof newListener === 'function') {
-        node.addEventListener(name, this);
-      } else {
-        node.addEventListener(
-          name,
-          this,
-          newListener as AddEventListenerOptions,
-        );
+        if (typeof newListener === 'function') {
+          node.addEventListener(name, this);
+        } else {
+          node.addEventListener(
+            name,
+            this,
+            newListener as AddEventListenerOptions,
+          );
+        }
       }
     }
 
