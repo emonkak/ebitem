@@ -1,48 +1,86 @@
 import {
-  ArraySignal,
   AtomSignal,
-  StructSignal,
-  TrackingSignal,
+  ComputedSignal,
+  MemoizedSignal,
+  Signal,
 } from '../src/signal.js';
 
-interface PersonState {
-  firstName: AtomSignal<string>;
-  lastName: AtomSignal<string>;
-  addresses: ArraySignal<AtomSignal<string>>;
+type Visibility = 'all' | 'active' | 'done';
+
+interface Todo {
+  id: number;
+  title: string;
+  done: boolean;
 }
 
-class PersonStore extends StructSignal<PersonState> {
-  readonly fullName = new TrackingSignal(
-    ({ firstName, lastName }) => firstName.value + ' ' + lastName.value,
-    this.value,
-  );
+interface TodoState {
+  todos: Todo[];
+  visibility: Visibility;
+}
 
-  get firstName(): AtomSignal<string> {
-    return this.value.firstName;
+class TodoStore {
+  public readonly todos: AtomSignal<Todo[]>;
+
+  public readonly visibility: AtomSignal<Visibility>;
+
+  public readonly visibleTodos: MemoizedSignal<Todo[]>;
+
+  constructor({ todos, visibility }: TodoState) {
+    this.todos = new AtomSignal(todos);
+
+    this.visibility = new AtomSignal(visibility);
+
+    this.visibleTodos = ComputedSignal.compose(
+      (todos, visibility) => {
+        switch (visibility) {
+          case 'all':
+            return todos.slice();
+          case 'active':
+            return todos.filter((todo) => !todo.done);
+          case 'done':
+            return todos.filter((todo) => todo.done);
+        }
+      },
+      [this.todos, this.visibility],
+    ).memoized();
   }
 
-  get lastName(): AtomSignal<string> {
-    return this.value.lastName;
+  addTodo(todo: Todo): void {
+    this.todos.mutate((todos) => {
+      todos.push(todo);
+    });
   }
 }
 
-const store = new PersonStore({
-  firstName: new AtomSignal('John'),
-  lastName: new AtomSignal('Doe'),
-  addresses: new ArraySignal([
-    new AtomSignal('Tokyo'),
-    new AtomSignal('Saitama'),
-  ]),
+const todoStore = new TodoStore({
+  todos: [
+    {
+      id: 1,
+      title: 'foo',
+      done: false,
+    },
+    {
+      id: 2,
+      title: 'bar',
+      done: true,
+    },
+    {
+      id: 3,
+      title: 'baz',
+      done: false,
+    },
+  ],
+  visibility: 'all',
 });
 
-console.log(store.version, store.fullName.version, store.fullName.value);
+todoStore.addTodo({
+  id: 4,
+  title: 'qux',
+  done: true,
+});
 
-store.firstName.value = 'Donald';
+console.log(todoStore.visibleTodos.value);
 
-console.log(store.version, store.fullName.version, store.fullName.value);
+todoStore.visibility.value = 'done';
 
-store.lastName.value = 'Tramp';
-
-console.log(store.version, store.fullName.version, store.fullName.value);
-
-console.log(JSON.stringify(store, null, 2));
+console.log(todoStore.visibleTodos.value);
