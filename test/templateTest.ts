@@ -1,8 +1,8 @@
 import { assert } from 'chai';
 
-import { TaggedTemplate } from '../src/taggedTemplate.js';
+import { TaggedTemplate } from '../src/template.js';
 
-describe('Template', () => {
+describe('TaggedTemplate', () => {
   const MARKER = `?${crypto.randomUUID()}?`;
 
   function html(

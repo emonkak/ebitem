@@ -1,5 +1,5 @@
 import { Context } from './context.js';
-import { TaggedTemplate } from './taggedTemplate.js';
+import { TaggedTemplate } from './template.js';
 import type { Hook, Renderable, Scope, Template, Updater } from './types.js';
 
 type Varibales = { [key: PropertyKey]: unknown };
