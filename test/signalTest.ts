@@ -266,29 +266,6 @@ describe('ComputedSignal', () => {
 });
 
 describe('MemoizedSignal', () => {
-  describe('should pass an initial value', () => {
-    let count = 0;
-    const first = new AtomSignal(1);
-    const inner = new ComputedSignal(
-      (first) => {
-        ++count;
-        return first.value;
-      },
-      [first],
-    );
-    const signal = new MemoizedSignal(inner, 1, 1);
-
-    assert.strictEqual(signal.value, 1);
-    assert.strictEqual(signal.version, 1);
-    assert.strictEqual(count, 0);
-
-    first.value++;
-
-    assert.strictEqual(signal.value, 2);
-    assert.strictEqual(signal.version, 2);
-    assert.strictEqual(count, 1);
-  });
-
   describe('.subscribe()', () => {
     it('should invoke the callback on update', () => {
       let count = 0;

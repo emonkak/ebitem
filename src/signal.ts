@@ -269,19 +269,13 @@ export class ComputedSignal<
 export class MemoizedSignal<T> extends Signal<T> {
   private readonly _signal: Signal<T>;
 
-  private _memoizedValue: T | null;
+  private _memoizedValue: T | null = null;
 
   private _memoizedVersion = 0; // 0 is indicated an uninitialized signal.
 
-  constructor(
-    signal: Signal<T>,
-    initialValue: T | null = null,
-    initialVersion = 0,
-  ) {
+  constructor(signal: Signal<T>) {
     super();
     this._signal = signal;
-    this._memoizedValue = initialValue;
-    this._memoizedVersion = initialVersion;
   }
 
   get value(): T {
