@@ -194,7 +194,7 @@ export class AtomSignal<T> extends Signal<Readonly<T>> {
     return newValue;
   }
 
-  _notify(): void {
+  private _notify(): void {
     this._version += 1;
 
     for (
