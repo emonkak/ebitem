@@ -335,7 +335,9 @@ function parseChildren(rootNode: Node, marker: string): Hole[] {
         break;
       }
       case Node.COMMENT_NODE: {
-        if (trimTrailingSlash((currentNode as Comment).data) === marker) {
+        if (
+          trimTrailingSlash((currentNode as Comment).data).trim() === marker
+        ) {
           (currentNode as Comment).data = '';
           holes.push({
             type: PartType.CHILD_NODE,
@@ -400,5 +402,5 @@ function parseChildren(rootNode: Node, marker: string): Hole[] {
 }
 
 function trimTrailingSlash(s: string): string {
-  return s.at(-1) === '/' ? s.slice(0, -1).trim() : s;
+  return s.at(-1) === '/' ? s.slice(0, -1) : s;
 }

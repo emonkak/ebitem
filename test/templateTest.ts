@@ -60,17 +60,20 @@ describe('TaggedTemplate', () => {
     it('should parse a hole inside a tag name', () => {
       const template = html`
         <${0}>
-        <${1}/>
-        <${2} />
+        <${1} >
+        <${2}/>
+        <${3} />
       `;
       assert.deepEqual(template.holes, [
         { type: PartType.CHILD_NODE, index: 0 },
         { type: PartType.CHILD_NODE, index: 2 },
         { type: PartType.CHILD_NODE, index: 4 },
+        { type: PartType.CHILD_NODE, index: 6 },
       ]);
       assert.strictEqual(
         template.element.innerHTML,
         `
+        <!---->
         <!---->
         <!---->
         <!---->
@@ -145,16 +148,19 @@ describe('TaggedTemplate', () => {
       const template = html`
         <!--${0}-->
         <!--${1}/-->
-        <!-- ${2} /-->
+        <!-- ${2} -->
+        <!-- ${3} /-->
       `;
       assert.deepEqual(template.holes, [
         { type: PartType.CHILD_NODE, index: 0 },
         { type: PartType.CHILD_NODE, index: 2 },
         { type: PartType.CHILD_NODE, index: 4 },
+        { type: PartType.CHILD_NODE, index: 6 },
       ]);
       assert.strictEqual(
         template.element.innerHTML,
         `
+        <!---->
         <!---->
         <!---->
         <!---->
