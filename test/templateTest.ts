@@ -1,10 +1,10 @@
 import { assert } from 'chai';
 
-import { TaggedTemplate } from '../src/template.js';
+import { TaggedTemplate, getMarker } from '../src/template.js';
 import { PartType } from '../src/types.js';
 
 describe('TaggedTemplate', () => {
-  const MARKER = '?' + crypto.randomUUID() + '?';
+  const MARKER = getMarker();
 
   function html(
     tokens: TemplateStringsArray,

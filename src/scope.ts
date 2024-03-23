@@ -1,5 +1,5 @@
 import { Context } from './context.js';
-import { TaggedTemplate } from './template.js';
+import { TaggedTemplate, getMarker } from './template.js';
 import type { Hook, Renderable, Scope, Template, Updater } from './types.js';
 
 type Varibales = { [key: PropertyKey]: unknown };
@@ -19,7 +19,7 @@ export class LocalScope implements Scope<Context> {
 
   constructor(globalVariables: Varibales = {}) {
     this._globalVariables = globalVariables;
-    this._marker = '?' + getUUID() + '?';
+    this._marker = getMarker();
   }
 
   getVariable(key: PropertyKey, renderable: Renderable<Context>): unknown {
@@ -76,19 +76,4 @@ export class LocalScope implements Scope<Context> {
 
     return template;
   }
-}
-
-function getUUID(): ReturnType<typeof crypto.randomUUID> {
-  if (typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID();
-  }
-  const s = [...crypto.getRandomValues(new Uint8Array(16))]
-    .map((byte) => byte.toString(16).padStart(2, '0'))
-    .join('');
-  const p1 = s.slice(0, 8);
-  const p2 = s.slice(8, 12);
-  const p3 = s.slice(12, 16);
-  const p4 = s.slice(16, 20);
-  const p5 = s.slice(20, 32);
-  return `${p1}-${p2}-${p3}-${p4}-${p5}`;
 }

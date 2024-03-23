@@ -236,6 +236,10 @@ export class TaggedTemplateRoot implements TemplateRoot {
   }
 }
 
+export function getMarker(): string {
+  return '?' + crypto.randomUUID() + '?';
+}
+
 function ensureValidMarker(marker: string): void {
   if (!MARKER_REGEXP.test(marker)) {
     throw new Error(`The marker is in an invalid format: ${marker}`);
