@@ -1,6 +1,7 @@
 import { assert } from 'chai';
 
 import { TaggedTemplate } from '../src/template.js';
+import { PartType } from '../src/types.js';
 
 describe('TaggedTemplate', () => {
   const MARKER = `?${crypto.randomUUID()}?`;
@@ -25,9 +26,9 @@ describe('TaggedTemplate', () => {
         <input type="checkbox" id=${0} .value=${1} @change=${2}>
       `;
       assert.deepEqual(template.holes, [
-        { type: 'attribute', name: 'id', index: 0 },
-        { type: 'property', name: 'value', index: 0 },
-        { type: 'event', name: 'change', index: 0 },
+        { type: PartType.ATTRIBUTE, name: 'id', index: 0 },
+        { type: PartType.PROPERTY, name: 'value', index: 0 },
+        { type: PartType.EVENT, name: 'change', index: 0 },
       ]);
       assert.strictEqual(template.element.innerHTML, '<input type="checkbox">');
     });
@@ -37,9 +38,9 @@ describe('TaggedTemplate', () => {
         <input type="checkbox" id="${0}" .value="${1}" @change="${2}">
       `;
       assert.deepEqual(template.holes, [
-        { type: 'attribute', name: 'id', index: 0 },
-        { type: 'property', name: 'value', index: 0 },
-        { type: 'event', name: 'change', index: 0 },
+        { type: PartType.ATTRIBUTE, name: 'id', index: 0 },
+        { type: PartType.PROPERTY, name: 'value', index: 0 },
+        { type: PartType.EVENT, name: 'change', index: 0 },
       ]);
       assert.strictEqual(template.element.innerHTML, '<input type="checkbox">');
     });
@@ -49,9 +50,9 @@ describe('TaggedTemplate', () => {
         <input type="checkbox" id='${0}' .value='${1}' @change='${2}'>
       `;
       assert.deepEqual(template.holes, [
-        { type: 'attribute', name: 'id', index: 0 },
-        { type: 'property', name: 'value', index: 0 },
-        { type: 'event', name: 'change', index: 0 },
+        { type: PartType.ATTRIBUTE, name: 'id', index: 0 },
+        { type: PartType.PROPERTY, name: 'value', index: 0 },
+        { type: PartType.EVENT, name: 'change', index: 0 },
       ]);
       assert.strictEqual(template.element.innerHTML, '<input type="checkbox">');
     });
@@ -63,9 +64,9 @@ describe('TaggedTemplate', () => {
         <${2} />
       `;
       assert.deepEqual(template.holes, [
-        { type: 'childNode', index: 0 },
-        { type: 'childNode', index: 2 },
-        { type: 'childNode', index: 4 },
+        { type: PartType.CHILD_NODE, index: 0 },
+        { type: PartType.CHILD_NODE, index: 2 },
+        { type: PartType.CHILD_NODE, index: 4 },
       ]);
       assert.strictEqual(
         template.element.innerHTML,
@@ -84,9 +85,9 @@ describe('TaggedTemplate', () => {
         <div id="foo" ${2} class="bar"></div>
       `;
       assert.deepEqual(template.holes, [
-        { type: 'element', index: 0 },
-        { type: 'element', index: 2 },
-        { type: 'element', index: 4 },
+        { type: PartType.ELEMENT, index: 0 },
+        { type: PartType.ELEMENT, index: 2 },
+        { type: PartType.ELEMENT, index: 4 },
       ]);
       assert.strictEqual(
         template.element.innerHTML,
@@ -106,8 +107,8 @@ describe('TaggedTemplate', () => {
         </ul>
       `;
       assert.deepEqual(template.holes, [
-        { type: 'node', index: 3 },
-        { type: 'node', index: 6 },
+        { type: PartType.NODE, index: 3 },
+        { type: PartType.NODE, index: 6 },
       ]);
       assert.strictEqual(
         template.element.innerHTML,
@@ -126,10 +127,10 @@ describe('TaggedTemplate', () => {
         <div>${0}, ${1}</div>
       `;
       assert.deepEqual(template.holes, [
-        { type: 'node', index: 2 },
-        { type: 'node', index: 4 },
-        { type: 'node', index: 8 },
-        { type: 'node', index: 10 },
+        { type: PartType.NODE, index: 2 },
+        { type: PartType.NODE, index: 4 },
+        { type: PartType.NODE, index: 8 },
+        { type: PartType.NODE, index: 10 },
       ]);
       assert.strictEqual(
         template.element.innerHTML,
@@ -147,9 +148,9 @@ describe('TaggedTemplate', () => {
         <!-- ${2} /-->
       `;
       assert.deepEqual(template.holes, [
-        { type: 'childNode', index: 0 },
-        { type: 'childNode', index: 2 },
-        { type: 'childNode', index: 4 },
+        { type: PartType.CHILD_NODE, index: 0 },
+        { type: PartType.CHILD_NODE, index: 2 },
+        { type: PartType.CHILD_NODE, index: 4 },
       ]);
       assert.strictEqual(
         template.element.innerHTML,
@@ -167,8 +168,8 @@ describe('TaggedTemplate', () => {
         < ${0}/>
       `;
       assert.deepEqual(template.holes, [
-        { type: 'node', index: 1 },
-        { type: 'node', index: 3 },
+        { type: PartType.NODE, index: 1 },
+        { type: PartType.NODE, index: 3 },
       ]);
       assert.strictEqual(
         template.element.innerHTML,
@@ -262,9 +263,9 @@ describe('TaggedTemplate', () => {
         <circle fill="black" cx=${0} cy=${1} r=${2} />
       `;
       assert.deepEqual(template.holes, [
-        { type: 'attribute', name: 'cx', index: 0 },
-        { type: 'attribute', name: 'cy', index: 0 },
-        { type: 'attribute', name: 'r', index: 0 },
+        { type: PartType.ATTRIBUTE, name: 'cx', index: 0 },
+        { type: PartType.ATTRIBUTE, name: 'cy', index: 0 },
+        { type: PartType.ATTRIBUTE, name: 'r', index: 0 },
       ]);
       assert.strictEqual(
         template.element.innerHTML,

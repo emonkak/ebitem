@@ -1,4 +1,4 @@
-import type { CommitMode, Effect, Renderable, Updater } from '../types.js';
+import { CommitMode, Effect, Renderable, Updater } from '../types.js';
 
 export class LocalUpdater<TContext> implements Updater<TContext>, Effect {
   private readonly _currentRenderable: Renderable<TContext> | null;
@@ -59,19 +59,19 @@ export class LocalUpdater<TContext> implements Updater<TContext>, Effect {
 
   commit(mode: CommitMode): void {
     switch (mode) {
-      case 'mutation':
+      case CommitMode.MUTATION:
         for (let i = 0, l = this._mutationEffects.length; i < l; i++) {
           this._mutationEffects[i]!.commit(mode);
         }
         this._mutationEffects = [];
         break;
-      case 'layout':
+      case CommitMode.LAYOUT:
         for (let i = 0, l = this._layoutEffects.length; i < l; i++) {
           this._layoutEffects[i]!.commit(mode);
         }
         this._layoutEffects = [];
         break;
-      case 'passive':
+      case CommitMode.PASSIVE:
         for (let i = 0, l = this._passiveEffects.length; i < l; i++) {
           this._passiveEffects[i]!.commit(mode);
         }

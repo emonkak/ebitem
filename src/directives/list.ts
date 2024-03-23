@@ -1,5 +1,5 @@
 import { Binding, Directive, createBinding, directiveTag } from '../binding.js';
-import type { ChildNodePart, Effect, Part, Updater } from '../types.js';
+import { ChildNodePart, Effect, Part, PartType, Updater } from '../types.js';
 
 type Selector<TItem, TResult> = (item: TItem, index: number) => TResult;
 
@@ -56,7 +56,7 @@ export class ListDirective<TItem, TValue, TKey> implements Directive {
     part: Part,
     updater: Updater,
   ): ListBinding<TItem, TValue, TKey> {
-    if (part.type !== 'childNode') {
+    if (part.type !== PartType.CHILD_NODE) {
       throw new Error('List directive must be used in an arbitrary child.');
     }
 
@@ -392,7 +392,7 @@ function createItemBinding<T>(
   updater: Updater,
 ): ListItemBinding<T> {
   const part = {
-    type: 'childNode',
+    type: PartType.CHILD_NODE,
     node: document.createComment(''),
   } as const;
   const innerBinding = createBinding(part, value, updater);

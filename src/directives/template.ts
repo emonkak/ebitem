@@ -1,8 +1,9 @@
 import { Binding, Directive, directiveTag } from '../binding.js';
-import type {
+import {
   ChildNodePart,
   Effect,
   Part,
+  PartType,
   Renderable,
   Scope,
   Template,
@@ -37,7 +38,7 @@ export class TemplateDirective implements Directive {
   }
 
   [directiveTag](part: Part, updater: Updater): TemplateBinding {
-    if (part.type !== 'childNode') {
+    if (part.type !== PartType.CHILD_NODE) {
       throw new Error(
         `${this.constructor.name} directive must be used in ChildNodePart.`,
       );

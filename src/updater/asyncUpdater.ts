@@ -1,5 +1,5 @@
 import { Scheduler, getDefaultScheduler } from '../scheduler.js';
-import type { Effect, Renderable, Scope, Updater } from '../types.js';
+import { CommitMode, Effect, Renderable, Scope, Updater } from '../types.js';
 import { shouldSkipRender } from '../updater.js';
 
 export interface AsyncUpdaterOptions {
@@ -125,11 +125,11 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
           this._pendingLayoutEffects = [];
 
           for (let i = 0, l = mutationEffects.length; i < l; i++) {
-            mutationEffects[i]!.commit('mutation');
+            mutationEffects[i]!.commit(CommitMode.MUTATION);
           }
 
           for (let i = 0, l = layoutEffects.length; i < l; i++) {
-            layoutEffects[i]!.commit('layout');
+            layoutEffects[i]!.commit(CommitMode.LAYOUT);
           }
 
           console.timeEnd('(2) Blocking phase');
@@ -151,7 +151,7 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
               await this._scheduler.yieldToMain();
               startTime = this._scheduler.getCurrentTime();
             }
-            passiveEffects[i]!.commit('passive');
+            passiveEffects[i]!.commit(CommitMode.PASSIVE);
           }
 
           console.timeEnd('(3) Background phase');

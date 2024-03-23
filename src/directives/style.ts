@@ -1,5 +1,5 @@
 import { Binding, Directive, directiveTag } from '../binding.js';
-import type { AttributePart, Effect, Part, Updater } from '../types.js';
+import { AttributePart, Effect, Part, PartType, Updater } from '../types.js';
 
 export type StyleMap = { [P in StyleProperty]?: string };
 
@@ -25,7 +25,7 @@ export class StyleDirective implements Directive {
   }
 
   [directiveTag](part: Part, updater: Updater): StyleBinding {
-    if (part.type !== 'attribute' || part.name !== 'style') {
+    if (part.type !== PartType.ATTRIBUTE || part.name !== 'style') {
       throw new Error(
         `${this.constructor.name} directive must be used in the "style" attribute.`,
       );

@@ -1,5 +1,12 @@
 import { Binding, Directive, directiveTag } from '../binding.js';
-import type { AttributePart, Effect, Part, Ref, Updater } from '../types.js';
+import {
+  AttributePart,
+  Effect,
+  Part,
+  PartType,
+  Ref,
+  Updater,
+} from '../types.js';
 
 type ElementRef = Ref<Element | null>;
 
@@ -19,7 +26,7 @@ export class RefDirective implements Directive {
   }
 
   [directiveTag](part: Part, updater: Updater): RefBinding {
-    if (part.type !== 'attribute' || part.name !== 'ref') {
+    if (part.type !== PartType.ATTRIBUTE || part.name !== 'ref') {
       throw new Error(
         `${this.constructor.name} must be used in "ref" attribute.`,
       );

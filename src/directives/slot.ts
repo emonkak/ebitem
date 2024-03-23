@@ -7,7 +7,7 @@ import {
   directiveTag,
   updateBinding,
 } from '../binding.js';
-import type { ChildNodePart, Effect, Part, Updater } from '../types.js';
+import { ChildNodePart, Effect, Part, PartType, Updater } from '../types.js';
 
 export function slot<TChildNodeValue>(
   type: string,
@@ -47,7 +47,7 @@ export class SlotDirective<TChildNodeValue> implements Directive {
   }
 
   [directiveTag](part: Part, updater: Updater): SlotBinding<TChildNodeValue> {
-    if (part.type !== 'childNode') {
+    if (part.type !== PartType.CHILD_NODE) {
       throw new Error(
         `${this.constructor.name} must be used in ChildNodePart.`,
       );
@@ -58,12 +58,15 @@ export class SlotDirective<TChildNodeValue> implements Directive {
 
     element.appendChild(childMarker);
 
-    const elementPart = { type: 'element', node: element } as const;
+    const elementPart = { type: PartType.ELEMENT, node: element } as const;
     const spreadBinding = new SpreadBinding(elementPart, this._props);
 
     spreadBinding.bind(updater);
 
-    const childNodePart = { type: 'childNode', node: childMarker } as const;
+    const childNodePart = {
+      type: PartType.CHILD_NODE,
+      node: childMarker,
+    } as const;
     const childNodeBinding = createBinding(
       childNodePart,
       this._childNodeValue,
@@ -148,7 +151,7 @@ export class SlotBinding<TChildNodeValue>
 
     if (element.nodeName !== type.toUpperCase()) {
       const elementPart = {
-        type: 'element',
+        type: PartType.ELEMENT,
         node: document.createElement(this._directive.type),
       } as const;
 

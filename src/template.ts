@@ -1,5 +1,5 @@
 import { Binding, createBinding, updateBinding } from './binding.js';
-import type { Part, Template, TemplateRoot, Updater } from './types.js';
+import { Part, PartType, Template, TemplateRoot, Updater } from './types.js';
 
 export type Hole =
   | AttributeHole
@@ -10,34 +10,34 @@ export type Hole =
   | PropertyHole;
 
 export interface AttributeHole {
-  type: 'attribute';
+  type: PartType.ATTRIBUTE;
   index: number;
   name: string;
 }
 
 export interface ChildNodeHole {
-  type: 'childNode';
+  type: PartType.CHILD_NODE;
   index: number;
 }
 
 export interface ElementHole {
-  type: 'element';
+  type: PartType.ELEMENT;
   index: number;
 }
 
 export interface EventHole {
-  type: 'event';
+  type: PartType.EVENT;
   index: number;
   name: string;
 }
 
 export interface NodeHole {
-  type: 'node';
+  type: PartType.NODE;
   index: number;
 }
 
 export interface PropertyHole {
-  type: 'property';
+  type: PartType.PROPERTY;
   index: number;
   name: string;
 }
@@ -122,41 +122,41 @@ export class TaggedTemplate implements Template {
           let part: Part;
 
           switch (currentHole.type) {
-            case 'attribute':
+            case PartType.ATTRIBUTE:
               part = {
-                type: 'attribute',
+                type: PartType.ATTRIBUTE,
                 node: currentNode as Element,
                 name: currentHole.name,
               };
               break;
-            case 'childNode':
+            case PartType.CHILD_NODE:
               part = {
-                type: 'childNode',
+                type: PartType.CHILD_NODE,
                 node: currentNode as Comment,
               };
               break;
-            case 'element':
+            case PartType.ELEMENT:
               part = {
-                type: 'element',
+                type: PartType.ELEMENT,
                 node: currentNode as Element,
               };
               break;
-            case 'event':
+            case PartType.EVENT:
               part = {
-                type: 'event',
+                type: PartType.EVENT,
                 node: currentNode as Element,
                 name: currentHole.name,
               };
               break;
-            case 'node':
+            case PartType.NODE:
               part = {
-                type: 'node',
+                type: PartType.NODE,
                 node: currentNode as ChildNode,
               };
               break;
-            case 'property':
+            case PartType.PROPERTY:
               part = {
-                type: 'property',
+                type: PartType.PROPERTY,
                 node: currentNode as Element,
                 name: currentHole.name,
               };
@@ -258,25 +258,25 @@ function parseAttribtues(
 
     if (name === marker && value === '') {
       holes.push({
-        type: 'element',
+        type: PartType.ELEMENT,
         index,
       });
     } else if (value === marker) {
       if (name.length > 1 && name[0] === '@') {
         holes.push({
-          type: 'event',
+          type: PartType.EVENT,
           index,
           name: name.slice(1),
         });
       } else if (name.length > 1 && name[0] === '.') {
         holes.push({
-          type: 'property',
+          type: PartType.PROPERTY,
           index,
           name: name.slice(1),
         });
       } else {
         holes.push({
-          type: 'attribute',
+          type: PartType.ATTRIBUTE,
           index,
           name,
         });
@@ -338,7 +338,7 @@ function parseChildren(rootNode: Node, marker: string): Hole[] {
         if (trimTrailingSlash((currentNode as Comment).data) === marker) {
           (currentNode as Comment).data = '';
           holes.push({
-            type: 'childNode',
+            type: PartType.CHILD_NODE,
             index,
           });
         }
@@ -372,7 +372,7 @@ function parseChildren(rootNode: Node, marker: string): Hole[] {
             currentNode.before(document.createTextNode(''));
 
             holes.push({
-              type: 'node',
+              type: PartType.NODE,
               index,
             });
             index++;

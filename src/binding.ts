@@ -1,10 +1,11 @@
-import type {
+import {
   AttributePart,
   Effect,
   ElementPart,
   EventPart,
   NamedPart,
   Part,
+  PartType,
   PropertyPart,
   Updater,
 } from './types.js';
@@ -466,7 +467,7 @@ export function boot<TContext>(
   updater: Updater<TContext>,
 ) {
   const part = {
-    type: 'childNode',
+    type: PartType.CHILD_NODE,
     node: document.createComment(''),
   } as const;
 
@@ -509,27 +510,27 @@ function isSpreadProps(value: unknown): value is SpreadProps {
 
 function resolveNamedPart(element: Element, name: string): NamedPart {
   if (name.length > 1 && name[0] === '@') {
-    return { type: 'event', node: element, name: name.slice(1) };
+    return { type: PartType.EVENT, node: element, name: name.slice(1) };
   } else if (name.length > 1 && name[0] === '.') {
-    return { type: 'property', node: element, name: name.slice(1) };
+    return { type: PartType.PROPERTY, node: element, name: name.slice(1) };
   } else {
-    return { type: 'attribute', node: element, name };
+    return { type: PartType.ATTRIBUTE, node: element, name };
   }
 }
 
 function resolvePrimitiveBinding(part: Part, value: unknown): PrimitiveBinding {
   switch (part.type) {
-    case 'attribute':
+    case PartType.ATTRIBUTE:
       return new AttributeBinding(part, value);
-    case 'childNode':
+    case PartType.CHILD_NODE:
       return new NodeBinding(part, value);
-    case 'element':
+    case PartType.ELEMENT:
       return new SpreadBinding(part, value);
-    case 'event':
+    case PartType.EVENT:
       return new EventBinding(part, value);
-    case 'node':
+    case PartType.NODE:
       return new NodeBinding(part, value);
-    case 'property':
+    case PartType.PROPERTY:
       return new PropertyBinding(part, value);
   }
 }

@@ -1,9 +1,11 @@
 import { Binding, Directive, directiveTag } from '../binding.js';
-import type {
+import {
   ChildNodePart,
   Effect,
   Hook,
+  HookType,
   Part,
+  PartType,
   Renderable,
   Scope,
   Template,
@@ -54,7 +56,7 @@ export class BlockDirective<TProps, TContext> implements Directive<TContext> {
     part: Part,
     updater: Updater<TContext>,
   ): BlockBinding<TProps, TContext> {
-    if (part.type !== 'childNode') {
+    if (part.type !== PartType.CHILD_NODE) {
       throw new Error(
         `${this.constructor.name} directive must be used in ChildNodePart.`,
       );
@@ -257,7 +259,7 @@ export class BlockBinding<TProps, TContext>
 function cleanHooks(hooks: Hook[]): void {
   for (let i = 0, l = hooks.length; i < l; i++) {
     const hook = hooks[i]!;
-    if (hook.type === 'effect') {
+    if (hook.type === HookType.EFFECT) {
       hook.cleanup?.();
     }
   }

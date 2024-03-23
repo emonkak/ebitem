@@ -1,5 +1,5 @@
 import { Binding, Directive, directiveTag } from '../binding.js';
-import type { AttributePart, Effect, Part, Updater } from '../types.js';
+import { AttributePart, Effect, Part, PartType, Updater } from '../types.js';
 
 export type ClassSpecifier = string | { [key: string]: boolean };
 
@@ -21,7 +21,7 @@ export class ClassNamesDirective implements Directive {
   }
 
   [directiveTag](part: Part, updater: Updater): ClassNamesBinding {
-    if (part.type !== 'attribute' || part.name !== 'class') {
+    if (part.type !== PartType.ATTRIBUTE || part.name !== 'class') {
       throw new Error(
         `${this.constructor.name} directive must be used in the "class" attribute.`,
       );

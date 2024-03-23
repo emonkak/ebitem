@@ -1,5 +1,5 @@
 import { Binding, Directive, directiveTag } from '../binding.js';
-import type { ChildNodePart, Part, Updater } from '../types.js';
+import { ChildNodePart, Part, PartType, Updater } from '../types.js';
 
 export function unsafeSVG(content: string): UnsafeSVGDirective {
   return new UnsafeSVGDirective(content);
@@ -17,7 +17,7 @@ export class UnsafeSVGDirective implements Directive {
   }
 
   [directiveTag](part: Part, updater: Updater): UnsafeSVGBinding {
-    if (part.type !== 'childNode') {
+    if (part.type !== PartType.CHILD_NODE) {
       throw new Error(
         `${this.constructor.name} must be used in ChildNodePart.`,
       );

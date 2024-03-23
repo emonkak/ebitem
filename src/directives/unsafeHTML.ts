@@ -1,5 +1,5 @@
 import { Binding, Directive, directiveTag } from '../binding.js';
-import type { ChildNodePart, Part, Updater } from '../types.js';
+import { ChildNodePart, Part, PartType, Updater } from '../types.js';
 
 export function unsafeHTML(content: string): UnsafeHTMLDirective {
   return new UnsafeHTMLDirective(content);
@@ -17,7 +17,7 @@ export class UnsafeHTMLDirective implements Directive {
   }
 
   [directiveTag](part: Part, updater: Updater): UnsafeHTMLBinding {
-    if (part.type !== 'childNode') {
+    if (part.type !== PartType.CHILD_NODE) {
       throw new Error(
         `${this.constructor.name} must be used in ChildNodePart.`,
       );

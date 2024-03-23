@@ -1,4 +1,4 @@
-import type { Effect, Renderable, Scope, Updater } from '../types.js';
+import { CommitMode, Effect, Renderable, Scope, Updater } from '../types.js';
 import { shouldSkipRender } from '../updater.js';
 
 export class SyncUpdater<TContext> implements Updater<TContext> {
@@ -98,11 +98,11 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
         this._pendingLayoutEffects = [];
 
         for (let i = 0, l = mutationEffects.length; i < l; i++) {
-          mutationEffects[i]!.commit('mutation');
+          mutationEffects[i]!.commit(CommitMode.MUTATION);
         }
 
         for (let i = 0, l = layoutEffects.length; i < l; i++) {
-          layoutEffects[i]!.commit('layout');
+          layoutEffects[i]!.commit(CommitMode.LAYOUT);
         }
 
         console.timeEnd('(2) Blocking phase');
@@ -116,7 +116,7 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
         this._pendingPassiveEffects = [];
 
         for (let i = 0, l = passiveEffects.length; i < l; i++) {
-          passiveEffects[i]!.commit('passive');
+          passiveEffects[i]!.commit(CommitMode.PASSIVE);
         }
 
         console.timeEnd('(3) Background phase');

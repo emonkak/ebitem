@@ -5,7 +5,11 @@ import {
   Signal,
 } from '../src/signal.js';
 
-type Visibility = 'all' | 'active' | 'done';
+enum Visibility {
+  ALL,
+  ACTIVE,
+  DONE,
+}
 
 interface Todo {
   id: number;
@@ -33,11 +37,11 @@ class TodoStore {
     this.visibleTodos = ComputedSignal.compose(
       (todos, visibility) => {
         switch (visibility) {
-          case 'all':
+          case Visibility.ALL:
             return todos.slice();
-          case 'active':
+          case Visibility.ACTIVE:
             return todos.filter((todo) => !todo.done);
-          case 'done':
+          case Visibility.DONE:
             return todos.filter((todo) => todo.done);
         }
       },
@@ -70,7 +74,7 @@ const todoStore = new TodoStore({
       done: false,
     },
   ],
-  visibility: 'all',
+  visibility: Visibility.ALL,
 });
 
 todoStore.addTodo({
@@ -81,6 +85,6 @@ todoStore.addTodo({
 
 console.log(todoStore.visibleTodos.value);
 
-todoStore.visibility.value = 'done';
+todoStore.visibility.value = Visibility.DONE;
 
 console.log(todoStore.visibleTodos.value);

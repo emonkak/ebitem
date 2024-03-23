@@ -92,8 +92,8 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
     return this._signal;
   }
 
-  set value(directive: Signal<T>) {
-    this._signal = directive;
+  set value(newSignal: Signal<T>) {
+    this._signal = newSignal;
   }
 
   init(updater: Updater): void {
