@@ -143,7 +143,7 @@ export class EventBinding implements Binding<unknown>, Effect {
     return this._part.node;
   }
 
-  get value(): unknown {
+  get value(): EventListenerOrEventListenerObject | null {
     return this._memoizedListener;
   }
 
@@ -361,7 +361,7 @@ export class SpreadBinding implements Binding<unknown> {
     return this._part.node;
   }
 
-  get value(): unknown {
+  get value(): SpreadProps {
     return this._props;
   }
 
