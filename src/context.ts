@@ -15,12 +15,12 @@ import type {
 
 type ValueOrFunction<T> = T extends Function ? never : T | (() => T);
 
-export type Usable = UsableFunction | UsableObject;
+export type Usable<TResult> = UsableFunction<TResult> | UsableObject<TResult>;
 
-export type UsableFunction = (context: Context) => void;
+export type UsableFunction<TResult> = (context: Context) => TResult;
 
-export interface UsableObject {
-  [usableTag](context: Context): void;
+export interface UsableObject<TResult> {
+  [usableTag](context: Context): TResult;
 }
 
 export const usableTag = Symbol('Usable');
@@ -77,12 +77,10 @@ export class Context {
     return new TemplateDirective(template, values);
   }
 
-  use(usable: Usable): void {
-    if (isUsableObject(usable)) {
-      usable[usableTag](this);
-    } else {
-      usable(this);
-    }
+  use<TResult>(usable: Usable<TResult>): TResult {
+    return typeof usable === 'function'
+      ? usable(this)
+      : usable[usableTag](this);
   }
 
   useCallback<TCallback extends Function>(
@@ -317,8 +315,4 @@ function ensureHookType<TExpectedHook extends Hook>(
       `Invalid hook type. Expected "${expectedType}" but got "${hook.type}".`,
     );
   }
-}
-
-function isUsableObject(value: unknown): value is UsableObject {
-  return typeof value === 'object' && value !== null && usableTag in value;
 }

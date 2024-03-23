@@ -19,7 +19,7 @@ type UnwrapSignals<T> = T extends any[]
     }
   : never;
 
-export abstract class Signal<T> implements Directive, UsableObject {
+export abstract class Signal<T> implements Directive, UsableObject<void> {
   abstract get value(): T;
 
   abstract get version(): number;
