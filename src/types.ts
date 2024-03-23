@@ -111,7 +111,7 @@ export interface NodePart {
   node: ChildNode;
 }
 
-export type Hook = EffectHook | MemoHook | ReducerHook;
+export type Hook = EffectHook | MemoHook<any> | ReducerHook<any, any>;
 
 export enum HookType {
   EFFECT,
@@ -126,13 +126,13 @@ export interface EffectHook {
   dependencies: unknown[] | undefined;
 }
 
-export interface MemoHook<T = any> {
+export interface MemoHook<TResult> {
   type: HookType.MEMO;
-  value: T;
+  value: TResult;
   dependencies: unknown[] | undefined;
 }
 
-export interface ReducerHook<TState = any, TAction = any> {
+export interface ReducerHook<TState, TAction> {
   type: HookType.REDUCER;
   dispatch: (action: TAction) => void;
   state: TState;

@@ -168,7 +168,7 @@ export class Context {
     let currentHook = this._hooks[this._hookIndex];
 
     if (currentHook !== undefined) {
-      ensureHookType<MemoHook>(HookType.MEMO, currentHook);
+      ensureHookType<MemoHook<TResult>>(HookType.MEMO, currentHook);
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
         currentHook.value = factory();
