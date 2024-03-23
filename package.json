@@ -23,7 +23,7 @@
     "build": "tsc --build",
     "clean": "tsc --build --clean",
     "test": "NODE_OPTIONS=--no-deprecation web-test-runner",
-    "watch": "tsc --build --watch"
+    "watch": "tsc --build --watch --preserveWatchOutput"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.5.3",

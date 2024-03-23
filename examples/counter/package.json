@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "build": "tsc --build",
-    "watch": "tsc --build --watch",
+    "watch": "tsc --build --watch --preserveWatchOutput",
     "clean": "tsc --build --clean"
   },
   "dependencies": {
