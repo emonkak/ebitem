@@ -127,7 +127,7 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
       const that = weakThis.deref();
 
       if (that !== undefined) {
-        // FIXME: The binding will be updated with the new value whether or not
+        // FIXME: The binding will be updated with a new value whether or not
         // the target is connected to the document. Is is just a performance
         // issue?
         that._binding = updateBinding(
@@ -136,8 +136,8 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
           updater,
         );
       } else {
-        // The signal will be automatically unsubscribed when this
-        // SignalBinding is garbage-collected.
+        // The signal will be automatically unsubscribed when this instance is
+        // garbage-collected.
         subscription();
       }
     });
