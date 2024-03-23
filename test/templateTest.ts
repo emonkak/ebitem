@@ -4,7 +4,7 @@ import { TaggedTemplate } from '../src/template.js';
 import { PartType } from '../src/types.js';
 
 describe('TaggedTemplate', () => {
-  const MARKER = `?${crypto.randomUUID()}?`;
+  const MARKER = '?' + crypto.randomUUID() + '?';
 
   function html(
     tokens: TemplateStringsArray,

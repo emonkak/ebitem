@@ -19,7 +19,7 @@ export class LocalScope implements Scope<Context> {
 
   constructor(globalVariables: Varibales = {}) {
     this._globalVariables = globalVariables;
-    this._marker = `?${getUUID()}?`;
+    this._marker = '?' + getUUID() + '?';
   }
 
   getVariable(key: PropertyKey, renderable: Renderable<Context>): unknown {

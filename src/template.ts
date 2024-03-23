@@ -74,7 +74,7 @@ export class TaggedTemplate implements Template {
       ensureValidMarker(marker);
     }
     const template = document.createElement('template');
-    template.innerHTML = `<svg>${tokens.join(marker).trim()}</svg>`;
+    template.innerHTML = '<svg>' + tokens.join(marker).trim() + '</svg>';
     template.content.replaceChildren(
       ...template.content.firstChild!.childNodes,
     );
