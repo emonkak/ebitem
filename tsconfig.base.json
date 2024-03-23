@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "isolatedModules": true,
     "lib": ["dom", "dom.iterable", "esnext"],
     "module": "nodenext",
     "moduleResolution": "nodenext",
