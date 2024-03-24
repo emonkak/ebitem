@@ -172,8 +172,7 @@ export class AtomSignal<T> extends Signal<Readonly<T>> {
   }
 
   mutate(callback: (value: T) => void | boolean): boolean {
-    const value = this._value;
-    const result = callback(value) ?? true;
+    const result = callback(this._value) ?? true;
     if (result) {
       this._notify();
     }
