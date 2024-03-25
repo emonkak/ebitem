@@ -3,11 +3,11 @@ import { assert } from 'chai';
 import { AtomSignal, ComputedSignal, MemoizedSignal } from '../src/signal.js';
 
 describe('AtomSignal', () => {
-  it('should get 1 of the initial version on initalize', () => {
+  it('should get 0 of the initial version on initalize', () => {
     const signal = new AtomSignal('foo');
 
     assert.strictEqual(signal.value, 'foo');
-    assert.strictEqual(signal.version, 1);
+    assert.strictEqual(signal.version, 0);
   });
 
   it('should increment the version on update', () => {
@@ -15,7 +15,7 @@ describe('AtomSignal', () => {
 
     signal.value = 'bar';
     assert.strictEqual(signal.value, 'bar');
-    assert.strictEqual(signal.version, 2);
+    assert.strictEqual(signal.version, 1);
   });
 
   describe('.update()', () => {
@@ -25,7 +25,7 @@ describe('AtomSignal', () => {
       signal.update((n) => n + 1);
 
       assert.strictEqual(2, signal.value);
-      assert.strictEqual(2, signal.version);
+      assert.strictEqual(1, signal.version);
     });
   });
 
@@ -69,12 +69,12 @@ describe('AtomSignal', () => {
       const doublySignal = signal.map((n) => n * 2);
 
       assert.strictEqual(doublySignal.value, 2);
-      assert.strictEqual(doublySignal.version, 1);
+      assert.strictEqual(doublySignal.version, 0);
 
       signal.value++;
 
       assert.strictEqual(doublySignal.value, 4);
-      assert.strictEqual(doublySignal.version, 2);
+      assert.strictEqual(doublySignal.version, 1);
     });
   });
 
@@ -87,7 +87,7 @@ describe('AtomSignal', () => {
       });
 
       assert.deepEqual([1, 2, 3], signal.value);
-      assert.strictEqual(2, signal.version);
+      assert.strictEqual(1, signal.version);
     });
 
     it('should increment the version if the callback returns ture', () => {
@@ -99,7 +99,7 @@ describe('AtomSignal', () => {
       });
 
       assert.deepEqual([1, 2, 3], signal.value);
-      assert.strictEqual(2, signal.version);
+      assert.strictEqual(1, signal.version);
     });
 
     it('should not increment the version if the callback returns false', () => {
@@ -111,7 +111,7 @@ describe('AtomSignal', () => {
       });
 
       assert.deepEqual([1, 2, 3], signal.value);
-      assert.strictEqual(1, signal.version);
+      assert.strictEqual(0, signal.version);
     });
   });
 
@@ -140,7 +140,7 @@ describe('ComputedSignal', () => {
     assert.strictEqual(signal.value, 1);
     assert.strictEqual(signal.value, 2);
     assert.strictEqual(signal.value, 3);
-    assert.strictEqual(signal.version, 1);
+    assert.strictEqual(signal.version, 0);
   });
 
   it('should compute from other signals', () => {
@@ -154,7 +154,7 @@ describe('ComputedSignal', () => {
     );
 
     assert.strictEqual(signal.value, 6);
-    assert.strictEqual(signal.version, 1);
+    assert.strictEqual(signal.version, 0);
   });
 
   it('should increment the version when any dependent signal has been updated', () => {
@@ -169,15 +169,15 @@ describe('ComputedSignal', () => {
 
     first.value = 10;
     assert.strictEqual(signal.value, 15);
-    assert.strictEqual(signal.version, 2);
+    assert.strictEqual(signal.version, 1);
 
     second.value = 20;
     assert.strictEqual(signal.value, 33);
-    assert.strictEqual(signal.version, 3);
+    assert.strictEqual(signal.version, 2);
 
     third.value = 30;
     assert.strictEqual(signal.value, 60);
-    assert.strictEqual(signal.version, 4);
+    assert.strictEqual(signal.version, 3);
   });
 
   describe('.compose()', () => {
@@ -192,7 +192,7 @@ describe('ComputedSignal', () => {
       );
 
       assert.strictEqual(signal.value, 6);
-      assert.strictEqual(signal.version, 1);
+      assert.strictEqual(signal.version, 0);
     });
   });
 
@@ -204,7 +204,7 @@ describe('ComputedSignal', () => {
 
       assert.strictEqual(memoizedSignal.value, 1);
       assert.strictEqual(memoizedSignal.value, 1);
-      assert.strictEqual(memoizedSignal.version, 1);
+      assert.strictEqual(memoizedSignal.version, 0);
     });
   });
 

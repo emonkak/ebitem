@@ -151,7 +151,7 @@ export class AtomSignal<T> extends Signal<Readonly<T>> {
 
   private _value: T;
 
-  private _version = 1;
+  private _version = 0;
 
   constructor(initialValue: T) {
     super();
@@ -244,10 +244,10 @@ export class ComputedSignal<
   get version(): number {
     const dependencies = this._dependencies;
 
-    let version = 1;
+    let version = 0;
 
     for (let i = 0, l = dependencies.length; i < l; i++) {
-      version += dependencies[i]!.version - 1;
+      version += dependencies[i]!.version;
     }
 
     return version;
@@ -270,7 +270,7 @@ export class MemoizedSignal<T> extends Signal<T> {
 
   private _memoizedValue: T | null = null;
 
-  private _memoizedVersion = 0; // 0 is indicated an uninitialized signal.
+  private _memoizedVersion = -1; // -1 is indicated an uninitialized signal.
 
   constructor(signal: Signal<T>) {
     super();
