@@ -33,6 +33,7 @@ export class LinkedList<T> {
     if (tail !== null && tail.prev !== null) {
       this._tail = tail.prev;
       this._tail.next = null;
+      tail.prev = null;
     } else {
       this._head = null;
       this._tail = null;
@@ -47,6 +48,7 @@ export class LinkedList<T> {
     if (head !== null && head.next !== null) {
       this._head = head.next;
       this._head.prev = null;
+      head.next = null;
     } else {
       this._head = null;
       this._tail = null;
@@ -94,5 +96,7 @@ export class LinkedList<T> {
     } else {
       this._tail = node.prev;
     }
+    node.prev = null;
+    node.next = null;
   }
 }
