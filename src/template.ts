@@ -236,14 +236,35 @@ export class TaggedTemplateRoot implements TemplateRoot {
   }
 }
 
-export function getMarker(): string {
-  return '?' + crypto.randomUUID() + '?';
+export function getMarker(
+  uuid: ReturnType<typeof crypto.randomUUID> = getUUID(),
+): string {
+  return '?' + uuid + '?';
+}
+
+export function isValidMarker(marker: string): boolean {
+  return MARKER_REGEXP.test(marker);
 }
 
 function ensureValidMarker(marker: string): void {
-  if (!MARKER_REGEXP.test(marker)) {
+  if (!isValidMarker(marker)) {
     throw new Error(`The marker is in an invalid format: ${marker}`);
   }
+}
+
+function getUUID(): ReturnType<typeof crypto.randomUUID> {
+  if (typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  const s = [...crypto.getRandomValues(new Uint8Array(16))]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+  const p1 = s.slice(0, 8);
+  const p2 = s.slice(8, 12);
+  const p3 = s.slice(12, 16);
+  const p4 = s.slice(16, 20);
+  const p5 = s.slice(20, 32);
+  return `${p1}-${p2}-${p3}-${p4}-${p5}`;
 }
 
 function parseAttribtues(

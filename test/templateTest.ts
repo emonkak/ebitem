@@ -1,6 +1,6 @@
 import { assert } from 'chai';
 
-import { TaggedTemplate, getMarker } from '../src/template.js';
+import { TaggedTemplate, getMarker, isValidMarker } from '../src/template.js';
 import { PartType } from '../src/types.js';
 
 describe('TaggedTemplate', () => {
@@ -291,5 +291,20 @@ describe('TaggedTemplate', () => {
         TaggedTemplate.parseSVG([], MARKER.toUpperCase());
       }, 'The marker is in an invalid format:');
     });
+  });
+});
+
+describe('getMarker()', () => {
+  it('returns a valid marker string', () => {
+    assert.ok(isValidMarker(getMarker()));
+
+    // force randomUUID() polyfill.
+    const originalRandomUUID = crypto.randomUUID;
+    try {
+      (crypto as any).randomUUID = null;
+      assert.ok(isValidMarker(getMarker()));
+    } finally {
+      crypto.randomUUID = originalRandomUUID;
+    }
   });
 });
