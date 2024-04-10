@@ -18,13 +18,13 @@ describe('AtomSignal', () => {
     assert.strictEqual(signal.version, 1);
   });
 
-  describe('.update()', () => {
-    it('should increment the version on update', () => {
+  describe('.forceUpdate()', () => {
+    it('should increment the version', () => {
       const signal = new AtomSignal(1);
 
-      signal.update((n) => n + 1);
+      signal.forceUpdate();
 
-      assert.strictEqual(2, signal.value);
+      assert.strictEqual(1, signal.value);
       assert.strictEqual(1, signal.version);
     });
   });
@@ -75,43 +75,6 @@ describe('AtomSignal', () => {
 
       assert.strictEqual(doublySignal.value, 4);
       assert.strictEqual(doublySignal.version, 1);
-    });
-  });
-
-  describe('.mutate()', () => {
-    it('should increment the version if the callback returns no result', () => {
-      const signal = new AtomSignal([1, 2]);
-
-      signal.mutate((elements) => {
-        elements.push(3);
-      });
-
-      assert.deepEqual([1, 2, 3], signal.value);
-      assert.strictEqual(1, signal.version);
-    });
-
-    it('should increment the version if the callback returns ture', () => {
-      const signal = new AtomSignal([1, 2]);
-
-      signal.mutate((elements) => {
-        elements.push(3);
-        return true;
-      });
-
-      assert.deepEqual([1, 2, 3], signal.value);
-      assert.strictEqual(1, signal.version);
-    });
-
-    it('should not increment the version if the callback returns false', () => {
-      const signal = new AtomSignal([1, 2]);
-
-      signal.mutate((elements) => {
-        elements.push(3);
-        return false;
-      });
-
-      assert.deepEqual([1, 2, 3], signal.value);
-      assert.strictEqual(0, signal.version);
     });
   });
 

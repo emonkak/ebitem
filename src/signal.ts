@@ -142,7 +142,7 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
   }
 }
 
-export class AtomSignal<T> extends Signal<Readonly<T>> {
+export class AtomSignal<T> extends Signal<T> {
   private readonly _subscribers = new LinkedList<Subscriber>();
 
   private _value: T;
@@ -154,42 +154,20 @@ export class AtomSignal<T> extends Signal<Readonly<T>> {
     this._value = initialValue;
   }
 
-  get value(): Readonly<T> {
+  get value(): T {
     return this._value;
   }
 
   set value(newValue: T) {
     this._value = newValue;
-    this._notify();
+    this.forceUpdate();
   }
 
   get version(): number {
     return this._version;
   }
 
-  mutate(callback: (value: T) => void | boolean): boolean {
-    const result = callback(this._value) ?? true;
-    if (result) {
-      this._notify();
-    }
-    return result;
-  }
-
-  subscribe(subscriber: Subscriber): Subscription {
-    const node = this._subscribers.pushBack(subscriber);
-    return () => {
-      this._subscribers.remove(node);
-    };
-  }
-
-  update(callback: (value: Readonly<T>) => T): T {
-    const newValue = callback(this._value);
-    this._value = newValue;
-    this._notify();
-    return newValue;
-  }
-
-  private _notify(): void {
+  forceUpdate() {
     this._version += 1;
 
     for (
@@ -200,6 +178,13 @@ export class AtomSignal<T> extends Signal<Readonly<T>> {
       const subscriber = node.value;
       subscriber();
     }
+  }
+
+  subscribe(subscriber: Subscriber): Subscription {
+    const node = this._subscribers.pushBack(subscriber);
+    return () => {
+      this._subscribers.remove(node);
+    };
   }
 }
 
