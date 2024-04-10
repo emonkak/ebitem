@@ -205,7 +205,7 @@ export class TaggedTemplateRoot implements TemplateRoot {
     return this._bindings;
   }
 
-  patch(newValues: unknown[], updater: Updater): void {
+  update(newValues: unknown[], updater: Updater): void {
     for (let i = 0, l = this._bindings.length; i < l; i++) {
       this._bindings[i] = updateBinding(
         this._bindings[i]!,

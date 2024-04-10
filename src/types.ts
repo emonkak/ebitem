@@ -53,7 +53,7 @@ export interface Template {
 
 export interface TemplateRoot {
   get childNodes(): ChildNode[];
-  patch(values: unknown[], updater: Updater): void;
+  update(values: unknown[], updater: Updater): void;
   mount(part: ChildNodePart): void;
   unmount(part: ChildNodePart): void;
   disconnect(): void;

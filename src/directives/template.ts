@@ -144,7 +144,7 @@ export class TemplateBinding
     }
 
     if (this._pendingRoot !== null) {
-      this._pendingRoot.patch(values, updater);
+      this._pendingRoot.update(values, updater);
     } else {
       this._pendingRoot = template.hydrate(values, updater);
       this._requestMutation(updater);

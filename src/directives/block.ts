@@ -202,7 +202,7 @@ export class BlockBinding<TProps, TContext>
 
         this._requestMutation(updater);
       } else {
-        this._pendingRoot.patch(values, updater);
+        this._pendingRoot.update(values, updater);
       }
     } else {
       this._pendingRoot = template.hydrate(values, updater);
