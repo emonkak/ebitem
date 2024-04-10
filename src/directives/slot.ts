@@ -73,16 +73,13 @@ export class SlotDirective<TChildNodeValue> implements Directive {
       updater,
     );
 
-    const binding = new SlotBinding(
+    return new SlotBinding(
       part,
       this,
       spreadBinding,
       childNodeBinding,
+      updater,
     );
-
-    binding.init(updater);
-
-    return binding;
   }
 }
 
@@ -112,11 +109,14 @@ export class SlotBinding<TChildNodeValue>
     directive: SlotDirective<TChildNodeValue>,
     spreadBinding: SpreadBinding,
     childNodeBinding: Binding<TChildNodeValue>,
+    updater: Updater,
   ) {
     this._part = part;
     this._directive = directive;
     this._spreadBinding = spreadBinding;
     this._childNodeBinding = childNodeBinding;
+
+    this._requestMutation(updater);
   }
 
   get part(): ChildNodePart {
@@ -139,10 +139,6 @@ export class SlotBinding<TChildNodeValue>
 
   set value(newDirective: SlotDirective<TChildNodeValue>) {
     this._directive = newDirective;
-  }
-
-  init(updater: Updater): void {
-    this._requestMutation(updater);
   }
 
   bind(updater: Updater): void {

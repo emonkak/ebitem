@@ -60,11 +60,7 @@ export class ListDirective<TItem, TValue, TKey> implements Directive {
       throw new Error('List directive must be used in an arbitrary child.');
     }
 
-    const binding = new ListBinding(part, this);
-
-    binding.init(updater);
-
-    return binding;
+    return new ListBinding(part, this, updater);
   }
 }
 
@@ -75,16 +71,28 @@ export class ListBinding<TItem, TValue, TKey>
 
   private _directive: ListDirective<TItem, TValue, TKey>;
 
-  private _bindings: ListItemBinding<TValue>[] = [];
+  private _bindings: ListItemBinding<TValue>[];
 
-  private _keys: TKey[] = [];
+  private _keys: TKey[];
 
   constructor(
     part: ChildNodePart,
     directive: ListDirective<TItem, TValue, TKey>,
+    updater: Updater,
   ) {
+    const { items, keySelector, valueSelector } = directive;
+    const bindings = new Array<ListItemBinding<TValue>>(items.length);
+    const keys = items.map(keySelector);
+    const values = items.map(valueSelector);
+
+    for (let i = 0, l = bindings.length; i < l; i++) {
+      bindings[i] = createItemBinding(values[i]!, part, updater);
+    }
+
     this._part = part;
     this._directive = directive;
+    this._keys = keys;
+    this._bindings = bindings;
   }
 
   get part(): ChildNodePart {
@@ -105,22 +113,6 @@ export class ListBinding<TItem, TValue, TKey>
 
   set value(newDirective: ListDirective<TItem, TValue, TKey>) {
     this._directive = newDirective;
-  }
-
-  init(updater: Updater): void {
-    const { items, keySelector, valueSelector } = this._directive;
-    const bindings = new Array<ListItemBinding<TValue>>(
-      this._directive.items.length,
-    );
-    const keys = items.map(keySelector);
-    const values = items.map(valueSelector);
-
-    for (let i = 0, l = bindings.length; i < l; i++) {
-      bindings[i] = createItemBinding(values[i]!, this._part, updater);
-    }
-
-    this._keys = keys;
-    this._bindings = bindings;
   }
 
   bind(updater: Updater): void {
@@ -285,9 +277,11 @@ class ListItemBinding<T> implements Binding<T>, Effect {
 
   private _flags = ListItemFlags.NONE;
 
-  constructor(binding: Binding<T>, listPart: ChildNodePart) {
+  constructor(binding: Binding<T>, listPart: ChildNodePart, updater: Updater) {
     this._binding = binding;
     this._listPart = listPart;
+
+    this._requestMutation(updater);
   }
 
   get part(): Part {
@@ -308,10 +302,6 @@ class ListItemBinding<T> implements Binding<T>, Effect {
 
   set value(newValue: T) {
     this._binding.value = newValue;
-  }
-
-  init(updater: Updater): void {
-    this._requestMutation(updater);
   }
 
   reorder(
@@ -395,10 +385,8 @@ function createItemBinding<T>(
     type: PartType.CHILD_NODE,
     node: document.createComment(''),
   } as const;
-  const innerBinding = createBinding(part, value, updater);
-  const binding = new ListItemBinding<T>(innerBinding, listPart);
-  binding.init(updater);
-  return binding;
+  const binding = createBinding(part, value, updater);
+  return new ListItemBinding<T>(binding, listPart, updater);
 }
 
 function generateIndexMap<T>(

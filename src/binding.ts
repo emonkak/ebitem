@@ -66,13 +66,6 @@ export class AttributeBinding implements Binding<unknown>, Effect {
     this._value = newValue;
   }
 
-  init(updater: Updater): void {
-    if (!this._dirty) {
-      updater.enqueueMutationEffect(this);
-      this._dirty = true;
-    }
-  }
-
   bind(updater: Updater): void {
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);

@@ -51,12 +51,8 @@ export abstract class Signal<T> implements Directive, UsableObject<void> {
   }
 
   [directiveTag](part: Part, updater: Updater): SignalBinding<T> {
-    const innerBinding = createBinding(part, this.value, updater);
-    const binding = new SignalBinding(innerBinding, this);
-
-    binding.init(updater);
-
-    return binding;
+    const binding = createBinding(part, this.value, updater);
+    return new SignalBinding(binding, this, updater);
   }
 }
 
@@ -67,9 +63,10 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
 
   private _subscription: Subscription | null = null;
 
-  constructor(binding: Binding<T>, signal: Signal<T>) {
+  constructor(binding: Binding<T>, signal: Signal<T>, updater: Updater) {
     this._binding = binding;
     this._signal = signal;
+    this._subscription = this._startSubscription(updater);
   }
 
   get part(): Part {
@@ -92,12 +89,6 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
     this._signal = newSignal;
   }
 
-  init(updater: Updater): void {
-    if (this._subscription === null) {
-      this._subscription = this._startSubscription(updater);
-    }
-  }
-
   bind(updater: Updater): void {
     if (this._subscription === null) {
       this._binding = updateBinding(this._binding, this._signal.value, updater);
@@ -114,6 +105,9 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
 
   disconnect(): void {
     this._binding.disconnect();
+
+    this._subscription?.();
+    this._subscription = null;
   }
 
   private _startSubscription(updater: Updater): Subscription {
