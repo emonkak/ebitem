@@ -59,7 +59,7 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
     return this._runningUpdateLoop !== null;
   }
 
-  async requestUpdate(): Promise<void> {
+  async scheduleUpdate(): Promise<void> {
     if (this._runningUpdateLoop !== null) {
       return;
     }
@@ -80,6 +80,7 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
 
   async _runUpdateLoop(): Promise<void> {
     console.group('Update Loop');
+
     do {
       if (this._hasRenderable()) {
         await this._scheduler.postRenderingTask(async () => {
@@ -162,6 +163,7 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
       this._hasBlockingEffect() ||
       this._hasPassiveEffect()
     );
+
     console.groupEnd();
   }
 

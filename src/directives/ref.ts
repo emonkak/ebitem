@@ -1,11 +1,13 @@
-import { Binding, Directive, directiveTag } from '../binding.js';
 import {
   AttributePart,
+  Binding,
+  Directive,
   Effect,
   Part,
   PartType,
   Ref,
   Updater,
+  directiveTag,
 } from '../types.js';
 
 type ElementRef = Ref<Element | null>;
@@ -27,9 +29,7 @@ export class RefDirective implements Directive {
 
   [directiveTag](part: Part, updater: Updater): RefBinding {
     if (part.type !== PartType.ATTRIBUTE || part.name !== 'ref') {
-      throw new Error(
-        `${this.constructor.name} must be used in "ref" attribute.`,
-      );
+      throw new Error('RefDirective must be used in "ref" attribute.');
     }
 
     const binding = new RefBinding(part, this);
@@ -45,7 +45,7 @@ export class RefBinding implements Binding<RefDirective>, Effect {
 
   private _pendingDirective: RefDirective;
 
-  private _memoizedDirective: RefDirective | null = null;
+  private _memoizedDirective = new RefDirective(null);
 
   private _dirty = false;
 
@@ -70,8 +70,8 @@ export class RefBinding implements Binding<RefDirective>, Effect {
     return this._pendingDirective;
   }
 
-  set value(newDirective: RefDirective) {
-    this._pendingDirective = newDirective;
+  set value(newValue: RefDirective) {
+    this._pendingDirective = newValue;
   }
 
   bind(updater: Updater): void {
@@ -93,7 +93,7 @@ export class RefBinding implements Binding<RefDirective>, Effect {
   disconnect() {}
 
   commit(): void {
-    const oldRef = this._memoizedDirective?.ref ?? null;
+    const oldRef = this._memoizedDirective.ref;
     const newRef = this._pendingDirective.ref;
 
     if (oldRef !== null) {

@@ -1,13 +1,19 @@
 import {
-  Binding,
-  Directive,
   SpreadBinding,
   SpreadProps,
-  createBinding,
-  directiveTag,
+  initBinding,
   updateBinding,
 } from '../binding.js';
-import { ChildNodePart, Effect, Part, PartType, Updater } from '../types.js';
+import {
+  Binding,
+  ChildNodePart,
+  Directive,
+  Effect,
+  Part,
+  PartType,
+  Updater,
+  directiveTag,
+} from '../types.js';
 
 export function slot<TChildNodeValue>(
   type: string,
@@ -48,38 +54,10 @@ export class SlotDirective<TChildNodeValue> implements Directive {
 
   [directiveTag](part: Part, updater: Updater): SlotBinding<TChildNodeValue> {
     if (part.type !== PartType.CHILD_NODE) {
-      throw new Error(
-        `${this.constructor.name} must be used in ChildNodePart.`,
-      );
+      throw new Error('SlotDirective must be used in ChildNodePart.');
     }
 
-    const element = document.createElement(this._type);
-    const childMarker = document.createComment('');
-
-    element.appendChild(childMarker);
-
-    const elementPart = { type: PartType.ELEMENT, node: element } as const;
-    const spreadBinding = new SpreadBinding(elementPart, this._props);
-
-    spreadBinding.bind(updater);
-
-    const childNodePart = {
-      type: PartType.CHILD_NODE,
-      node: childMarker,
-    } as const;
-    const childNodeBinding = createBinding(
-      childNodePart,
-      this._childNodeValue,
-      updater,
-    );
-
-    return new SlotBinding(
-      part,
-      this,
-      spreadBinding,
-      childNodeBinding,
-      updater,
-    );
+    return new SlotBinding(part, this, updater);
   }
 }
 
@@ -107,10 +85,28 @@ export class SlotBinding<TChildNodeValue>
   constructor(
     part: ChildNodePart,
     directive: SlotDirective<TChildNodeValue>,
-    spreadBinding: SpreadBinding,
-    childNodeBinding: Binding<TChildNodeValue>,
     updater: Updater,
   ) {
+    const element = document.createElement(directive.type);
+    const childMarker = document.createComment('');
+
+    element.appendChild(childMarker);
+
+    const elementPart = { type: PartType.ELEMENT, node: element } as const;
+    const spreadBinding = new SpreadBinding(elementPart, directive.props);
+
+    spreadBinding.bind(updater);
+
+    const childNodePart = {
+      type: PartType.CHILD_NODE,
+      node: childMarker,
+    } as const;
+    const childNodeBinding = initBinding(
+      childNodePart,
+      directive.childNodeValue,
+      updater,
+    );
+
     this._part = part;
     this._directive = directive;
     this._spreadBinding = spreadBinding;
@@ -166,11 +162,13 @@ export class SlotBinding<TChildNodeValue>
       }
     }
 
-    this._childNodeBinding = updateBinding(
-      this._childNodeBinding,
-      childNodeValue,
-      updater,
-    );
+    if (Object.is(this._childNodeBinding.value, childNodeValue)) {
+      this._childNodeBinding = updateBinding(
+        this._childNodeBinding,
+        childNodeValue,
+        updater,
+      );
+    }
 
     this._flags &= ~SlotBindingFlags.UNMOUNTING;
   }
@@ -192,25 +190,23 @@ export class SlotBinding<TChildNodeValue>
       element.remove();
 
       this._flags &= ~SlotBindingFlags.MOUNTED;
-    } else {
-      if (this._flags & SlotBindingFlags.REPARENTING) {
-        const oldElement = this._childNodeBinding.part.node
-          .parentNode as Element | null;
-        const newElement = this._spreadBinding.part.node as Element;
+    } else if (this._flags & SlotBindingFlags.REPARENTING) {
+      const oldElement = this._childNodeBinding.part.node
+        .parentNode as Element | null;
+      const newElement = this._spreadBinding.part.node as Element;
 
-        if (oldElement !== null) {
-          newElement.replaceChildren(...oldElement.childNodes);
-          oldElement.replaceWith(newElement);
-        }
-      } else {
-        const element = this._spreadBinding.part.node;
-        const reference = this._part.node;
-
-        reference.before(element);
+      if (oldElement !== null) {
+        newElement.replaceChildren(...oldElement.childNodes);
+        oldElement.replaceWith(newElement);
       }
+    } else {
+      const element = this._spreadBinding.part.node;
+      const reference = this._part.node;
 
-      this._flags |= SlotBindingFlags.MOUNTED;
+      reference.before(element);
     }
+
+    this._flags |= SlotBindingFlags.MOUNTED;
 
     this._flags &= ~(
       SlotBindingFlags.MUTATING |

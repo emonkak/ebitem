@@ -1,11 +1,5 @@
-import {
-  Binding,
-  Directive,
-  createBinding,
-  directiveTag,
-  updateBinding,
-} from '../binding.js';
-import type { Part, Updater } from '../types.js';
+import { initBinding, updateBinding } from '../binding.js';
+import { Binding, Directive, Part, Updater, directiveTag } from '../types.js';
 import { UnitDirective, unit } from './unit.js';
 
 type ValueOrFunction<T> = T extends Function ? never : T | (() => T);
@@ -71,10 +65,6 @@ export class ConditionDirective<TTrue, TFalse> implements Directive {
 
     return binding;
   }
-
-  valueOf(): this {
-    return this;
-  }
 }
 
 export class ConditionBinding<TTrue, TFalse>
@@ -128,14 +118,18 @@ export class ConditionBinding<TTrue, TFalse>
         this._falseBinding?.unbind(updater);
       }
       if (this._trueBinding !== null) {
-        this._trueBinding = updateBinding(
-          this._trueBinding,
-          newValue,
-          updater,
-          this._condition !== condition,
-        );
+        if (
+          this._condition !== condition ||
+          !Object.is(this._trueBinding.value, newValue)
+        ) {
+          this._trueBinding = updateBinding(
+            this._trueBinding,
+            newValue,
+            updater,
+          );
+        }
       } else {
-        this._trueBinding = createBinding(this._part, newValue, updater);
+        this._trueBinding = initBinding(this._part, newValue, updater);
       }
     } else {
       const newValue =
@@ -144,14 +138,18 @@ export class ConditionBinding<TTrue, TFalse>
         this._trueBinding?.unbind(updater);
       }
       if (this._falseBinding !== null) {
-        this._falseBinding = updateBinding(
-          this._falseBinding,
-          newValue,
-          updater,
-          this._condition !== condition,
-        );
+        if (
+          this._condition !== condition ||
+          !Object.is(this._falseBinding.value, newValue)
+        ) {
+          this._falseBinding = updateBinding(
+            this._falseBinding,
+            newValue,
+            updater,
+          );
+        }
       } else {
-        this._falseBinding = createBinding(this._part, newValue, updater);
+        this._falseBinding = initBinding(this._part, newValue, updater);
       }
     }
 

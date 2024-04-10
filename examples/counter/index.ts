@@ -3,7 +3,7 @@ import {
   Context,
   LocalScope,
   TemplateDirective,
-  boot,
+  mount,
 } from '@emonkak/ebitem';
 import {
   block,
@@ -198,4 +198,4 @@ function shuffle<T>(elements: T[]): T[] {
 
 const updater = new AsyncUpdater(new LocalScope());
 
-boot(block(App, {}), document.body, updater);
+mount(block(App, {}), document.body, updater);

@@ -1,5 +1,12 @@
-import { Binding, createBinding, updateBinding } from './binding.js';
-import { Part, PartType, Template, TemplateRoot, Updater } from './types.js';
+import { initBinding, updateBinding } from './binding.js';
+import {
+  AbstractTemplate,
+  AbstractTemplateRoot,
+  Binding,
+  Part,
+  PartType,
+  Updater,
+} from './types.js';
 
 export type Hole =
   | AttributeHole
@@ -50,11 +57,8 @@ export interface PropertyHole {
 const MARKER_REGEXP =
   /^\?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\?$/;
 
-export class TaggedTemplate implements Template {
-  static parseHTML(
-    tokens: ReadonlyArray<string>,
-    marker: string,
-  ): TaggedTemplate {
+export class Template implements AbstractTemplate {
+  static parseHTML(tokens: ReadonlyArray<string>, marker: string): Template {
     // biome-ignore lint: use DEBUG label
     DEBUG: {
       ensureValidMarker(marker);
@@ -62,13 +66,10 @@ export class TaggedTemplate implements Template {
     const template = document.createElement('template');
     template.innerHTML = tokens.join(marker).trim();
     const holes = parseChildren(template.content, marker);
-    return new TaggedTemplate(template, holes);
+    return new Template(template, holes);
   }
 
-  static parseSVG(
-    tokens: ReadonlyArray<string>,
-    marker: string,
-  ): TaggedTemplate {
+  static parseSVG(tokens: ReadonlyArray<string>, marker: string): Template {
     // biome-ignore lint: use DEBUG label
     DEBUG: {
       ensureValidMarker(marker);
@@ -79,7 +80,7 @@ export class TaggedTemplate implements Template {
       ...template.content.firstChild!.childNodes,
     );
     const holes = parseChildren(template.content, marker);
-    return new TaggedTemplate(template, holes);
+    return new Template(template, holes);
   }
 
   private readonly _element: HTMLTemplateElement;
@@ -99,8 +100,15 @@ export class TaggedTemplate implements Template {
     return this._holes;
   }
 
-  hydrate(values: unknown[], updater: Updater): TaggedTemplateRoot {
+  hydrate(values: unknown[], updater: Updater): TemplateRoot {
     const holes = this._holes;
+
+    if (holes.length !== values.length) {
+      throw new Error(
+        `The number of holes was ${holes.length}, but the number of values was ${values.length}. There may be multiple holes indicating the same attribute.`,
+      );
+    }
+
     const bindings = new Array(holes.length);
     const rootNode = document.importNode(this._element.content, true);
 
@@ -163,7 +171,7 @@ export class TaggedTemplate implements Template {
               break;
           }
 
-          bindings[holeIndex] = createBinding(part, values[holeIndex], updater);
+          bindings[holeIndex] = initBinding(part, values[holeIndex], updater);
           holeIndex++;
 
           if (holeIndex >= holes.length) {
@@ -177,17 +185,11 @@ export class TaggedTemplate implements Template {
       }
     }
 
-    if (holes.length !== bindings.length) {
-      throw new Error(
-        'The number of holes and bindings do not match. There may be multiple holes indicating the same attribute.',
-      );
-    }
-
-    return new TaggedTemplateRoot(bindings, [...rootNode.childNodes]);
+    return new TemplateRoot(bindings, [...rootNode.childNodes]);
   }
 }
 
-export class TaggedTemplateRoot implements TemplateRoot {
+export class TemplateRoot implements AbstractTemplateRoot {
   private readonly _bindings: Binding<unknown>[];
 
   private readonly _childNodes: ChildNode[];
@@ -207,11 +209,15 @@ export class TaggedTemplateRoot implements TemplateRoot {
 
   update(newValues: unknown[], updater: Updater): void {
     for (let i = 0, l = this._bindings.length; i < l; i++) {
-      this._bindings[i] = updateBinding(
-        this._bindings[i]!,
-        newValues[i],
-        updater,
-      );
+      const binding = this._bindings[i]!;
+      const value = newValues[i]!;
+      if (!Object.is(binding.value, value)) {
+        this._bindings[i] = updateBinding(
+          this._bindings[i]!,
+          newValues[i],
+          updater,
+        );
+      }
     }
   }
 
@@ -223,9 +229,12 @@ export class TaggedTemplateRoot implements TemplateRoot {
     }
   }
 
-  unmount(_part: Part): void {
-    for (let i = 0, l = this._childNodes.length; i < l; i++) {
-      this._childNodes[i]!.remove();
+  unmount(part: Part): void {
+    const parent = part.node.parentNode;
+    if (parent !== null) {
+      for (let i = 0, l = this._childNodes.length; i < l; i++) {
+        parent.removeChild(this._childNodes[i]!);
+      }
     }
   }
 

@@ -1,14 +1,16 @@
-import { Binding, Directive, directiveTag } from '../binding.js';
 import {
+  AbstractTemplate,
+  AbstractTemplateRoot,
+  Binding,
   ChildNodePart,
+  Directive,
   Effect,
   Part,
   PartType,
   Renderable,
   Scope,
-  Template,
-  TemplateRoot,
   Updater,
+  directiveTag,
 } from '../types.js';
 
 const FragmentFlags = {
@@ -20,16 +22,16 @@ const FragmentFlags = {
 };
 
 export class TemplateDirective implements Directive {
-  private readonly _template: Template;
+  private readonly _template: AbstractTemplate;
 
   private readonly _values: unknown[];
 
-  constructor(template: Template, values: unknown[]) {
+  constructor(template: AbstractTemplate, values: unknown[]) {
     this._template = template;
     this._values = values;
   }
 
-  get template(): Template {
+  get template(): AbstractTemplate {
     return this._template;
   }
 
@@ -37,11 +39,9 @@ export class TemplateDirective implements Directive {
     return this._values;
   }
 
-  [directiveTag](part: Part, updater: Updater): TemplateBinding {
+  [directiveTag](part: Part, updater: Updater): Binding<TemplateDirective> {
     if (part.type !== PartType.CHILD_NODE) {
-      throw new Error(
-        `${this.constructor.name} directive must be used in ChildNodePart.`,
-      );
+      throw new Error('TemplateDirective must be used in ChildNodePart.');
     }
 
     const binding = new TemplateBinding(part, this, updater.currentRenderable);
@@ -61,11 +61,11 @@ export class TemplateBinding
 
   private _directive: TemplateDirective;
 
-  private _memoizedRoot: TemplateRoot | null = null;
+  private _memoizedRoot: AbstractTemplateRoot | null = null;
 
-  private _pendingRoot: TemplateRoot | null = null;
+  private _pendingRoot: AbstractTemplateRoot | null = null;
 
-  private _template: Template | null = null;
+  private _template: AbstractTemplate | null = null;
 
   private _flags = FragmentFlags.NONE;
 
@@ -110,7 +110,7 @@ export class TemplateBinding
     this._directive = directive;
   }
 
-  forceUpdate(updater: Updater): void {
+  requestUpdate(updater: Updater): void {
     this._requestUpdate(updater);
 
     this._flags &= ~FragmentFlags.UNMOUNTING;
@@ -181,7 +181,7 @@ export class TemplateBinding
   private _requestUpdate(updater: Updater) {
     if (!(this._flags & FragmentFlags.UPDATING)) {
       updater.enqueueRenderable(this);
-      updater.requestUpdate();
+      updater.scheduleUpdate();
       this._flags |= FragmentFlags.UPDATING;
     }
   }

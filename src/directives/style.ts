@@ -1,7 +1,15 @@
-import { Binding, Directive, directiveTag } from '../binding.js';
-import { AttributePart, Effect, Part, PartType, Updater } from '../types.js';
+import {
+  AttributePart,
+  Binding,
+  Directive,
+  Effect,
+  Part,
+  PartType,
+  Updater,
+  directiveTag,
+} from '../types.js';
 
-export type StyleMap = { [P in StyleProperty]?: string };
+export type StyleMap = { [P in StyleProperty]?: CSSStyleValue | string };
 
 export type StyleProperty = ExtractStringProperty<CSSStyleDeclaration>;
 
@@ -26,9 +34,7 @@ export class StyleDirective implements Directive {
 
   [directiveTag](part: Part, updater: Updater): StyleBinding {
     if (part.type !== PartType.ATTRIBUTE || part.name !== 'style') {
-      throw new Error(
-        `${this.constructor.name} directive must be used in the "style" attribute.`,
-      );
+      throw new Error('StyleDirective must be used in the "style" attribute.');
     }
 
     const binding = new StyleBinding(part, this);
@@ -36,10 +42,6 @@ export class StyleDirective implements Directive {
     binding.bind(updater);
 
     return binding;
-  }
-
-  valueOf(): StyleMap {
-    return this._styleMap;
   }
 }
 
@@ -91,30 +93,24 @@ export class StyleBinding implements Binding<StyleDirective>, Effect {
     }
   }
 
-  disconnect() {}
+  disconnect(): void {}
 
-  commit() {
-    const { style } = this._part.node as
+  commit(): void {
+    const { attributeStyleMap } = this._part.node as
       | HTMLElement
       | MathMLElement
       | SVGElement;
     const { styleMap } = this._directive;
 
-    for (let i = 0, l = style.length; i < l; i++) {
-      const property = style.item(i);
-
-      if (!Object.hasOwn(styleMap, property)) {
-        style.removeProperty(property);
-      }
+    for (const property in styleMap) {
+      const value = styleMap[property as StyleProperty]!;
+      attributeStyleMap.set(property, value);
     }
 
-    const newProperties = Object.keys(styleMap) as StyleProperty[];
-
-    for (let i = 0, l = newProperties.length; i < l; i++) {
-      const newProperty = newProperties[i]!;
-      const newValue = styleMap[newProperty]!;
-
-      style.setProperty(newProperty, newValue);
+    for (const property of attributeStyleMap.keys()) {
+      if (!(property in styleMap)) {
+        attributeStyleMap.delete(property);
+      }
     }
   }
 }

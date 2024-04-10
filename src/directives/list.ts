@@ -1,5 +1,14 @@
-import { Binding, Directive, createBinding, directiveTag } from '../binding.js';
-import { ChildNodePart, Effect, Part, PartType, Updater } from '../types.js';
+import { initBinding } from '../binding.js';
+import {
+  Binding,
+  ChildNodePart,
+  Directive,
+  Effect,
+  Part,
+  PartType,
+  Updater,
+  directiveTag,
+} from '../types.js';
 
 type Selector<TItem, TResult> = (item: TItem, index: number) => TResult;
 
@@ -57,7 +66,7 @@ export class ListDirective<TItem, TValue, TKey> implements Directive {
     updater: Updater,
   ): ListBinding<TItem, TValue, TKey> {
     if (part.type !== PartType.CHILD_NODE) {
-      throw new Error('List directive must be used in an arbitrary child.');
+      throw new Error('ListDirective must be used in an arbitrary child.');
     }
 
     return new ListBinding(part, this, updater);
@@ -86,7 +95,7 @@ export class ListBinding<TItem, TValue, TKey>
     const values = items.map(valueSelector);
 
     for (let i = 0, l = bindings.length; i < l; i++) {
-      bindings[i] = createItemBinding(values[i]!, part, updater);
+      bindings[i] = initItemBinding(values[i]!, part, updater);
     }
 
     this._part = part;
@@ -123,7 +132,7 @@ export class ListBinding<TItem, TValue, TKey>
     const newKeys = items.map(keySelector);
     const newValues = items.map(valueSelector);
 
-    // Head and tail pointers to old parts and new values
+    // Head and tail pointers to old parts and new values.
     let oldHead = 0;
     let oldTail = oldBindings.length - 1;
     let newHead = 0;
@@ -134,12 +143,10 @@ export class ListBinding<TItem, TValue, TKey>
 
     while (oldHead <= oldTail && newHead <= newTail) {
       if (oldBindings[oldHead] === undefined) {
-        // `null` means old part at head has already been used
-        // below; skip
+        // `null` means old part at head has already been used below; skip
         oldHead++;
       } else if (oldBindings[oldTail] === undefined) {
-        // `null` means old part at tail has already been used
-        // below; skip
+        // `null` means old part at tail has already been used below; skip
         oldTail--;
       } else if (oldKeys[oldHead] === newKeys[newHead]) {
         // Old head matches new head; update in place
@@ -160,7 +167,7 @@ export class ListBinding<TItem, TValue, TKey>
         oldTail--;
         newTail--;
       } else if (oldKeys[oldHead] === newKeys[newTail]) {
-        // Old tail matches new head; update and move to new head
+        // Old tail matches new head; update and move to new head.
         newBindings[newTail] = updateAndReorderItemBinding(
           oldBindings[oldHead]!,
           newValues[newTail]!,
@@ -170,7 +177,7 @@ export class ListBinding<TItem, TValue, TKey>
         oldHead++;
         newTail--;
       } else if (oldKeys[oldTail] === newKeys[newHead]) {
-        // Old tail matches new head; update and move to new head
+        // Old tail matches new head; update and move to new head.
         newBindings[newHead] = updateAndReorderItemBinding(
           oldBindings[oldTail]!,
           newValues[newHead]!,
@@ -181,8 +188,8 @@ export class ListBinding<TItem, TValue, TKey>
         newHead++;
       } else {
         if (newKeyToIndexMap === undefined) {
-          // Lazily generate key-to-index maps, used for removals &
-          // moves below
+          // Lazily generate key-to-index maps, used for removals and moves
+          // below.
           newKeyToIndexMap = generateIndexMap(newKeys, newHead, newTail);
           oldKeyToIndexMap = generateIndexMap(oldKeys, oldHead, oldTail);
         }
@@ -195,25 +202,23 @@ export class ListBinding<TItem, TValue, TKey>
           oldBindings[oldTail]!.unbind(updater);
           oldTail--;
         } else {
-          // Any mismatches at this point are due to additions or
-          // moves; see if we have an old part we can reuse and move
-          // into place
+          // Any mismatches at this point are due to additions or moves; see if
+          // we have an old part we can reuse and move into place.
           const oldIndex = oldKeyToIndexMap!.get(newKeys[newHead]!);
           if (oldIndex !== undefined) {
-            // Reuse old part
+            // Reuse old part.
             newBindings[newHead] = updateAndReorderItemBinding(
               oldBindings[oldIndex]!,
               newValues[newHead]!,
               oldBindings[oldHead] ?? null,
               updater,
             );
-            // This marks the old part as having been used, so that
-            // it will be skipped in the first two checks above
+            // This marks the old part as having been used, so that it will be
+            // skipped in the first two checks above.
             oldBindings[oldIndex] = undefined;
           } else {
-            // No old part for this value; create a new one and
-            // insert it
-            newBindings[newHead] = createItemBinding(
+            // No old part for this value; create a new one and insert it.
+            newBindings[newHead] = initItemBinding(
               newValues[newHead]!,
               this._part,
               updater,
@@ -224,11 +229,11 @@ export class ListBinding<TItem, TValue, TKey>
       }
     }
 
-    // Add parts for any remaining new values
+    // Add parts for any remaining new values.
     while (newHead <= newTail) {
-      // For all remaining additions, we insert before last new
-      // tail, since old pointers are no longer valid
-      newBindings[newHead] = createItemBinding(
+      // For all remaining additions, we insert before last new tail, since old
+      // pointers are no longer valid.
+      newBindings[newHead] = initItemBinding(
         newValues[newHead]!,
         this._part,
         updater,
@@ -236,7 +241,7 @@ export class ListBinding<TItem, TValue, TKey>
       newHead++;
     }
 
-    // Remove any remaining unused old parts
+    // Remove any remaining unused old parts.
     while (oldHead <= oldTail) {
       oldBindings[oldHead]?.unbind(updater);
       oldHead++;
@@ -271,37 +276,41 @@ const ListItemFlags = {
 class ListItemBinding<T> implements Binding<T>, Effect {
   private readonly _listPart: ChildNodePart;
 
-  private _binding: Binding<T>;
+  private _itemBinding: Binding<T>;
 
   private _referenceBinding: ListItemBinding<T> | null = null;
 
   private _flags = ListItemFlags.NONE;
 
-  constructor(binding: Binding<T>, listPart: ChildNodePart, updater: Updater) {
-    this._binding = binding;
+  constructor(
+    itemBinding: Binding<T>,
+    listPart: ChildNodePart,
+    updater: Updater,
+  ) {
+    this._itemBinding = itemBinding;
     this._listPart = listPart;
 
     this._requestMutation(updater);
   }
 
   get part(): Part {
-    return this._binding.part;
+    return this._itemBinding.part;
   }
 
   get startNode(): ChildNode {
-    return this._binding.startNode;
+    return this._itemBinding.startNode;
   }
 
   get endNode(): ChildNode {
-    return this._binding.endNode;
+    return this._itemBinding.endNode;
   }
 
   get value(): T {
-    return this._binding.value;
+    return this._itemBinding.value;
   }
 
   set value(newValue: T) {
-    this._binding.value = newValue;
+    this._itemBinding.value = newValue;
   }
 
   reorder(
@@ -316,13 +325,13 @@ class ListItemBinding<T> implements Binding<T>, Effect {
   }
 
   bind(updater: Updater): void {
-    this._binding.bind(updater);
+    this._itemBinding.bind(updater);
 
     this._flags &= ~ListItemFlags.UNMOUNTING;
   }
 
   unbind(updater: Updater): void {
-    this._binding.unbind(updater);
+    this._itemBinding.unbind(updater);
 
     this._requestMutation(updater);
 
@@ -330,35 +339,33 @@ class ListItemBinding<T> implements Binding<T>, Effect {
   }
 
   disconnect(): void {
-    this._binding?.disconnect();
+    this._itemBinding?.disconnect();
   }
 
-  commit() {
+  commit(): void {
     if (this._flags & ListItemFlags.UNMOUNTING) {
-      this._binding.part.node.remove();
+      this._itemBinding.part.node.remove();
+    } else if (this._flags & ListItemFlags.REORDERING) {
+      const referenceNode =
+        this._referenceBinding?.startNode ?? this._listPart.node;
+      const { startNode, endNode } = this._itemBinding;
+
+      // elements must be collected first to avoid infinite loop.
+      const nodes = [];
+      let currentNode: Node | null = startNode;
+
+      do {
+        const nextNode: Node | null = currentNode.nextSibling;
+        nodes.push(currentNode);
+        if (currentNode === endNode) {
+          break;
+        }
+        currentNode = nextNode;
+      } while (currentNode !== null);
+
+      referenceNode.before(...nodes);
     } else {
-      if (this._flags & ListItemFlags.REORDERING) {
-        const referenceNode =
-          this._referenceBinding?.startNode ?? this._listPart.node;
-        const { startNode, endNode } = this._binding;
-
-        // elements must be collected first to avoid infinite loop.
-        const nodes = [];
-        let currentNode: Node | null = startNode;
-
-        do {
-          const nextNode: Node | null = currentNode.nextSibling;
-          nodes.push(currentNode);
-          if (currentNode === endNode) {
-            break;
-          }
-          currentNode = nextNode;
-        } while (currentNode !== null);
-
-        referenceNode.before(...nodes);
-      } else {
-        this._listPart.node.before(this._binding.part.node);
-      }
+      this._listPart.node.before(this._itemBinding.part.node);
     }
 
     this._flags &= ~(
@@ -376,17 +383,17 @@ class ListItemBinding<T> implements Binding<T>, Effect {
   }
 }
 
-function createItemBinding<T>(
+function initItemBinding<T>(
   value: T,
   listPart: ChildNodePart,
   updater: Updater,
 ): ListItemBinding<T> {
-  const part = {
+  const itemPart = {
     type: PartType.CHILD_NODE,
     node: document.createComment(''),
   } as const;
-  const binding = createBinding(part, value, updater);
-  return new ListItemBinding<T>(binding, listPart, updater);
+  const itemBinding = initBinding(itemPart, value, updater);
+  return new ListItemBinding<T>(itemBinding, listPart, updater);
 }
 
 function generateIndexMap<T>(

@@ -1,11 +1,5 @@
-import {
-  Binding,
-  Directive,
-  createBinding,
-  directiveTag,
-  updateBinding,
-} from '../binding.js';
-import type { Part, Updater } from '../types.js';
+import { initBinding, updateBinding } from '../binding.js';
+import { Binding, Directive, Part, Updater, directiveTag } from '../types.js';
 
 export function choice<TKey, TValue>(
   key: TKey,
@@ -34,9 +28,8 @@ export class ChoiceDirective<TKey, TValue> implements Directive {
 
   [directiveTag](part: Part, updater: Updater): ChoiceBinding<TKey, TValue> {
     const factory = this._factory;
-    const key = this._key;
-    const value = factory(key);
-    const initialBinding = createBinding(part, value, updater);
+    const value = factory(this._key);
+    const initialBinding = initBinding(part, value, updater);
     return new ChoiceBinding(initialBinding, this);
   }
 }
@@ -53,10 +46,10 @@ export class ChoiceBinding<TKey, TValue>
   private _cachedBindings: Map<TKey, Binding<TValue>> = new Map();
 
   constructor(
-    binding: Binding<TValue>,
+    initialBinding: Binding<TValue>,
     directive: ChoiceDirective<TKey, TValue>,
   ) {
-    this._currentBinding = binding;
+    this._currentBinding = initialBinding;
     this._currentKey = directive.key;
     this._directive = directive;
   }
@@ -88,11 +81,13 @@ export class ChoiceBinding<TKey, TValue>
     const newValue = factory(newKey);
 
     if (Object.is(oldKey, newKey)) {
-      this._currentBinding = updateBinding(
-        this._currentBinding,
-        newValue,
-        updater,
-      );
+      if (!Object.is(this._currentBinding.value, newValue)) {
+        this._currentBinding = updateBinding(
+          this._currentBinding,
+          newValue,
+          updater,
+        );
+      }
     } else {
       this._currentBinding.unbind(updater);
       this._cachedBindings.set(oldKey, this._currentBinding);
@@ -100,14 +95,9 @@ export class ChoiceBinding<TKey, TValue>
       const cachedBinding = this._cachedBindings.get(newKey);
 
       if (cachedBinding !== undefined) {
-        this._currentBinding = updateBinding(
-          cachedBinding,
-          newValue,
-          updater,
-          true,
-        );
+        this._currentBinding = updateBinding(cachedBinding, newValue, updater);
       } else {
-        this._currentBinding = createBinding(
+        this._currentBinding = initBinding(
           this._currentBinding.part,
           newValue,
           updater,

@@ -1,5 +1,13 @@
-import { Binding, Directive, directiveTag } from '../binding.js';
-import { AttributePart, Effect, Part, PartType, Updater } from '../types.js';
+import {
+  AttributePart,
+  Binding,
+  Directive,
+  Effect,
+  Part,
+  PartType,
+  Updater,
+  directiveTag,
+} from '../types.js';
 
 export type ClassSpecifier = string | { [key: string]: boolean };
 
@@ -23,7 +31,7 @@ export class ClassNamesDirective implements Directive {
   [directiveTag](part: Part, updater: Updater): ClassNamesBinding {
     if (part.type !== PartType.ATTRIBUTE || part.name !== 'class') {
       throw new Error(
-        `${this.constructor.name} directive must be used in the "class" attribute.`,
+        'ClassNamesDirective must be used in the "class" attribute.',
       );
     }
 
@@ -63,8 +71,8 @@ export class ClassNamesBinding implements Effect, Binding<ClassNamesDirective> {
     return this._directive;
   }
 
-  set value(newDirective: ClassNamesDirective) {
-    this._directive = newDirective;
+  set value(newValue: ClassNamesDirective) {
+    this._directive = newValue;
   }
 
   bind(updater: Updater): void {
@@ -96,11 +104,10 @@ export class ClassNamesBinding implements Effect, Binding<ClassNamesDirective> {
         classList.add(classSpecifier);
         addedClasses.push(classSpecifier);
       } else {
-        const classNames = Object.keys(classSpecifier);
-        for (let i = 0, l = classNames.length; i < l; i++) {
-          const className = classNames[i]!;
-          classList.toggle(className, classSpecifier[className]);
-          if (classSpecifier[className]) {
+        for (const className in classSpecifier) {
+          const enabled = classSpecifier[className];
+          classList.toggle(className, enabled);
+          if (enabled) {
             addedClasses.push(className);
           }
         }

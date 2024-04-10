@@ -1,6 +1,9 @@
-import { Binding, Directive, directiveTag } from '../binding.js';
 import {
+  AbstractTemplate,
+  AbstractTemplateRoot,
+  Binding,
   ChildNodePart,
+  Directive,
   Effect,
   Hook,
   HookType,
@@ -8,9 +11,8 @@ import {
   PartType,
   Renderable,
   Scope,
-  Template,
-  TemplateRoot,
   Updater,
+  directiveTag,
 } from '../types.js';
 import type { TemplateDirective } from './template.js';
 
@@ -57,9 +59,7 @@ export class BlockDirective<TProps, TContext> implements Directive<TContext> {
     updater: Updater<TContext>,
   ): BlockBinding<TProps, TContext> {
     if (part.type !== PartType.CHILD_NODE) {
-      throw new Error(
-        `${this.constructor.name} directive must be used in ChildNodePart.`,
-      );
+      throw new Error('BlockDirective must be used in ChildNodePart.');
     }
 
     const binding = new BlockBinding(this, part, updater.currentRenderable);
@@ -81,13 +81,14 @@ export class BlockBinding<TProps, TContext>
 
   private _memoizedDirective: BlockDirective<TProps, TContext> | null = null;
 
-  private _memoizedTemplate: Template | null = null;
+  private _memoizedTemplate: AbstractTemplate | null = null;
 
-  private _pendingRoot: TemplateRoot | null = null;
+  private _pendingRoot: AbstractTemplateRoot | null = null;
 
-  private _memoizedRoot: TemplateRoot | null = null;
+  private _memoizedRoot: AbstractTemplateRoot | null = null;
 
-  private _cachedRoots: WeakMap<Template, TemplateRoot> | null = null;
+  private _cachedRoots: WeakMap<AbstractTemplate, AbstractTemplateRoot> | null =
+    null;
 
   private _hooks: Hook[] = [];
 
@@ -133,7 +134,7 @@ export class BlockBinding<TProps, TContext>
     this._pendingDirective = newDirective;
   }
 
-  forceUpdate(updater: Updater): void {
+  requestUpdate(updater: Updater): void {
     this._requestUpdate(updater);
 
     this._flags &= ~BlockFlags.UNMOUNTING;
@@ -243,7 +244,7 @@ export class BlockBinding<TProps, TContext>
   private _requestUpdate(updater: Updater): void {
     if (!(this._flags & BlockFlags.UPDATING)) {
       updater.enqueueRenderable(this);
-      updater.requestUpdate();
+      updater.scheduleUpdate();
       this._flags |= BlockFlags.UPDATING;
     }
   }

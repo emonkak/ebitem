@@ -66,7 +66,7 @@ export class Context {
   }
 
   requestUpdate(): void {
-    this._renderable.forceUpdate(this._updater);
+    this._renderable.requestUpdate(this._updater);
   }
 
   setContextValue(key: PropertyKey, value: unknown): void {
@@ -234,7 +234,7 @@ export class Context {
           typeof initialState === 'function' ? initialState() : initialState,
         dispatch: (action: TAction) => {
           newHook.state = reducer(newHook.state, action);
-          renderable.forceUpdate(updater);
+          renderable.requestUpdate(updater);
         },
       };
       currentHook = newHook;
@@ -269,7 +269,7 @@ export class Context {
     this.useEffect(
       () =>
         subscribe(() => {
-          renderable.forceUpdate(updater);
+          renderable.requestUpdate(updater);
         }),
       [subscribe],
     );

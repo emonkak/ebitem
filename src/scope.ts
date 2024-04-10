@@ -1,6 +1,12 @@
 import { Context } from './context.js';
-import { TaggedTemplate, getMarker } from './template.js';
-import type { Hook, Renderable, Scope, Template, Updater } from './types.js';
+import { Template, getMarker } from './template.js';
+import type {
+  AbstractTemplate,
+  Hook,
+  Renderable,
+  Scope,
+  Updater,
+} from './types.js';
 
 type Varibales = { [key: PropertyKey]: unknown };
 
@@ -12,10 +18,8 @@ export class LocalScope implements Scope<Context> {
   private readonly _variableScope: WeakMap<Renderable<Context>, Varibales> =
     new WeakMap();
 
-  private readonly _templateCaches: WeakMap<
-    TemplateStringsArray,
-    TaggedTemplate
-  > = new WeakMap();
+  private readonly _templateCaches: WeakMap<TemplateStringsArray, Template> =
+    new WeakMap();
 
   constructor(globalVariables: Varibales = {}) {
     this._globalVariables = globalVariables;
@@ -52,11 +56,11 @@ export class LocalScope implements Scope<Context> {
   createHTMLTemplate(
     tokens: TemplateStringsArray,
     _values: unknown[],
-  ): Template {
+  ): AbstractTemplate {
     let template = this._templateCaches.get(tokens);
 
     if (template === undefined) {
-      template = TaggedTemplate.parseHTML(tokens, this._marker);
+      template = Template.parseHTML(tokens, this._marker);
       this._templateCaches.set(tokens, template);
     }
 
@@ -66,11 +70,11 @@ export class LocalScope implements Scope<Context> {
   createSVGTemplate(
     tokens: TemplateStringsArray,
     _values: unknown[],
-  ): Template {
+  ): AbstractTemplate {
     let template = this._templateCaches.get(tokens);
 
     if (template === undefined) {
-      template = TaggedTemplate.parseSVG(tokens, this._marker);
+      template = Template.parseSVG(tokens, this._marker);
       this._templateCaches.set(tokens, template);
     }
 

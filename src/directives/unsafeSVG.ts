@@ -1,5 +1,12 @@
-import { Binding, Directive, directiveTag } from '../binding.js';
-import { ChildNodePart, Part, PartType, Updater } from '../types.js';
+import {
+  Binding,
+  ChildNodePart,
+  Directive,
+  Part,
+  PartType,
+  Updater,
+  directiveTag,
+} from '../types.js';
 
 export function unsafeSVG(content: string): UnsafeSVGDirective {
   return new UnsafeSVGDirective(content);
@@ -18,9 +25,7 @@ export class UnsafeSVGDirective implements Directive {
 
   [directiveTag](part: Part, updater: Updater): UnsafeSVGBinding {
     if (part.type !== PartType.CHILD_NODE) {
-      throw new Error(
-        `${this.constructor.name} must be used in ChildNodePart.`,
-      );
+      throw new Error('UnsafeSVGDirective must be used in ChildNodePart.');
     }
 
     const binding = new UnsafeSVGBinding(part, this);
@@ -28,10 +33,6 @@ export class UnsafeSVGDirective implements Directive {
     binding.bind(updater);
 
     return binding;
-  }
-
-  valueOf(): string {
-    return this._unsafeContent;
   }
 }
 
@@ -65,8 +66,8 @@ export class UnsafeSVGBinding implements Binding<UnsafeSVGDirective> {
     return this._directive;
   }
 
-  set value(newDirective: UnsafeSVGDirective) {
-    this._directive = newDirective;
+  set value(newValue: UnsafeSVGDirective) {
+    this._directive = newValue;
   }
 
   bind(updater: Updater): void {
@@ -85,14 +86,14 @@ export class UnsafeSVGBinding implements Binding<UnsafeSVGDirective> {
     }
   }
 
-  disconnect() {}
+  disconnect(): void {}
 
-  commit() {
-    const { unsafeContent } = this._directive;
-
+  commit(): void {
     for (let i = 0, l = this._childNodes.length; i < l; i++) {
       this._childNodes[i]!.remove();
     }
+
+    const { unsafeContent } = this._directive;
 
     if (unsafeContent !== '') {
       const template = document.createElement('template');

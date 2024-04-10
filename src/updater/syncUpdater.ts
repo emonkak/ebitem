@@ -48,7 +48,7 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
     return this._isRunning;
   }
 
-  requestUpdate(): void {
+  scheduleUpdate(): void {
     if (this._isRunning) {
       return;
     }

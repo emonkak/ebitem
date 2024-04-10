@@ -13,7 +13,7 @@ export class LocalUpdater<TContext> implements Updater<TContext>, Effect {
 
   private _shouldUpdate = false;
 
-  constructor(currentRenderable: Renderable<TContext> | null) {
+  constructor(currentRenderable: Renderable<TContext> | null = null) {
     this._currentRenderable = currentRenderable;
   }
 
@@ -37,6 +37,32 @@ export class LocalUpdater<TContext> implements Updater<TContext>, Effect {
     return this._passiveEffects;
   }
 
+  commit(mode: CommitMode): void {
+    switch (mode) {
+      case CommitMode.MUTATION:
+        const mutationEffects = this._mutationEffects;
+        this._mutationEffects = [];
+        for (let i = 0, l = mutationEffects.length; i < l; i++) {
+          mutationEffects[i]!.commit(mode);
+        }
+        break;
+      case CommitMode.LAYOUT:
+        const layoutEffects = this._layoutEffects;
+        this._layoutEffects = [];
+        for (let i = 0, l = layoutEffects.length; i < l; i++) {
+          layoutEffects[i]!.commit(mode);
+        }
+        break;
+      case CommitMode.PASSIVE:
+        const passiveEffects = this._passiveEffects;
+        this._passiveEffects = [];
+        for (let i = 0, l = passiveEffects.length; i < l; i++) {
+          passiveEffects[i]!.commit(mode);
+        }
+        break;
+    }
+  }
+
   enqueueLayoutEffect(effect: Effect): void {
     this._layoutEffects.push(effect);
   }
@@ -53,31 +79,10 @@ export class LocalUpdater<TContext> implements Updater<TContext>, Effect {
     this._renderables.push(renderable);
   }
 
-  requestUpdate(): void {
-    this._shouldUpdate = true;
-  }
-
-  commit(mode: CommitMode): void {
-    switch (mode) {
-      case CommitMode.MUTATION:
-        for (let i = 0, l = this._mutationEffects.length; i < l; i++) {
-          this._mutationEffects[i]!.commit(mode);
-        }
-        this._mutationEffects = [];
-        break;
-      case CommitMode.LAYOUT:
-        for (let i = 0, l = this._layoutEffects.length; i < l; i++) {
-          this._layoutEffects[i]!.commit(mode);
-        }
-        this._layoutEffects = [];
-        break;
-      case CommitMode.PASSIVE:
-        for (let i = 0, l = this._passiveEffects.length; i < l; i++) {
-          this._passiveEffects[i]!.commit(mode);
-        }
-        this._passiveEffects = [];
-        break;
-    }
+  flush(): void {
+    this.commit(CommitMode.MUTATION);
+    this.commit(CommitMode.LAYOUT);
+    this.commit(CommitMode.PASSIVE);
   }
 
   pipeTo(updater: Updater): void {
@@ -98,10 +103,14 @@ export class LocalUpdater<TContext> implements Updater<TContext>, Effect {
     }
 
     if (this._shouldUpdate) {
-      updater.requestUpdate();
+      updater.scheduleUpdate();
     }
 
     this._renderables = [];
     this._shouldUpdate = false;
+  }
+
+  scheduleUpdate(): void {
+    this._shouldUpdate = true;
   }
 }

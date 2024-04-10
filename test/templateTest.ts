@@ -1,25 +1,26 @@
 import { assert } from 'chai';
 
-import { TaggedTemplate, getMarker, isValidMarker } from '../src/template.js';
-import { PartType } from '../src/types.js';
+import {
+  AttributeBinding,
+  EventBinding,
+  NodeBinding,
+  PropertyBinding,
+  SpreadBinding,
+} from '../src/binding.js';
+import {
+  Template,
+  TemplateRoot,
+  getMarker,
+  isValidMarker,
+} from '../src/template.js';
+import { Part, PartType, Updater, directiveTag } from '../src/types.js';
+import { LocalUpdater } from '../src/updater/localUpdater.js';
+import { MockBinding, MockDirective } from './mocks.js';
+import { getCalls, spy } from './spy.js';
 
-describe('TaggedTemplate', () => {
-  const MARKER = getMarker();
+const MARKER = getMarker();
 
-  function html(
-    tokens: TemplateStringsArray,
-    ..._values: unknown[]
-  ): TaggedTemplate {
-    return TaggedTemplate.parseHTML(tokens, MARKER);
-  }
-
-  function svg(
-    tokens: TemplateStringsArray,
-    ..._values: unknown[]
-  ): TaggedTemplate {
-    return TaggedTemplate.parseSVG(tokens, MARKER);
-  }
-
+describe('Template', () => {
   describe('.parseHTML()', () => {
     it('should parse holes inside attributes', () => {
       const template = html`
@@ -188,10 +189,10 @@ describe('TaggedTemplate', () => {
 
     it('should throw an error if passed a marker in an invalid format', () => {
       assert.throw(() => {
-        TaggedTemplate.parseHTML([], 'INVALID_MARKER');
+        Template.parseHTML([], 'INVALID_MARKER');
       }, 'The marker is in an invalid format:');
       assert.throw(() => {
-        TaggedTemplate.parseHTML([], MARKER.toUpperCase());
+        Template.parseHTML([], MARKER.toUpperCase());
       }, 'The marker is in an invalid format:');
     });
 
@@ -285,26 +286,205 @@ describe('TaggedTemplate', () => {
 
     it('should throw an error when it is passed a marker in an invalid format', () => {
       assert.throw(() => {
-        TaggedTemplate.parseSVG([], 'INVALID_MARKER');
+        Template.parseSVG([], 'INVALID_MARKER');
       }, 'The marker is in an invalid format:');
       assert.throw(() => {
-        TaggedTemplate.parseSVG([], MARKER.toUpperCase());
+        Template.parseSVG([], MARKER.toUpperCase());
       }, 'The marker is in an invalid format:');
+    });
+  });
+
+  describe('.hydrate()', () => {
+    it('should return a TaggedTemplateRoot', () => {
+      const template = html`
+        <div class=${0}>
+          <!-- ${1} -->
+          <input type="text" .value=${2} @onchange=${3} ${4}><span>${5}</span>
+        </div>
+      `;
+      const values = [
+        'foo',
+        'bar',
+        'baz',
+        () => {},
+        { class: 'qux' },
+        new MockDirective('quux'),
+      ];
+      const updater = new LocalUpdater();
+      const root = template.hydrate(values, updater);
+
+      assert.instanceOf(root, TemplateRoot);
+      assert.lengthOf(root.bindings, values.length);
+      assert.lengthOf(root.childNodes, 1);
+
+      assert.sameOrderedMembers(
+        root.bindings.map((binding) => binding.value),
+        values,
+      );
+
+      assert.instanceOf(root.bindings[0], AttributeBinding);
+      assert.include(root.bindings[0]?.part, {
+        type: PartType.ATTRIBUTE,
+        name: 'class',
+      });
+      assert.instanceOf(root.bindings[1], NodeBinding);
+      assert.include(root.bindings[1]?.part, { type: PartType.CHILD_NODE });
+      assert.instanceOf(root.bindings[2], PropertyBinding);
+      assert.include(root.bindings[2]?.part, {
+        type: PartType.PROPERTY,
+        name: 'value',
+      });
+      assert.instanceOf(root.bindings[3], EventBinding);
+      assert.include(root.bindings[3]?.part, {
+        type: PartType.EVENT,
+        name: 'onchange',
+      });
+      assert.instanceOf(root.bindings[4], SpreadBinding);
+      assert.include(root.bindings[4]?.part, {
+        type: PartType.ELEMENT,
+      });
+      assert.instanceOf(root.bindings[5], MockBinding);
+      assert.include(root.bindings[5]?.part, {
+        type: PartType.NODE,
+      });
+
+      updater.flush();
+
+      assert.strictEqual(
+        (root.childNodes[0] as Element)?.outerHTML,
+        `<div class="foo">
+          <!--bar-->
+          <input type="text" class="qux"><span></span>
+        </div>`,
+      );
+    });
+
+    it('should throw an error if the number of holes and values do not match', () => {
+      const template = html`
+        <div class=${0} class=${1}></div>
+      `;
+      const values = ['foo', 'bar'];
+      const updater = new LocalUpdater();
+      assert.throws(() => {
+        template.hydrate(values, updater);
+      });
+    });
+  });
+});
+
+describe('TemplateRoot', () => {
+  describe('.mount()', () => {
+    it('should mount child nodes on the part', () => {
+      const template = html`
+        <p>Hello, ${0}!</p>
+      `;
+      const values = ['World'];
+      const updater = new LocalUpdater();
+      const root = template.hydrate(values, updater);
+
+      updater.flush();
+
+      const container = document.createElement('div');
+      const marker = document.createComment('');
+
+      container.appendChild(marker);
+
+      root.mount({
+        type: PartType.CHILD_NODE,
+        node: marker,
+      });
+
+      assert.strictEqual(container.innerHTML, '<p>Hello, World!</p><!---->');
+
+      root.unmount({
+        type: PartType.CHILD_NODE,
+        node: marker,
+      });
+
+      assert.strictEqual(container.innerHTML, '<!---->');
+    });
+  });
+
+  describe('.update()', () => {
+    it('should update bindings with new values', () => {
+      const template = html`
+        <p>Count: ${0}</p>
+      `;
+      const values = [0];
+      const updater = new LocalUpdater();
+      const root = template.hydrate(values, updater);
+
+      updater.flush();
+
+      assert.strictEqual(
+        (root.childNodes[0] as Element)?.outerHTML,
+        '<p>Count: 0</p>',
+      );
+
+      root.update([1], updater);
+
+      updater.flush();
+
+      assert.strictEqual(
+        (root.childNodes[0] as Element)?.outerHTML,
+        '<p>Count: 1</p>',
+      );
+    });
+  });
+
+  describe('.disconnect()', () => {
+    it('should disconnect bindings', () => {
+      const template = html`
+        <p>Count: ${0}</p>
+      `;
+      const values = [
+        spy(new MockDirective(0), {
+          [directiveTag](
+            this: MockDirective<number>,
+            part: Part,
+            _updater: Updater,
+          ) {
+            return spy(new MockBinding(part, this));
+          },
+        }),
+      ];
+      const updater = new LocalUpdater();
+      const root = template.hydrate(values, updater);
+
+      assert.notInclude(
+        getCalls(root.bindings[0]).map((call) => call.function.name),
+        'disconnect',
+      );
+
+      root.disconnect();
+
+      assert.include(
+        getCalls(root.bindings[0]).map((call) => call.function.name),
+        'disconnect',
+      );
     });
   });
 });
 
 describe('getMarker()', () => {
   it('returns a valid marker string', () => {
-    assert.ok(isValidMarker(getMarker()));
+    assert.isTrue(isValidMarker(getMarker()));
 
     // force randomUUID() polyfill.
     const originalRandomUUID = crypto.randomUUID;
     try {
       (crypto as any).randomUUID = null;
-      assert.ok(isValidMarker(getMarker()));
+      assert.isTrue(isValidMarker(getMarker()));
     } finally {
       crypto.randomUUID = originalRandomUUID;
     }
   });
 });
+
+function html(tokens: TemplateStringsArray, ..._values: unknown[]): Template {
+  return Template.parseHTML(tokens, MARKER);
+}
+
+function svg(tokens: TemplateStringsArray, ..._values: unknown[]): Template {
+  return Template.parseSVG(tokens, MARKER);
+}

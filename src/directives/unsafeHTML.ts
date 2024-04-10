@@ -1,5 +1,12 @@
-import { Binding, Directive, directiveTag } from '../binding.js';
-import { ChildNodePart, Part, PartType, Updater } from '../types.js';
+import {
+  Binding,
+  ChildNodePart,
+  Directive,
+  Part,
+  PartType,
+  Updater,
+  directiveTag,
+} from '../types.js';
 
 export function unsafeHTML(content: string): UnsafeHTMLDirective {
   return new UnsafeHTMLDirective(content);
@@ -18,9 +25,7 @@ export class UnsafeHTMLDirective implements Directive {
 
   [directiveTag](part: Part, updater: Updater): UnsafeHTMLBinding {
     if (part.type !== PartType.CHILD_NODE) {
-      throw new Error(
-        `${this.constructor.name} must be used in ChildNodePart.`,
-      );
+      throw new Error('UnsafeHTMLDirective must be used in ChildNodePart.');
     }
 
     const binding = new UnsafeHTMLBinding(part, this);
@@ -28,10 +33,6 @@ export class UnsafeHTMLDirective implements Directive {
     binding.bind(updater);
 
     return binding;
-  }
-
-  valueOf(): string {
-    return this._unsafeContent;
   }
 }
 
@@ -65,8 +66,8 @@ export class UnsafeHTMLBinding implements Binding<UnsafeHTMLDirective> {
     return this._directive;
   }
 
-  set value(newDirective: UnsafeHTMLDirective) {
-    this._directive = newDirective;
+  set value(newValue: UnsafeHTMLDirective) {
+    this._directive = newValue;
   }
 
   bind(updater: Updater): void {
@@ -85,14 +86,14 @@ export class UnsafeHTMLBinding implements Binding<UnsafeHTMLDirective> {
     }
   }
 
-  disconnect() {}
+  disconnect(): void {}
 
-  commit() {
-    const { unsafeContent } = this._directive;
-
+  commit(): void {
     for (let i = 0, l = this._childNodes.length; i < l; i++) {
       this._childNodes[i]!.remove();
     }
+
+    const { unsafeContent } = this._directive;
 
     if (unsafeContent !== '') {
       const template = document.createElement('template');

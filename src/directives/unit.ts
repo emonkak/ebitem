@@ -1,11 +1,8 @@
-import { Binding, Directive, directiveTag } from '../binding.js';
-import type { Part, Updater } from '../types.js';
+import { Binding, Directive, Part, Updater, directiveTag } from '../types.js';
 
 export class UnitDirective implements Directive {
   constructor() {
-    throw new Error(
-      `${this.constructor.name} constructor cannot be called directly.`,
-    );
+    throw new Error('UnitDirective constructor cannot be called directly.');
   }
 
   [directiveTag](part: Part, _updater: Updater): UnitBinding {

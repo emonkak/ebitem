@@ -1,13 +1,7 @@
-import {
-  Binding,
-  Directive,
-  createBinding,
-  directiveTag,
-  updateBinding,
-} from './binding.js';
+import { initBinding, updateBinding } from './binding.js';
 import { Context, UsableObject, usableTag } from './context.js';
 import { LinkedList } from './linkedList.js';
-import type { Part, Updater } from './types.js';
+import { Binding, Directive, Part, Updater, directiveTag } from './types.js';
 
 export type Subscriber = () => void;
 
@@ -51,34 +45,33 @@ export abstract class Signal<T> implements Directive, UsableObject<void> {
   }
 
   [directiveTag](part: Part, updater: Updater): SignalBinding<T> {
-    const binding = createBinding(part, this.value, updater);
-    return new SignalBinding(binding, this, updater);
+    return new SignalBinding(part, this, updater);
   }
 }
 
 export class SignalBinding<T> implements Binding<Signal<T>> {
-  private _binding: Binding<T>;
+  private _valueBinding: Binding<T>;
 
   private _signal: Signal<T>;
 
   private _subscription: Subscription | null = null;
 
-  constructor(binding: Binding<T>, signal: Signal<T>, updater: Updater) {
-    this._binding = binding;
+  constructor(part: Part, signal: Signal<T>, updater: Updater) {
+    this._valueBinding = initBinding(part, signal.value, updater);
     this._signal = signal;
     this._subscription = this._startSubscription(updater);
   }
 
   get part(): Part {
-    return this._binding.part;
+    return this._valueBinding.part;
   }
 
   get startNode(): ChildNode {
-    return this._binding.startNode;
+    return this._valueBinding.startNode;
   }
 
   get endNode(): ChildNode {
-    return this._binding.endNode;
+    return this._valueBinding.endNode;
   }
 
   get value(): Signal<T> {
@@ -91,20 +84,24 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
 
   bind(updater: Updater): void {
     if (this._subscription === null) {
-      this._binding = updateBinding(this._binding, this._signal.value, updater);
+      this._valueBinding = updateBinding(
+        this._valueBinding,
+        this._signal.value,
+        updater,
+      );
       this._subscription = this._startSubscription(updater);
     }
   }
 
   unbind(updater: Updater) {
-    this._binding.unbind(updater);
+    this._valueBinding.unbind(updater);
 
     this._subscription?.();
     this._subscription = null;
   }
 
   disconnect(): void {
-    this._binding.disconnect();
+    this._valueBinding.disconnect();
 
     this._subscription?.();
     this._subscription = null;
@@ -120,8 +117,8 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
         // FIXME: The binding will be updated with a new value whether or not
         // the target is connected to the document. Is is just a performance
         // issue?
-        that._binding = updateBinding(
-          that._binding,
+        that._valueBinding = updateBinding(
+          that._valueBinding,
           that._signal.value,
           updater,
         );
