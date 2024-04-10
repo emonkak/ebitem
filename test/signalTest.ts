@@ -1,6 +1,6 @@
 import { assert } from 'chai';
 
-import { AtomSignal, ComputedSignal, MemoizedSignal } from '../src/signal.js';
+import { AtomSignal, ComputedSignal } from '../src/signal.js';
 
 describe('AtomSignal', () => {
   it('should get 0 of the initial version on initalize', () => {
@@ -133,78 +133,64 @@ describe('AtomSignal', () => {
 });
 
 describe('ComputedSignal', () => {
-  it('should create a signal from the closure', () => {
-    let count = 0;
-    const signal = new ComputedSignal(() => ++count, []);
-
-    assert.strictEqual(signal.value, 1);
-    assert.strictEqual(signal.value, 2);
-    assert.strictEqual(signal.value, 3);
-    assert.strictEqual(signal.version, 0);
-  });
-
-  it('should compute from other signals', () => {
-    const first = new AtomSignal(1);
-    const second = new AtomSignal(2);
-    const third = new AtomSignal(3);
+  it('should return a memoized value', () => {
+    const foo = new AtomSignal(1);
+    const bar = new AtomSignal(2);
+    const baz = new AtomSignal(3);
 
     const signal = new ComputedSignal(
-      (first, second, third) => first.value + second.value + third.value,
-      [first, second, third],
+      (foo, bar, baz) => ({ foo: foo.value, bar: bar.value, baz: baz.value }),
+      [foo, bar, baz],
     );
 
-    assert.strictEqual(signal.value, 6);
+    assert.deepEqual(signal.value, { foo: 1, bar: 2, baz: 3 });
+    assert.strictEqual(signal.value, signal.value);
     assert.strictEqual(signal.version, 0);
   });
 
   it('should increment the version when any dependent signal has been updated', () => {
-    const first = new AtomSignal(1);
-    const second = new AtomSignal(2);
-    const third = new AtomSignal(3);
+    const foo = new AtomSignal(1);
+    const bar = new AtomSignal(2);
+    const baz = new AtomSignal(3);
 
-    const signal = ComputedSignal.compose(
-      (first, second, third) => first + second + third,
-      [first, second, third],
+    const signal = new ComputedSignal(
+      (foo, bar, baz) => ({ foo: foo.value, bar: bar.value, baz: baz.value }),
+      [foo, bar, baz],
     );
 
-    first.value = 10;
-    assert.strictEqual(signal.value, 15);
+    foo.value = 10;
+    assert.deepEqual(signal.value, { foo: 10, bar: 2, baz: 3 });
     assert.strictEqual(signal.version, 1);
 
-    second.value = 20;
-    assert.strictEqual(signal.value, 33);
+    let oldValue = signal.value;
+
+    bar.value = 20;
+    assert.deepEqual(signal.value, { foo: 10, bar: 20, baz: 3 });
+    assert.notStrictEqual(signal.value, oldValue);
     assert.strictEqual(signal.version, 2);
 
-    third.value = 30;
-    assert.strictEqual(signal.value, 60);
+    oldValue = signal.value;
+
+    baz.value = 30;
+    assert.deepEqual(signal.value, { foo: 10, bar: 20, baz: 30 });
+    assert.notStrictEqual(signal.value, oldValue);
     assert.strictEqual(signal.version, 3);
   });
 
   describe('.compose()', () => {
-    it('should compute from other signal values', () => {
-      const first = new AtomSignal(1);
-      const second = new AtomSignal(2);
-      const third = new AtomSignal(3);
+    it('should return a memoized value', () => {
+      const foo = new AtomSignal(1);
+      const bar = new AtomSignal(2);
+      const baz = new AtomSignal(3);
 
       const signal = ComputedSignal.compose(
-        (first, second, third) => first + second + third,
-        [first, second, third],
+        (foo, bar, baz) => ({ foo, bar, baz }),
+        [foo, bar, baz],
       );
 
-      assert.strictEqual(signal.value, 6);
+      assert.deepEqual(signal.value, { foo: 1, bar: 2, baz: 3 });
+      assert.strictEqual(signal.value, signal.value);
       assert.strictEqual(signal.version, 0);
-    });
-  });
-
-  describe('.memoized()', () => {
-    it('should create a memoized signal', () => {
-      let count = 0;
-      const signal = new ComputedSignal(() => ++count, []);
-      const memoizedSignal = signal.memoized();
-
-      assert.strictEqual(memoizedSignal.value, 1);
-      assert.strictEqual(memoizedSignal.value, 1);
-      assert.strictEqual(memoizedSignal.version, 0);
     });
   });
 
@@ -212,13 +198,13 @@ describe('ComputedSignal', () => {
     it('should invoke the callback on update', () => {
       let count = 0;
 
-      const first = new AtomSignal(1);
-      const second = new AtomSignal(2);
-      const third = new AtomSignal(3);
+      const foo = new AtomSignal(1);
+      const bar = new AtomSignal(2);
+      const baz = new AtomSignal(3);
 
       const signal = new ComputedSignal(
-        (first, second, third) => first.value + second.value + third.value,
-        [first, second, third],
+        (foo, bar, baz) => ({ foo: foo.value, bar: bar.value, baz: baz.value }),
+        [foo, bar, baz],
       );
 
       signal.subscribe(() => {
@@ -226,26 +212,26 @@ describe('ComputedSignal', () => {
       });
       assert.strictEqual(count, 0);
 
-      first.value *= 2;
+      foo.value++;
       assert.strictEqual(count, 1);
 
-      second.value *= 2;
+      bar.value++;
       assert.strictEqual(count, 2);
 
-      third.value *= 2;
+      baz.value++;
       assert.strictEqual(count, 3);
     });
 
     it('should not invoke the unsubscribed callback', () => {
       let count = 0;
 
-      const first = new AtomSignal(1);
-      const second = new AtomSignal(2);
-      const third = new AtomSignal(3);
+      const foo = new AtomSignal(1);
+      const bar = new AtomSignal(2);
+      const baz = new AtomSignal(3);
 
       const signal = new ComputedSignal(
-        (first, second, third) => first.value + second.value + third.value,
-        [first, second, third],
+        (foo, bar, baz) => ({ foo: foo.value, bar: bar.value, baz: baz.value }),
+        [foo, bar, baz],
       );
 
       signal.subscribe(() => {
@@ -253,53 +239,13 @@ describe('ComputedSignal', () => {
       })();
       assert.strictEqual(count, 0);
 
-      first.value *= 2;
+      foo.value++;
       assert.strictEqual(count, 0);
 
-      second.value *= 2;
+      bar.value++;
       assert.strictEqual(count, 0);
 
-      third.value *= 2;
-      assert.strictEqual(count, 0);
-    });
-  });
-});
-
-describe('MemoizedSignal', () => {
-  describe('.subscribe()', () => {
-    it('should invoke the callback on update', () => {
-      let count = 0;
-
-      const first = new AtomSignal(1);
-      const signal = new MemoizedSignal(first);
-
-      signal.subscribe(() => {
-        count++;
-      });
-      assert.strictEqual(count, 0);
-
-      first.value++;
-      assert.strictEqual(count, 1);
-
-      first.value++;
-      assert.strictEqual(count, 2);
-    });
-
-    it('should not invoke the unsubscribed callback', () => {
-      let count = 0;
-
-      const first = new AtomSignal(1);
-      const signal = new MemoizedSignal(first);
-
-      signal.subscribe(() => {
-        count++;
-      })();
-      assert.strictEqual(count, 0);
-
-      first.value++;
-      assert.strictEqual(count, 0);
-
-      first.value++;
+      baz.value++;
       assert.strictEqual(count, 0);
     });
   });

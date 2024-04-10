@@ -32,10 +32,6 @@ export abstract class Signal<T> implements Directive, UsableObject<void> {
     return ComputedSignal.compose(selector, [this as Signal<T>]);
   }
 
-  memoized(): MemoizedSignal<T> {
-    return new MemoizedSignal(this);
-  }
-
   toJSON(): T {
     return this.value;
   }
@@ -215,6 +211,10 @@ export class ComputedSignal<
 
   private readonly _dependencies: TDependencies;
 
+  private _memoizedValue: TResult | null = null;
+
+  private _memoizedVersion = -1; // -1 is indicated an uninitialized signal.
+
   static compose<TResult, const TDependencies extends Signal<any>[]>(
     factory: (...signals: UnwrapSignals<TDependencies>) => TResult,
     dependencies: TDependencies,
@@ -237,8 +237,13 @@ export class ComputedSignal<
   }
 
   get value(): TResult {
-    const factory = this._factory;
-    return factory(...this._dependencies);
+    const newVersion = this.version;
+    if (this._memoizedVersion < newVersion) {
+      const factory = this._factory;
+      this._memoizedVersion = newVersion;
+      this._memoizedValue = factory(...this._dependencies);
+    }
+    return this._memoizedValue!;
   }
 
   get version(): number {
@@ -262,35 +267,5 @@ export class ComputedSignal<
         subscriptions[i]!();
       }
     };
-  }
-}
-
-export class MemoizedSignal<T> extends Signal<T> {
-  private readonly _signal: Signal<T>;
-
-  private _memoizedValue: T | null = null;
-
-  private _memoizedVersion = -1; // -1 is indicated an uninitialized signal.
-
-  constructor(signal: Signal<T>) {
-    super();
-    this._signal = signal;
-  }
-
-  get value(): T {
-    const newVersion = this._signal.version;
-    if (this._memoizedVersion < newVersion) {
-      this._memoizedValue = this._signal.value;
-      this._memoizedVersion = newVersion;
-    }
-    return this._memoizedValue!;
-  }
-
-  get version(): number {
-    return this._signal.version;
-  }
-
-  subscribe(subscriber: Subscriber): Subscription {
-    return this._signal.subscribe(subscriber);
   }
 }
