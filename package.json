@@ -21,9 +21,12 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc --build",
+    "build:all": "pnpm run --include-workspace-root --recursive --parallel build",
     "clean": "tsc --build --clean",
+    "clean:all": "pnpm run --include-workspace-root --recursive --parallel clean",
     "test": "NODE_OPTIONS=--no-deprecation web-test-runner",
-    "watch": "tsc --build --watch --preserveWatchOutput"
+    "watch": "tsc --build --watch --preserveWatchOutput",
+    "watch:all": "pnpm run --include-workspace-root --recursive --parallel watch"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.5.3",
