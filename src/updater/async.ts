@@ -1,5 +1,11 @@
-import { Scheduler, getDefaultScheduler } from '../scheduler.js';
-import { CommitMode, Effect, Renderable, Scope, Updater } from '../types.js';
+import { Scheduler, createDefaultScheduler } from '../scheduler.js';
+import {
+  AbstractScope,
+  CommitMode,
+  Effect,
+  Renderable,
+  Updater,
+} from '../types.js';
 import { shouldSkipRender } from '../updater.js';
 
 export interface AsyncUpdaterOptions {
@@ -7,7 +13,7 @@ export interface AsyncUpdaterOptions {
 }
 
 export class AsyncUpdater<TContext> implements Updater<TContext> {
-  private readonly _scope: Scope<TContext>;
+  private readonly _scope: AbstractScope<TContext>;
 
   private readonly _scheduler: Scheduler;
 
@@ -24,8 +30,8 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
   private _runningUpdateLoop: Promise<void> | null = null;
 
   constructor(
-    scope: Scope<TContext>,
-    { scheduler = getDefaultScheduler() }: AsyncUpdaterOptions = {},
+    scope: AbstractScope<TContext>,
+    { scheduler = createDefaultScheduler() }: AsyncUpdaterOptions = {},
   ) {
     this._scope = scope;
     this._scheduler = scheduler;
@@ -35,7 +41,7 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
     return this._currentRenderable;
   }
 
-  get scope(): Scope<TContext> {
+  get scope(): AbstractScope<TContext> {
     return this._scope;
   }
 

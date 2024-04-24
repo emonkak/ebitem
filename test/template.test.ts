@@ -14,7 +14,7 @@ import {
   isValidMarker,
 } from '../src/template.js';
 import { Part, PartType, Updater, directiveTag } from '../src/types.js';
-import { LocalUpdater } from '../src/updater/localUpdater.js';
+import { LocalUpdater } from '../src/updater/local.js';
 import { MockBinding, MockDirective } from './mocks.js';
 import { getCalls, spy } from './spy.js';
 

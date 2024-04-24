@@ -5,5 +5,6 @@ export * from './scheduler.js';
 export * from './scope.js';
 export * from './template.js';
 export * from './types.js';
-export * from './updater/asyncUpdater.js';
-export * from './updater/syncUpdater.js';
+export * from './updater/async.js';
+export * from './updater/local.js';
+export * from './updater/sync.js';

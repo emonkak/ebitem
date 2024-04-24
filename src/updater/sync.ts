@@ -1,8 +1,14 @@
-import { CommitMode, Effect, Renderable, Scope, Updater } from '../types.js';
+import {
+  AbstractScope,
+  CommitMode,
+  Effect,
+  Renderable,
+  Updater,
+} from '../types.js';
 import { shouldSkipRender } from '../updater.js';
 
 export class SyncUpdater<TContext> implements Updater<TContext> {
-  private readonly _scope: Scope<TContext>;
+  private readonly _scope: AbstractScope<TContext>;
 
   private _currentRenderable: Renderable<TContext> | null = null;
 
@@ -16,7 +22,7 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
 
   private _isRunning = false;
 
-  constructor(scope: Scope<TContext>) {
+  constructor(scope: AbstractScope<TContext>) {
     this._scope = scope;
   }
 
@@ -24,7 +30,7 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
     return this._currentRenderable;
   }
 
-  get scope(): Scope<TContext> {
+  get scope(): AbstractScope<TContext> {
     return this._scope;
   }
 
@@ -53,11 +59,13 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
       return;
     }
     this._isRunning = true;
-    try {
-      this._runUpdateLoop();
-    } finally {
-      this._isRunning = false;
-    }
+    queueMicrotask(() => {
+      try {
+        this._runUpdateLoop();
+      } finally {
+        this._isRunning = false;
+      }
+    });
   }
 
   _runUpdateLoop(): void {
