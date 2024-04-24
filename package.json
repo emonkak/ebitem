@@ -24,17 +24,17 @@
     "build:all": "pnpm run --include-workspace-root --recursive --parallel build",
     "clean": "tsc --build --clean",
     "clean:all": "pnpm run --include-workspace-root --recursive --parallel clean",
-    "test": "NODE_OPTIONS=--no-deprecation web-test-runner",
+    "test": "vitest run",
+    "coverage": "vitest run --coverage",
     "watch": "tsc --build --watch --preserveWatchOutput",
     "watch:all": "pnpm run --include-workspace-root --recursive --parallel watch"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.5.3",
-    "@types/chai": "^4.3.12",
-    "@types/mocha": "^10.0.6",
-    "@web/dev-server-esbuild": "^1.0.2",
-    "@web/test-runner": "^0.18.0",
-    "chai": "^5.1.0",
-    "typescript": "^5.3.3"
+    "@vitest/browser": "^1.5.0",
+    "@vitest/coverage-istanbul": "^1.5.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.5.0",
+    "webdriverio": "^8.36.1"
   }
 }
