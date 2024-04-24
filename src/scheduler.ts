@@ -1,19 +1,19 @@
 export interface Scheduler {
   getCurrentTime(): number;
-  postRenderingTask(task: Task): Promise<void>;
-  postBlockingTask(task: Task): Promise<void>;
-  postBackgroundTask(task: Task): Promise<void>;
+  postRenderingTask<T>(task: Task<T>): Promise<T>;
+  postBlockingTask<T>(task: Task<T>): Promise<T>;
+  postBackgroundTask<T>(task: Task<T>): Promise<T>;
   shouldYieldToMain(startTime: number): boolean;
   yieldToMain(): Promise<void>;
 }
 
-export type Task = () => Promise<void>;
+export type Task<T> = () => Promise<T>;
 
 const FRAME_INTERVAL = 5;
 const CONTINUOUS_INPUT_INTERVAL = 50;
 const MAX_YIELD_INTERVAL = 300;
 
-export function createDefaultScheduler(): Scheduler {
+export function createAdaptedScheduler(): Scheduler {
   let getCurrentTime: Scheduler['getCurrentTime'];
   let postRenderingTask: Scheduler['postRenderingTask'];
   let postBlockingTask: Scheduler['postBlockingTask'];
@@ -21,66 +21,54 @@ export function createDefaultScheduler(): Scheduler {
   let shouldYieldToMain: Scheduler['shouldYieldToMain'];
   let yieldToMain: Scheduler['yieldToMain'];
 
-  if ('performance' in globalThis && 'now' in performance) {
+  if (typeof globalThis?.performance?.now === 'function') {
     getCurrentTime = () => performance.now();
   } else {
     getCurrentTime = () => Date.now();
   }
 
-  if ('scheduler' in globalThis && 'postTask' in scheduler) {
-    postRenderingTask = (task) =>
-      new Promise((resolve, reject) => {
-        scheduler.postTask(() => task().then(resolve, reject), {
-          priority: 'user-visible',
-        });
-      });
+  postRenderingTask = (task) =>
+    new Promise((resolve, reject) => {
+      queueMicrotask(() => task().then(resolve, reject));
+    });
+
+  if (typeof globalThis?.scheduler?.postTask === 'function') {
     postBlockingTask = (task) =>
-      new Promise((resolve, reject) => {
-        scheduler.postTask(() => task().then(resolve, reject), {
-          priority: 'user-blocking',
-        });
+      scheduler.postTask(task, {
+        priority: 'user-blocking',
       });
     postBackgroundTask = (task) =>
-      new Promise((resolve, reject) => {
-        scheduler.postTask(() => task().then(resolve, reject), {
-          priority: 'background',
-        });
+      scheduler.postTask(task, {
+        priority: 'background',
       });
   } else {
-    postRenderingTask = (task) =>
+    postBlockingTask = (task) =>
       new Promise((resolve, reject) => {
-        queueMicrotask(() => task().then(resolve, reject));
+        requestAnimationFrame(() => task().then(resolve, reject));
       });
-    if ('requestAnimationFrame' in globalThis) {
-      postBlockingTask = (task) =>
-        new Promise((resolve, reject) => {
-          requestAnimationFrame(() => task().then(resolve, reject));
-        });
-    } else {
-      postBlockingTask = postRenderingTask;
-    }
-    if ('requestIdleCallback' in globalThis) {
+    if (typeof globalThis?.requestIdleCallback === 'function') {
       postBackgroundTask = (task) =>
         new Promise((resolve, reject) => {
           requestIdleCallback(() => task().then(resolve, reject));
         });
     } else {
-      postBackgroundTask = postRenderingTask;
+      postBackgroundTask = (task) =>
+        new Promise((resolve, reject) => {
+          queueMicrotask(() => task().then(resolve, reject));
+        });
     }
   }
 
-  if (
-    'navigator' in globalThis &&
-    'scheduling' in navigator &&
-    'isInputPending' in navigator.scheduling
-  ) {
-    shouldYieldToMain = (startTime) => {
-      const elapsedTime = getCurrentTime() - startTime;
+  if (typeof globalThis?.navigator?.scheduling.isInputPending === 'function') {
+    shouldYieldToMain = function (this: Scheduler, startTime) {
+      const elapsedTime = this.getCurrentTime() - startTime;
       if (elapsedTime < FRAME_INTERVAL) {
         return false;
       }
       if (elapsedTime < CONTINUOUS_INPUT_INTERVAL) {
-        return navigator.scheduling.isInputPending();
+        return navigator.scheduling.isInputPending({
+          includeContinuous: false,
+        });
       }
       if (elapsedTime < MAX_YIELD_INTERVAL) {
         return navigator.scheduling.isInputPending({ includeContinuous: true });
@@ -88,19 +76,16 @@ export function createDefaultScheduler(): Scheduler {
       return true;
     };
   } else {
-    shouldYieldToMain = (startTime) => {
-      const elapsedTime = getCurrentTime() - startTime;
+    shouldYieldToMain = function (this: Scheduler, startTime) {
+      const elapsedTime = this.getCurrentTime() - startTime;
       return elapsedTime >= FRAME_INTERVAL;
     };
   }
 
-  if ('scheduler' in globalThis && 'yield' in scheduler) {
+  if (typeof globalThis?.scheduler?.yield === 'function') {
     yieldToMain = () => scheduler.yield();
   } else {
-    yieldToMain = () =>
-      new Promise((resolve) => {
-        queueMicrotask(resolve);
-      });
+    yieldToMain = () => new Promise(queueMicrotask);
   }
 
   return {

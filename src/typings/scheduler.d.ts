@@ -5,13 +5,17 @@ interface SchedulerPostTaskOptions {
 }
 
 interface Scheduler {
-  postTask<T, P extends readonly unknown[] | []>(
-    callback: (...params: P) => T,
+  postTask<T>(
+    callback: (...params: P) => T | PromiseLike<T>,
     options?: SchedulerPostTaskOptions,
-    ...arguments: P
   ): Promise<T>;
   yield(): Promise<void>;
 }
+
+declare var Scheduler: {
+  prototype: Scheduler;
+  new (): Scheduler;
+};
 
 declare var scheduler: Scheduler;
 

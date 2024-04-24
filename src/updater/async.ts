@@ -1,4 +1,4 @@
-import { Scheduler, createDefaultScheduler } from '../scheduler.js';
+import { Scheduler, createAdaptedScheduler } from '../scheduler.js';
 import {
   AbstractScope,
   CommitMode,
@@ -31,7 +31,7 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
 
   constructor(
     scope: AbstractScope<TContext>,
-    { scheduler = createDefaultScheduler() }: AsyncUpdaterOptions = {},
+    { scheduler = createAdaptedScheduler() }: AsyncUpdaterOptions = {},
   ) {
     this._scope = scope;
     this._scheduler = scheduler;

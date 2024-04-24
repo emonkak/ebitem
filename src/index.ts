@@ -8,7 +8,7 @@ export {
 export {
   type Scheduler,
   type Task,
-  createDefaultScheduler,
+  createAdaptedScheduler,
 } from './scheduler.js';
 export { Scope } from './scope.js';
 export { Template, TemplateRoot } from './template.js';
