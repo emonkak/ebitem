@@ -6,7 +6,7 @@ export class UnitDirective implements Directive {
   }
 
   [directiveTag](part: Part, _updater: Updater): UnitBinding {
-    return new UnitBinding(part, this);
+    return new UnitBinding(this, part);
   }
 }
 
@@ -17,9 +17,9 @@ export class UnitBinding implements Binding<UnitDirective> {
 
   private _directive: UnitDirective;
 
-  constructor(part: Part, directive: UnitDirective) {
-    this._part = part;
+  constructor(directive: UnitDirective, part: Part) {
     this._directive = directive;
+    this._part = part;
   }
 
   get part(): Part {

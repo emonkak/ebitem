@@ -11,7 +11,7 @@ import {
 
 export type StyleMap = { [P in StyleProperty]?: CSSStyleValue | string };
 
-export type StyleProperty = ExtractStringProperty<CSSStyleDeclaration>;
+type StyleProperty = ExtractStringProperty<CSSStyleDeclaration>;
 
 type ExtractStringProperty<T> = {
   [P in keyof T]: P extends string ? (T[P] extends string ? P : never) : never;
@@ -37,7 +37,7 @@ export class StyleDirective implements Directive {
       throw new Error('StyleDirective must be used in the "style" attribute.');
     }
 
-    const binding = new StyleBinding(part, this);
+    const binding = new StyleBinding(this, part);
 
     binding.bind(updater);
 
@@ -52,9 +52,9 @@ export class StyleBinding implements Binding<StyleDirective>, Effect {
 
   private _dirty = false;
 
-  constructor(part: AttributePart, directive: StyleDirective) {
-    this._part = part;
+  constructor(directive: StyleDirective, part: AttributePart) {
     this._directive = directive;
+    this._part = part;
   }
 
   get part(): AttributePart {

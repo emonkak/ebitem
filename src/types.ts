@@ -11,7 +11,7 @@ export interface Renderable<TContext = unknown> {
   get dirty(): boolean;
   get parent(): Renderable<TContext> | null;
   requestUpdate(updater: Updater<TContext>): void;
-  render(updater: Updater<TContext>, scope: Scope<TContext>): void;
+  render(updater: Updater<TContext>, scope: AbstractScope<TContext>): void;
 }
 
 export enum CommitMode {
@@ -24,7 +24,7 @@ export interface Effect {
   commit(mode: CommitMode): void;
 }
 
-export interface Scope<TContext = unknown> {
+export interface AbstractScope<TContext = unknown> {
   getVariable(key: PropertyKey, renderable: Renderable<TContext>): unknown;
 
   setVariable(
@@ -102,8 +102,6 @@ export enum PartType {
   NODE,
   PROPERTY,
 }
-
-export type NamedPart = AttributePart | EventPart | PropertyPart;
 
 export interface AttributePart {
   type: PartType.ATTRIBUTE;

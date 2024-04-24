@@ -4,7 +4,6 @@ import {
   Effect,
   ElementPart,
   EventPart,
-  NamedPart,
   Part,
   PartType,
   PropertyPart,
@@ -22,9 +21,9 @@ export class AttributeBinding implements Binding<unknown>, Effect {
 
   private _dirty = false;
 
-  constructor(part: AttributePart, value: unknown) {
-    this._part = part;
+  constructor(value: unknown, part: AttributePart) {
     this._value = value;
+    this._part = part;
   }
 
   get part(): AttributePart {
@@ -54,7 +53,7 @@ export class AttributeBinding implements Binding<unknown>, Effect {
     }
   }
 
-  unbind(updater: Updater) {
+  unbind(updater: Updater): void {
     this._value = null;
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
@@ -91,9 +90,7 @@ export class EventBinding implements Binding<unknown>, Effect {
 
   private _dirty = false;
 
-  constructor(part: EventPart, value: unknown) {
-    this._part = part;
-
+  constructor(value: unknown, part: EventPart) {
     if (value == null) {
       this._pendingListener = null;
     } else if (isEventListener(value)) {
@@ -103,6 +100,7 @@ export class EventBinding implements Binding<unknown>, Effect {
         'A value that EventBinding binds must be EventListener, EventListenerObject or null.',
       );
     }
+    this._part = part;
   }
 
   get part(): EventPart {
@@ -117,7 +115,7 @@ export class EventBinding implements Binding<unknown>, Effect {
     return this._part.node;
   }
 
-  get value(): EventListenerOrEventListenerObject | null {
+  get value(): unknown {
     return this._pendingListener;
   }
 
@@ -140,7 +138,7 @@ export class EventBinding implements Binding<unknown>, Effect {
     }
   }
 
-  unbind(updater: Updater) {
+  unbind(updater: Updater): void {
     this._pendingListener = null;
 
     if (!this._dirty && this._memoizedListener !== null) {
@@ -149,7 +147,25 @@ export class EventBinding implements Binding<unknown>, Effect {
     }
   }
 
-  disconnect(): void {}
+  disconnect(): void {
+    const listener = this._memoizedListener;
+
+    if (listener !== null) {
+      const { node, name } = this._part;
+
+      if (typeof listener === 'function') {
+        node.removeEventListener(name, this);
+      } else {
+        node.removeEventListener(
+          name,
+          this,
+          listener as AddEventListenerOptions,
+        );
+      }
+
+      this._memoizedListener = null;
+    }
+  }
 
   commit(): void {
     const oldListener = this._memoizedListener;
@@ -192,10 +208,11 @@ export class EventBinding implements Binding<unknown>, Effect {
   }
 
   handleEvent(event: Event): void {
-    if (typeof this._memoizedListener === 'function') {
-      this._memoizedListener(event);
+    const listener = this._memoizedListener!;
+    if (typeof listener === 'function') {
+      listener(event);
     } else {
-      this._memoizedListener!.handleEvent(event);
+      listener.handleEvent(event);
     }
   }
 }
@@ -207,9 +224,9 @@ export class NodeBinding implements Binding<unknown>, Effect {
 
   private _dirty = false;
 
-  constructor(part: Part, value: unknown) {
-    this._part = part;
+  constructor(value: unknown, part: Part) {
     this._value = value;
+    this._part = part;
   }
 
   get part(): Part {
@@ -239,7 +256,7 @@ export class NodeBinding implements Binding<unknown>, Effect {
     }
   }
 
-  unbind(updater: Updater) {
+  unbind(updater: Updater): void {
     this._value = null;
 
     if (!this._dirty) {
@@ -264,9 +281,9 @@ export class PropertyBinding implements Binding<unknown>, Effect {
 
   private _dirty = false;
 
-  constructor(part: PropertyPart, value: unknown) {
-    this._part = part;
+  constructor(value: unknown, part: PropertyPart) {
     this._value = value;
+    this._part = part;
   }
 
   get part(): PropertyPart {
@@ -312,15 +329,15 @@ export class SpreadBinding implements Binding<unknown> {
 
   private _props: SpreadProps;
 
-  private _bindings: Map<PropertyKey, Binding<unknown>> = new Map();
+  private _bindings: Map<string, Binding<unknown>> = new Map();
 
-  constructor(part: ElementPart, value: unknown) {
+  constructor(value: unknown, part: ElementPart) {
     if (!isSpreadProps(value)) {
       throw new Error('A value of SpreadBinding must be an object.');
     }
 
-    this._part = part;
     this._props = value;
+    this._part = part;
   }
 
   get part(): ElementPart {
@@ -348,31 +365,35 @@ export class SpreadBinding implements Binding<unknown> {
   }
 
   bind(updater: Updater): void {
-    for (const key in this._props) {
-      const value = this._props[key];
-      let binding = this._bindings.get(key);
+    for (const name in this._props) {
+      const value = this._props[name];
+      if (value === undefined) {
+        continue;
+      }
+
+      let binding = this._bindings.get(name);
 
       if (binding !== undefined) {
         if (!Object.is(binding.value, value)) {
           binding = updateBinding(binding, value, updater);
         }
       } else {
-        const part = resolveNamedPart(this._part.node, key);
-        binding = initBinding(part, value, updater);
+        const part = resolveSpreadPart(name, this._part.node);
+        binding = initializeBinding(value, part, updater);
       }
 
-      this._bindings.set(key, binding);
+      this._bindings.set(name, binding);
     }
 
-    for (const [oldKey, oldBinding] of this._bindings.entries()) {
-      if (!(oldKey in this._props)) {
+    for (const [oldName, oldBinding] of this._bindings.entries()) {
+      if (!(oldName in this._props) || this._props[oldName] === undefined) {
         oldBinding.unbind(updater);
-        this._bindings.delete(oldKey);
+        this._bindings.delete(oldName);
       }
     }
   }
 
-  unbind(updater: Updater) {
+  unbind(updater: Updater): void {
     this._props = {};
     this._bindings.forEach((binding) => {
       binding.unbind(updater);
@@ -387,9 +408,9 @@ export class SpreadBinding implements Binding<unknown> {
   }
 }
 
-export function initBinding<TValue, TContext>(
-  part: Part,
+export function initializeBinding<TValue, TContext>(
   value: TValue,
+  part: Part,
   updater: Updater<TContext>,
 ): Binding<TValue, TContext> {
   if (isDirective(value)) {
@@ -401,26 +422,6 @@ export function initBinding<TValue, TContext>(
   }
 }
 
-export function resolvePrimitiveBinding(
-  part: Part,
-  value: unknown,
-): Binding<any> {
-  switch (part.type) {
-    case PartType.ATTRIBUTE:
-      return new AttributeBinding(part, value);
-    case PartType.CHILD_NODE:
-      return new NodeBinding(part, value);
-    case PartType.ELEMENT:
-      return new SpreadBinding(part, value);
-    case PartType.EVENT:
-      return new EventBinding(part, value);
-    case PartType.NODE:
-      return new NodeBinding(part, value);
-    case PartType.PROPERTY:
-      return new PropertyBinding(part, value);
-  }
-}
-
 export function updateBinding<TValue, TContext>(
   binding: Binding<TValue, TContext>,
   newValue: TValue,
@@ -429,7 +430,7 @@ export function updateBinding<TValue, TContext>(
   const oldValue = binding.value;
 
   if (isDirective(newValue)) {
-    if (isDirective(oldValue) && samePrototype(oldValue, newValue)) {
+    if (isDirective(oldValue) && isPrototypeOf(oldValue, newValue)) {
       binding.value = newValue;
       binding.bind(updater);
     } else {
@@ -465,7 +466,24 @@ function isSpreadProps(value: unknown): value is SpreadProps {
   return value !== null && typeof value === 'object';
 }
 
-function resolveNamedPart(element: Element, name: string): NamedPart {
+function resolvePrimitiveBinding(part: Part, value: unknown): Binding<any> {
+  switch (part.type) {
+    case PartType.ATTRIBUTE:
+      return new AttributeBinding(value, part);
+    case PartType.CHILD_NODE:
+      return new NodeBinding(value, part);
+    case PartType.ELEMENT:
+      return new SpreadBinding(value, part);
+    case PartType.EVENT:
+      return new EventBinding(value, part);
+    case PartType.NODE:
+      return new NodeBinding(value, part);
+    case PartType.PROPERTY:
+      return new PropertyBinding(value, part);
+  }
+}
+
+function resolveSpreadPart(name: string, element: Element): Part {
   if (name.length > 1 && name[0] === '@') {
     return { type: PartType.EVENT, node: element, name: name.slice(1) };
   } else if (name.length > 1 && name[0] === '.') {
@@ -475,7 +493,7 @@ function resolveNamedPart(element: Element, name: string): NamedPart {
   }
 }
 
-function samePrototype<T extends object>(base: T, target: object): target is T {
+function isPrototypeOf<T extends object>(base: T, target: object): target is T {
   return Object.prototype.isPrototypeOf.call(
     Object.getPrototypeOf(base),
     target,

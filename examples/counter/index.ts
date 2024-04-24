@@ -1,11 +1,6 @@
+import { AsyncUpdater, Context, Scope, mount } from '@emonkak/ebitem';
 import {
-  AsyncUpdater,
-  Context,
-  LocalScope,
   TemplateDirective,
-  mount,
-} from '@emonkak/ebitem';
-import {
   block,
   choice,
   classNames,
@@ -196,6 +191,6 @@ function shuffle<T>(elements: T[]): T[] {
   return elements;
 }
 
-const updater = new AsyncUpdater(new LocalScope());
+const updater = new AsyncUpdater(new Scope());
 
 mount(block(App, {}), document.body, updater);

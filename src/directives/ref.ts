@@ -32,7 +32,7 @@ export class RefDirective implements Directive {
       throw new Error('RefDirective must be used in "ref" attribute.');
     }
 
-    const binding = new RefBinding(part, this);
+    const binding = new RefBinding(this, part);
 
     binding.bind(updater);
 
@@ -49,9 +49,9 @@ export class RefBinding implements Binding<RefDirective>, Effect {
 
   private _dirty = false;
 
-  constructor(part: AttributePart, directive: RefDirective) {
-    this._part = part;
+  constructor(directive: RefDirective, part: AttributePart) {
     this._pendingDirective = directive;
+    this._part = part;
   }
 
   get part(): AttributePart {

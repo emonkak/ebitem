@@ -28,7 +28,7 @@ export class UnsafeSVGDirective implements Directive {
       throw new Error('UnsafeSVGDirective must be used in ChildNodePart.');
     }
 
-    const binding = new UnsafeSVGBinding(part, this);
+    const binding = new UnsafeSVGBinding(this, part);
 
     binding.bind(updater);
 
@@ -45,9 +45,9 @@ export class UnsafeSVGBinding implements Binding<UnsafeSVGDirective> {
 
   private _dirty = false;
 
-  constructor(part: ChildNodePart, directive: UnsafeSVGDirective) {
-    this._part = part;
+  constructor(directive: UnsafeSVGDirective, part: ChildNodePart) {
     this._directive = directive;
+    this._part = part;
   }
 
   get part(): ChildNodePart {

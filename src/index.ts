@@ -1,10 +1,19 @@
-export * from './binding.js';
-export * from './context.js';
-export * from './directives/template.js';
-export * from './scheduler.js';
-export * from './scope.js';
-export * from './template.js';
+export {
+  type Usable,
+  type UsableFunction,
+  type UsableObject,
+  usableTag,
+  Context,
+} from './context.js';
+export {
+  type Scheduler,
+  type Task,
+  createDefaultScheduler,
+} from './scheduler.js';
+export { Scope } from './scope.js';
+export { Template, TemplateRoot } from './template.js';
 export * from './types.js';
-export * from './updater/async.js';
-export * from './updater/local.js';
-export * from './updater/sync.js';
+export { AsyncUpdater } from './updater/async.js';
+export { LocalUpdater } from './updater/local.js';
+export { SyncUpdater } from './updater/sync.js';
+export { mount } from './updater.js';

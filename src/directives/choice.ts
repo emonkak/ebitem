@@ -1,4 +1,4 @@
-import { initBinding, updateBinding } from '../binding.js';
+import { initializeBinding, updateBinding } from '../binding.js';
 import { Binding, Directive, Part, Updater, directiveTag } from '../types.js';
 
 export function choice<TKey, TValue>(
@@ -29,8 +29,8 @@ export class ChoiceDirective<TKey, TValue> implements Directive {
   [directiveTag](part: Part, updater: Updater): ChoiceBinding<TKey, TValue> {
     const factory = this._factory;
     const value = factory(this._key);
-    const initialBinding = initBinding(part, value, updater);
-    return new ChoiceBinding(initialBinding, this);
+    const initialBinding = initializeBinding(value, part, updater);
+    return new ChoiceBinding(this, initialBinding);
   }
 }
 
@@ -46,12 +46,12 @@ export class ChoiceBinding<TKey, TValue>
   private _cachedBindings: Map<TKey, Binding<TValue>> = new Map();
 
   constructor(
-    initialBinding: Binding<TValue>,
     directive: ChoiceDirective<TKey, TValue>,
+    initialBinding: Binding<TValue>,
   ) {
+    this._directive = directive;
     this._currentBinding = initialBinding;
     this._currentKey = directive.key;
-    this._directive = directive;
   }
 
   get part(): Part {
@@ -97,9 +97,9 @@ export class ChoiceBinding<TKey, TValue>
       if (cachedBinding !== undefined) {
         this._currentBinding = updateBinding(cachedBinding, newValue, updater);
       } else {
-        this._currentBinding = initBinding(
-          this._currentBinding.part,
+        this._currentBinding = initializeBinding(
           newValue,
+          this._currentBinding.part,
           updater,
         );
       }

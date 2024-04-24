@@ -1,4 +1,5 @@
 import {
+  AbstractScope,
   AbstractTemplate,
   AbstractTemplateRoot,
   Binding,
@@ -8,17 +9,15 @@ import {
   Part,
   PartType,
   Renderable,
-  Scope,
   Updater,
   directiveTag,
 } from '../types.js';
 
-const FragmentFlags = {
+const TemplateFlags = {
   NONE: 0,
   UPDATING: 1 << 0,
   MUTATING: 1 << 1,
   UNMOUNTING: 1 << 2,
-  MOUNTED: 1 << 3,
 };
 
 export class TemplateDirective implements Directive {
@@ -44,7 +43,7 @@ export class TemplateDirective implements Directive {
       throw new Error('TemplateDirective must be used in ChildNodePart.');
     }
 
-    const binding = new TemplateBinding(part, this, updater.currentRenderable);
+    const binding = new TemplateBinding(this, part, updater.currentRenderable);
 
     binding.bind(updater);
 
@@ -67,15 +66,15 @@ export class TemplateBinding
 
   private _template: AbstractTemplate | null = null;
 
-  private _flags = FragmentFlags.NONE;
+  private _flags = TemplateFlags.NONE;
 
   constructor(
-    part: ChildNodePart,
     directive: TemplateDirective,
+    part: ChildNodePart,
     parent: Renderable | null = null,
   ) {
-    this._part = part;
     this._directive = directive;
+    this._part = part;
     this._parent = parent;
   }
 
@@ -101,25 +100,25 @@ export class TemplateBinding
 
   get dirty(): boolean {
     return !!(
-      this._flags & FragmentFlags.UPDATING ||
-      this._flags & FragmentFlags.UNMOUNTING
+      this._flags & TemplateFlags.UPDATING ||
+      this._flags & TemplateFlags.UNMOUNTING
     );
   }
 
-  set value(directive: TemplateDirective) {
-    this._directive = directive;
+  set value(newDirective: TemplateDirective) {
+    this._directive = newDirective;
   }
 
   requestUpdate(updater: Updater): void {
     this._requestUpdate(updater);
 
-    this._flags &= ~FragmentFlags.UNMOUNTING;
+    this._flags &= ~TemplateFlags.UNMOUNTING;
   }
 
   bind(updater: Updater): void {
     this._requestUpdate(updater);
 
-    this._flags &= ~FragmentFlags.UNMOUNTING;
+    this._flags &= ~TemplateFlags.UNMOUNTING;
   }
 
   unbind(updater: Updater): void {
@@ -127,12 +126,12 @@ export class TemplateBinding
 
     this._requestMutation(updater);
 
-    this._flags |= FragmentFlags.UNMOUNTING;
-    this._flags &= ~FragmentFlags.UPDATING;
+    this._flags |= TemplateFlags.UNMOUNTING;
+    this._flags &= ~TemplateFlags.UPDATING;
   }
 
-  render(updater: Updater, _scope: Scope): void {
-    if (!(this._flags & FragmentFlags.UPDATING)) {
+  render(updater: Updater, _scope: AbstractScope): void {
+    if (!(this._flags & TemplateFlags.UPDATING)) {
       return;
     }
 
@@ -151,21 +150,19 @@ export class TemplateBinding
     }
 
     this._template = template;
-    this._flags &= ~FragmentFlags.UPDATING;
+    this._flags &= ~TemplateFlags.UPDATING;
   }
 
   commit(): void {
-    if (this._flags & FragmentFlags.UNMOUNTING) {
+    if (this._flags & TemplateFlags.UNMOUNTING) {
       this._memoizedRoot?.unmount(this._part);
-      this._flags &= ~FragmentFlags.MOUNTED;
     } else {
       this._memoizedRoot?.unmount(this._part);
       this._pendingRoot?.mount(this._part);
       this._memoizedRoot = this._pendingRoot;
-      this._flags |= FragmentFlags.MOUNTED;
     }
 
-    this._flags &= ~(FragmentFlags.MUTATING | FragmentFlags.UNMOUNTING);
+    this._flags &= ~(TemplateFlags.MUTATING | TemplateFlags.UNMOUNTING);
   }
 
   disconnect(): void {
@@ -179,17 +176,17 @@ export class TemplateBinding
   }
 
   private _requestUpdate(updater: Updater) {
-    if (!(this._flags & FragmentFlags.UPDATING)) {
+    if (!(this._flags & TemplateFlags.UPDATING)) {
       updater.enqueueRenderable(this);
       updater.scheduleUpdate();
-      this._flags |= FragmentFlags.UPDATING;
+      this._flags |= TemplateFlags.UPDATING;
     }
   }
 
   private _requestMutation(updater: Updater) {
-    if (!(this._flags & FragmentFlags.MUTATING)) {
+    if (!(this._flags & TemplateFlags.MUTATING)) {
       updater.enqueueMutationEffect(this);
-      this._flags |= FragmentFlags.MUTATING;
+      this._flags |= TemplateFlags.MUTATING;
     }
   }
 }

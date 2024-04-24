@@ -6,30 +6,20 @@ import {
   directiveTag,
 } from '../src/types.js';
 
-export class MockDirective<T> implements Directive {
-  private readonly _value: T;
-
-  constructor(value: T) {
-    this._value = value;
-  }
-
-  get value(): T {
-    return this._value;
-  }
-
-  [directiveTag](part: Part, _updater: Updater): MockBinding<T> {
-    return new MockBinding(part, this);
+export class MockDirective implements Directive {
+  [directiveTag](part: Part, _updater: Updater): MockBinding {
+    return new MockBinding(this, part);
   }
 }
 
-export class MockBinding<T> implements Binding<MockDirective<T>> {
+export class MockBinding implements Binding<MockDirective> {
   private readonly _part: Part;
 
-  private _directive: MockDirective<T>;
+  private _directive: MockDirective;
 
-  constructor(part: Part, directive: MockDirective<T>) {
-    this._part = part;
+  constructor(directive: MockDirective, part: Part) {
     this._directive = directive;
+    this._part = part;
   }
 
   get part(): Part {
@@ -44,11 +34,11 @@ export class MockBinding<T> implements Binding<MockDirective<T>> {
     return this._part.node;
   }
 
-  set value(newValue: MockDirective<T>) {
+  set value(newValue: MockDirective) {
     this._directive = newValue;
   }
 
-  get value(): MockDirective<T> {
+  get value(): MockDirective {
     return this._directive;
   }
 

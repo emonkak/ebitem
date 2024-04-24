@@ -13,7 +13,7 @@ const FRAME_INTERVAL = 5;
 const CONTINUOUS_INPUT_INTERVAL = 50;
 const MAX_YIELD_INTERVAL = 300;
 
-export function getDefaultScheduler(): Scheduler {
+export function createDefaultScheduler(): Scheduler {
   let getCurrentTime: Scheduler['getCurrentTime'];
   let postRenderingTask: Scheduler['postRenderingTask'];
   let postBlockingTask: Scheduler['postBlockingTask'];

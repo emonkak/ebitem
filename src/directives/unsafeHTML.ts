@@ -28,7 +28,7 @@ export class UnsafeHTMLDirective implements Directive {
       throw new Error('UnsafeHTMLDirective must be used in ChildNodePart.');
     }
 
-    const binding = new UnsafeHTMLBinding(part, this);
+    const binding = new UnsafeHTMLBinding(this, part);
 
     binding.bind(updater);
 
@@ -45,9 +45,9 @@ export class UnsafeHTMLBinding implements Binding<UnsafeHTMLDirective> {
 
   private _dirty = false;
 
-  constructor(part: ChildNodePart, directive: UnsafeHTMLDirective) {
-    this._part = part;
+  constructor(directive: UnsafeHTMLDirective, part: ChildNodePart) {
     this._directive = directive;
+    this._part = part;
   }
 
   get part(): ChildNodePart {

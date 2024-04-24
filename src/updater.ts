@@ -1,4 +1,4 @@
-import { initBinding } from './binding.js';
+import { initializeBinding } from './binding.js';
 import { PartType, Renderable, Updater } from './types.js';
 
 export function mount<TContext>(
@@ -17,7 +17,7 @@ export function mount<TContext>(
     },
   });
 
-  initBinding(part, value, updater);
+  initializeBinding(value, part, updater);
 
   updater.scheduleUpdate();
 }

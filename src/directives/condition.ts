@@ -1,4 +1,4 @@
-import { initBinding, updateBinding } from '../binding.js';
+import { initializeBinding, updateBinding } from '../binding.js';
 import { Binding, Directive, Part, Updater, directiveTag } from '../types.js';
 import { UnitDirective, unit } from './unit.js';
 
@@ -59,7 +59,7 @@ export class ConditionDirective<TTrue, TFalse> implements Directive {
     part: Part,
     updater: Updater,
   ): ConditionBinding<TTrue, TFalse> {
-    const binding = new ConditionBinding<TTrue, TFalse>(part, this);
+    const binding = new ConditionBinding<TTrue, TFalse>(this, part);
 
     binding.bind(updater);
 
@@ -80,10 +80,10 @@ export class ConditionBinding<TTrue, TFalse>
 
   private _condition;
 
-  constructor(part: Part, directive: ConditionDirective<TTrue, TFalse>) {
-    this._part = part;
+  constructor(directive: ConditionDirective<TTrue, TFalse>, part: Part) {
     this._directive = directive;
     this._condition = directive.condition;
+    this._part = part;
   }
 
   get part(): Part {
@@ -129,7 +129,7 @@ export class ConditionBinding<TTrue, TFalse>
           );
         }
       } else {
-        this._trueBinding = initBinding(this._part, newValue, updater);
+        this._trueBinding = initializeBinding(newValue, this._part, updater);
       }
     } else {
       const newValue =
@@ -149,7 +149,7 @@ export class ConditionBinding<TTrue, TFalse>
           );
         }
       } else {
-        this._falseBinding = initBinding(this._part, newValue, updater);
+        this._falseBinding = initializeBinding(newValue, this._part, updater);
       }
     }
 

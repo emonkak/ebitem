@@ -5,17 +5,22 @@ export interface Call {
   returnValue: unknown;
 }
 
-const watchings = new WeakMap<object, Call[]>();
+export interface Watch {
+  original: object;
+  calls: Call[];
+}
 
-export function spy<T extends object>(
-  instance: T,
-  overrides: Partial<T> = {},
-): T {
-  const calls: Call[] = [];
-  const proxy = new Proxy(instance, {
-    apply(target: T, thisValue: any, args: any[]) {
+const watches = new WeakMap<object, Watch>();
+
+export function spy<T extends object>(original: T): T {
+  const watch: Watch = {
+    original,
+    calls: [],
+  };
+  const proxy = new Proxy(original, {
+    apply(target, thisValue, args) {
       const returnValue = Reflect.apply(target as Function, thisValue, args);
-      calls.push({
+      watch.calls.push({
         function: target as Function,
         thisValue,
         args,
@@ -23,30 +28,28 @@ export function spy<T extends object>(
       });
       return returnValue;
     },
-    construct(target: T, args: any[], newTarget: Function) {
+    construct(target, args, newTarget) {
       const returnValue = Reflect.construct(
         target as Function,
         args,
         newTarget,
       );
-      calls.push({
+      watch.calls.push({
         function: target as Function,
-        thisValue: undefined,
+        thisValue: newTarget,
         args,
         returnValue,
       });
       return returnValue;
     },
     get(target, property, receiver) {
-      const value =
-        overrides[property as keyof T] ??
-        Reflect.get(target, property, receiver);
+      const value = Reflect.get(target, property, receiver);
       if (value instanceof Function) {
-        return function (this: any, ...args: any[]) {
-          const returnValue = value.apply(this, args);
-          calls.push({
+        return (...args: any[]) => {
+          const returnValue = value.apply(target, args);
+          watch.calls.push({
             function: value,
-            thisValue: this,
+            thisValue: target,
             args,
             returnValue,
           });
@@ -56,18 +59,26 @@ export function spy<T extends object>(
       return value;
     },
   });
-  watchings.set(proxy, calls);
+  watches.set(proxy, watch);
   return proxy;
 }
 
-export function getCalls(proxy: unknown): Readonly<Call[]> {
-  return typeof proxy === 'object' && proxy !== null
-    ? watchings.get(proxy) ?? []
-    : [];
+export function getCall(value: unknown, n: number): Call | undefined {
+  return isObject(value) ? watches.get(value)?.calls.at(n) : undefined;
 }
 
-export function getLastCall(proxy: unknown): Readonly<Call> | undefined {
-  return typeof proxy === 'object' && proxy !== null
-    ? watchings.get(proxy)?.at(-1)
+export function getCalls(value: unknown): ReadonlyArray<Call> {
+  return isObject(value) ? watches.get(value)?.calls ?? [] : [];
+}
+
+export function getOriginal<T>(value: T): T | undefined {
+  return isObject(value)
+    ? (watches.get(value)?.original as T | undefined)
     : undefined;
+}
+
+function isObject(value: unknown): value is object {
+  return (
+    (typeof value === 'object' && value !== null) || typeof value === 'function'
+  );
 }

@@ -1,4 +1,5 @@
 import {
+  AbstractScope,
   AbstractTemplate,
   AbstractTemplateRoot,
   Binding,
@@ -10,7 +11,6 @@ import {
   Part,
   PartType,
   Renderable,
-  Scope,
   Updater,
   directiveTag,
 } from '../types.js';
@@ -26,7 +26,6 @@ const BlockFlags = {
   UPDATING: 1 << 0,
   MUTATING: 1 << 1,
   UNMOUNTING: 1 << 2,
-  TYPE_CHANGED: 1 << 3,
 };
 
 export function block<TProps, TContext>(
@@ -77,9 +76,9 @@ export class BlockBinding<TProps, TContext>
 
   private readonly _parent: Renderable<TContext> | null;
 
-  private _pendingDirective: BlockDirective<TProps, TContext>;
+  private _directive: BlockDirective<TProps, TContext>;
 
-  private _memoizedDirective: BlockDirective<TProps, TContext> | null = null;
+  private _memoizedType: BlockType<TProps, TContext> | null = null;
 
   private _memoizedTemplate: AbstractTemplate | null = null;
 
@@ -99,7 +98,7 @@ export class BlockBinding<TProps, TContext>
     part: ChildNodePart,
     parent: Renderable<TContext> | null = null,
   ) {
-    this._pendingDirective = directive;
+    this._directive = directive;
     this._part = part;
     this._parent = parent;
   }
@@ -127,11 +126,11 @@ export class BlockBinding<TProps, TContext>
   }
 
   get value(): BlockDirective<TProps, TContext> {
-    return this._pendingDirective;
+    return this._directive;
   }
 
-  set value(newDirective: BlockDirective<TProps, TContext>) {
-    this._pendingDirective = newDirective;
+  set value(directive: BlockDirective<TProps, TContext>) {
+    this._directive = directive;
   }
 
   requestUpdate(updater: Updater): void {
@@ -155,16 +154,15 @@ export class BlockBinding<TProps, TContext>
     this._flags &= ~BlockFlags.UPDATING;
   }
 
-  render(updater: Updater<TContext>, scope: Scope<TContext>): void {
+  render(updater: Updater<TContext>, scope: AbstractScope<TContext>): void {
     if (!(this._flags & BlockFlags.UPDATING)) {
       return;
     }
 
-    const { type, props } = this._pendingDirective;
+    const { type, props } = this._directive;
 
-    if (type !== this._memoizedDirective?.type) {
-      cleanHooks(this._hooks);
-      this._hooks = [];
+    if (this._memoizedType !== null && type !== this._memoizedType) {
+      this._cleanHooks();
     }
 
     const previousNumberOfHooks = this._hooks.length;
@@ -211,7 +209,7 @@ export class BlockBinding<TProps, TContext>
       this._requestMutation(updater);
     }
 
-    this._memoizedDirective = this._pendingDirective;
+    this._memoizedType = this._directive.type;
     this._memoizedTemplate = template;
     this._flags &= ~BlockFlags.UPDATING;
   }
@@ -223,10 +221,9 @@ export class BlockBinding<TProps, TContext>
       this._memoizedRoot?.disconnect();
     }
 
-    cleanHooks(this._hooks);
+    this._cleanHooks();
 
     this._pendingRoot = null;
-    this._hooks = [];
   }
 
   commit(): void {
@@ -241,6 +238,17 @@ export class BlockBinding<TProps, TContext>
     this._flags &= ~(BlockFlags.MUTATING | BlockFlags.UNMOUNTING);
   }
 
+  private _cleanHooks(): void {
+    const hooks = this._hooks;
+    for (let i = 0, l = hooks.length; i < l; i++) {
+      const hook = hooks[i]!;
+      if (hook.type === HookType.EFFECT) {
+        hook.cleanup?.();
+      }
+    }
+    this._hooks = [];
+  }
+
   private _requestUpdate(updater: Updater): void {
     if (!(this._flags & BlockFlags.UPDATING)) {
       updater.enqueueRenderable(this);
@@ -253,15 +261,6 @@ export class BlockBinding<TProps, TContext>
     if (!(this._flags & BlockFlags.MUTATING)) {
       updater.enqueueMutationEffect(this);
       this._flags |= BlockFlags.MUTATING;
-    }
-  }
-}
-
-function cleanHooks(hooks: Hook[]): void {
-  for (let i = 0, l = hooks.length; i < l; i++) {
-    const hook = hooks[i]!;
-    if (hook.type === HookType.EFFECT) {
-      hook.cleanup?.();
     }
   }
 }

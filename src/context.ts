@@ -1,5 +1,6 @@
 import { TemplateDirective } from './directives/template.js';
 import {
+  AbstractScope,
   Cleanup,
   Effect,
   EffectCallback,
@@ -10,15 +11,14 @@ import {
   ReducerHook,
   RefObject,
   Renderable,
-  Scope,
   Updater,
 } from './types.js';
-
-type ValueOrFunction<T> = T extends Function ? never : T | (() => T);
 
 export type Usable<TResult> = UsableFunction<TResult> | UsableObject<TResult>;
 
 export type UsableFunction<TResult> = (context: Context) => TResult;
+
+type ValueOrFunction<T> = T extends Function ? never : T | (() => T);
 
 export interface UsableObject<TResult> {
   [usableTag](context: Context): TResult;
@@ -33,7 +33,7 @@ export class Context {
 
   private readonly _updater: Updater<Context>;
 
-  private readonly _scope: Scope<Context>;
+  private readonly _scope: AbstractScope<Context>;
 
   private _hookIndex = 0;
 
@@ -41,7 +41,7 @@ export class Context {
     renderable: Renderable<Context>,
     hooks: Hook[],
     updater: Updater<Context>,
-    scope: Scope<Context>,
+    scope: AbstractScope<Context>,
   ) {
     this._renderable = renderable;
     this._hooks = hooks;

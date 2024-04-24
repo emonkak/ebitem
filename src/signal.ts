@@ -1,4 +1,4 @@
-import { initBinding, updateBinding } from './binding.js';
+import { initializeBinding, updateBinding } from './binding.js';
 import { Context, UsableObject, usableTag } from './context.js';
 import { LinkedList } from './linkedList.js';
 import { Binding, Directive, Part, Updater, directiveTag } from './types.js';
@@ -45,20 +45,20 @@ export abstract class Signal<T> implements Directive, UsableObject<void> {
   }
 
   [directiveTag](part: Part, updater: Updater): SignalBinding<T> {
-    return new SignalBinding(part, this, updater);
+    return new SignalBinding(this, part, updater);
   }
 }
 
 export class SignalBinding<T> implements Binding<Signal<T>> {
-  private _valueBinding: Binding<T>;
-
   private _signal: Signal<T>;
+
+  private _valueBinding: Binding<T>;
 
   private _subscription: Subscription | null = null;
 
-  constructor(part: Part, signal: Signal<T>, updater: Updater) {
-    this._valueBinding = initBinding(part, signal.value, updater);
+  constructor(signal: Signal<T>, part: Part, updater: Updater) {
     this._signal = signal;
+    this._valueBinding = initializeBinding(signal.value, part, updater);
     this._subscription = this._startSubscription(updater);
   }
 
@@ -93,7 +93,7 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
     }
   }
 
-  unbind(updater: Updater) {
+  unbind(updater: Updater): void {
     this._valueBinding.unbind(updater);
 
     this._subscription?.();

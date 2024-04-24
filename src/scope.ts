@@ -1,16 +1,16 @@
 import { Context } from './context.js';
 import { Template, getMarker } from './template.js';
 import type {
+  AbstractScope,
   AbstractTemplate,
   Hook,
   Renderable,
-  Scope,
   Updater,
 } from './types.js';
 
 type Varibales = { [key: PropertyKey]: unknown };
 
-export class LocalScope implements Scope<Context> {
+export class Scope implements AbstractScope<Context> {
   private readonly _globalVariables: Varibales;
 
   private readonly _marker: string;

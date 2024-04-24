@@ -1,4 +1,4 @@
-import { initBinding, updateBinding } from './binding.js';
+import { initializeBinding, updateBinding } from './binding.js';
 import {
   AbstractTemplate,
   AbstractTemplateRoot,
@@ -171,7 +171,11 @@ export class Template implements AbstractTemplate {
               break;
           }
 
-          bindings[holeIndex] = initBinding(part, values[holeIndex], updater);
+          bindings[holeIndex] = initializeBinding(
+            values[holeIndex],
+            part,
+            updater,
+          );
           holeIndex++;
 
           if (holeIndex >= holes.length) {

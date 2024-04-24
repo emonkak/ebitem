@@ -1,4 +1,5 @@
 import { assert, describe, it } from 'vitest';
+import { getCalls, spy } from './spy.js';
 
 import {
   AttributeBinding,
@@ -13,10 +14,9 @@ import {
   getMarker,
   isValidMarker,
 } from '../src/template.js';
-import { Part, PartType, Updater, directiveTag } from '../src/types.js';
+import { Part, PartType, directiveTag } from '../src/types.js';
 import { LocalUpdater } from '../src/updater/local.js';
 import { MockBinding, MockDirective } from './mocks.js';
-import { getCalls, spy } from './spy.js';
 
 const MARKER = getMarker();
 
@@ -308,7 +308,7 @@ describe('Template', () => {
         'baz',
         () => {},
         { class: 'qux' },
-        new MockDirective('quux'),
+        new MockDirective(),
       ];
       const updater = new LocalUpdater();
       const root = template.hydrate(values, updater);
@@ -438,13 +438,9 @@ describe('TemplateRoot', () => {
         <p>Count: ${0}</p>
       `;
       const values = [
-        spy(new MockDirective(0), {
-          [directiveTag](
-            this: MockDirective<number>,
-            part: Part,
-            _updater: Updater,
-          ) {
-            return spy(new MockBinding(part, this));
+        Object.assign(new MockDirective(), {
+          [directiveTag](this: MockDirective, part: Part) {
+            return spy(new MockBinding(this, part));
           },
         }),
       ];
