@@ -1,3 +1,8 @@
+export interface Spy<T> {
+  original: T;
+  calls: Call[];
+}
+
 export interface Call {
   function: Function;
   thisValue: unknown;
@@ -5,22 +10,21 @@ export interface Call {
   returnValue: unknown;
 }
 
-export interface Watch {
-  original: object;
-  calls: Call[];
-}
+export type SpiedObject<T> = T & {
+  get [spyTag](): Spy<T>;
+};
 
-const watches = new WeakMap<object, Watch>();
+const spyTag = Symbol('Spy');
 
-export function spy<T extends object>(original: T): T {
-  const watch: Watch = {
+export function spy<T extends object>(original: T): SpiedObject<T> {
+  const spy: Spy<T> = {
     original,
     calls: [],
   };
-  const proxy = new Proxy(original, {
+  const spiedObject = new Proxy(original, {
     apply(target, thisValue, args) {
       const returnValue = Reflect.apply(target as Function, thisValue, args);
-      watch.calls.push({
+      spy.calls.push({
         function: target as Function,
         thisValue,
         args,
@@ -34,7 +38,7 @@ export function spy<T extends object>(original: T): T {
         args,
         newTarget,
       );
-      watch.calls.push({
+      spy.calls.push({
         function: target as Function,
         thisValue: newTarget,
         args,
@@ -43,11 +47,14 @@ export function spy<T extends object>(original: T): T {
       return returnValue;
     },
     get(target, property, receiver) {
+      if (property === spyTag) {
+        return spy;
+      }
       const value = Reflect.get(target, property, receiver);
       if (value instanceof Function) {
         return (...args: any[]) => {
           const returnValue = value.apply(target, args);
-          watch.calls.push({
+          spy.calls.push({
             function: value,
             thisValue: target,
             args,
@@ -59,26 +66,20 @@ export function spy<T extends object>(original: T): T {
       return value;
     },
   });
-  watches.set(proxy, watch);
-  return proxy;
+  return spiedObject as SpiedObject<T>;
 }
 
-export function getCall(value: unknown, n: number): Call | undefined {
-  return isObject(value) ? watches.get(value)?.calls.at(n) : undefined;
+export function getCall<T>(
+  object: SpiedObject<T>,
+  n: number,
+): Call | undefined {
+  return object[spyTag].calls.at(n);
 }
 
-export function getCalls(value: unknown): ReadonlyArray<Call> {
-  return isObject(value) ? watches.get(value)?.calls ?? [] : [];
+export function getCalls<T>(object: SpiedObject<T>): ReadonlyArray<Call> {
+  return object[spyTag].calls;
 }
 
-export function getOriginal<T>(value: T): T | undefined {
-  return isObject(value)
-    ? (watches.get(value)?.original as T | undefined)
-    : undefined;
-}
-
-function isObject(value: unknown): value is object {
-  return (
-    (typeof value === 'object' && value !== null) || typeof value === 'function'
-  );
+export function getOriginal<T>(object: SpiedObject<T>): T {
+  return object[spyTag].original;
 }

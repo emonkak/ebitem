@@ -1,5 +1,4 @@
 import { assert, describe, it } from 'vitest';
-import { getCalls, spy } from './spy.js';
 
 import {
   AttributeBinding,
@@ -434,30 +433,29 @@ describe('TemplateRoot', () => {
 
   describe('.disconnect()', () => {
     it('should disconnect bindings', () => {
+      let disconnects = 0;
       const template = html`
         <p>Count: ${0}</p>
       `;
       const values = [
         Object.assign(new MockDirective(), {
           [directiveTag](this: MockDirective, part: Part) {
-            return spy(new MockBinding(this, part));
+            return Object.assign(new MockBinding(this, part), {
+              disconnect() {
+                disconnects++;
+              },
+            });
           },
         }),
       ];
       const updater = new LocalUpdater();
       const root = template.hydrate(values, updater);
 
-      assert.notInclude(
-        getCalls(root.bindings[0]).map((call) => call.function.name),
-        'disconnect',
-      );
+      assert.strictEqual(disconnects, 0);
 
       root.disconnect();
 
-      assert.include(
-        getCalls(root.bindings[0]).map((call) => call.function.name),
-        'disconnect',
-      );
+      assert.strictEqual(disconnects, 1);
     });
   });
 });

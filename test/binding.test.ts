@@ -1,5 +1,5 @@
 import { assert, describe, it } from 'vitest';
-import { getCall, getCalls, spy } from './spy.js';
+import { SpiedObject, getCall, getCalls, spy } from './spy.js';
 
 import {
   AttributeBinding,
@@ -1271,8 +1271,8 @@ describe('updateBinding()', () => {
       node,
     } as const;
     const updater = new LocalUpdater();
-    const binding = spy(new MockBinding(directive, part)) as Binding<
-      MockDirective | string
+    const binding = spy(new MockBinding(directive, part)) as SpiedObject<
+      Binding<MockDirective | string>
     >;
     const newBinding = spy(updateBinding(binding, 'foo', updater));
 
