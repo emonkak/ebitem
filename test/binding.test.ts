@@ -1,4 +1,4 @@
-import { assert, describe, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { SpiedObject, getCall, getCalls, spy } from './spy.js';
 
 import {
@@ -25,10 +25,10 @@ describe('AttributeBinding', () => {
       } as const;
       const binding = new AttributeBinding('foo', part);
 
-      assert.strictEqual(binding.part, part);
-      assert.strictEqual(binding.startNode, element);
-      assert.strictEqual(binding.endNode, element);
-      assert.strictEqual(binding.value, 'foo');
+      expect(binding.part).toBe(part);
+      expect(binding.startNode).toBe(element);
+      expect(binding.endNode).toBe(element);
+      expect(binding.value).toBe('foo');
     });
   });
 
@@ -45,15 +45,15 @@ describe('AttributeBinding', () => {
       binding.bind(updater);
       updater.flush();
 
-      assert.strictEqual(binding.value, 'foo');
-      assert.strictEqual(element.getAttribute('class'), 'foo');
+      expect(binding.value).toBe('foo');
+      expect(element.getAttribute('class')).toBe('foo');
 
       binding.value = 'bar';
       binding.bind(updater);
       updater.flush();
 
-      assert.strictEqual(binding.value, 'bar');
-      assert.strictEqual(element.getAttribute('class'), 'bar');
+      expect(binding.value).toBe('bar');
+      expect(element.getAttribute('class')).toBe('bar');
     });
 
     it('should update the attribute with the string representation of the object', () => {
@@ -78,15 +78,15 @@ describe('AttributeBinding', () => {
       binding.bind(updater);
       updater.flush();
 
-      assert.strictEqual(binding.value, obj1);
-      assert.strictEqual(element.getAttribute('class'), 'foo');
+      expect(binding.value).toBe(obj1);
+      expect(element.getAttribute('class')).toBe('foo');
 
       binding.value = obj2;
       binding.bind(updater);
       updater.flush();
 
-      assert.strictEqual(binding.value, obj2);
-      assert.strictEqual(element.getAttribute('class'), 'bar');
+      expect(binding.value).toBe(obj2);
+      expect(element.getAttribute('class')).toBe('bar');
     });
 
     it('should toggle the attribute according to the boolean value', () => {
@@ -101,15 +101,15 @@ describe('AttributeBinding', () => {
       binding.bind(updater);
       updater.flush();
 
-      assert.strictEqual(binding.value, true);
-      assert.isTrue(element.hasAttribute('contenteditable'));
+      expect(binding.value).toBe(true);
+      expect(element.hasAttribute('contenteditable')).toBe(true);
 
       binding.value = false;
       binding.bind(updater);
       updater.flush();
 
-      assert.strictEqual(binding.value, false);
-      assert.isFalse(element.hasAttribute('contenteditable'));
+      expect(binding.value).toBe(false);
+      expect(element.hasAttribute('contenteditable')).toBe(false);
     });
 
     it('should remove the attribute when null is passed', () => {
@@ -125,8 +125,8 @@ describe('AttributeBinding', () => {
       binding.bind(updater);
       updater.flush();
 
-      assert.strictEqual(binding.value, null);
-      assert.isFalse(element.hasAttribute('contenteditable'));
+      expect(binding.value).toBe(null);
+      expect(element.hasAttribute('contenteditable')).toBe(false);
     });
 
     it('should remove the attribute when undefined is passed', () => {
@@ -142,8 +142,8 @@ describe('AttributeBinding', () => {
       binding.bind(updater);
       updater.flush();
 
-      assert.strictEqual(binding.value, undefined);
-      assert.isFalse(element.hasAttribute('contenteditable'));
+      expect(binding.value).toBe(undefined);
+      expect(element.hasAttribute('contenteditable')).toBe(false);
     });
 
     it('should do nothing if called twice', () => {
@@ -158,7 +158,7 @@ describe('AttributeBinding', () => {
       binding.bind(updater);
       binding.bind(updater);
 
-      assert.lengthOf(getCalls(updater), 1);
+      expect(getCalls(updater)).toHaveLength(1);
     });
   });
 
@@ -176,8 +176,8 @@ describe('AttributeBinding', () => {
       binding.unbind(updater);
       updater.flush();
 
-      assert.strictEqual(binding.value, null);
-      assert.isFalse(element.hasAttribute('contenteditable'));
+      expect(binding.value).toBe(null);
+      expect(element.hasAttribute('contenteditable')).toBe(false);
     });
 
     it('should do nothing if called twice', () => {
@@ -192,7 +192,7 @@ describe('AttributeBinding', () => {
       binding.unbind(updater);
       binding.unbind(updater);
 
-      assert.lengthOf(getCalls(updater), 1);
+      expect(getCalls(updater)).toHaveLength(1);
     });
   });
 
@@ -222,14 +222,14 @@ describe('EventBinding', () => {
       } as const;
       const binding = new EventBinding(listener, part);
 
-      assert.strictEqual(binding.part, part);
-      assert.strictEqual(binding.startNode, element);
-      assert.strictEqual(binding.endNode, element);
-      assert.strictEqual(binding.value, listener);
+      expect(binding.part).toBe(part);
+      expect(binding.startNode).toBe(element);
+      expect(binding.endNode).toBe(element);
+      expect(binding.value).toBe(listener);
     });
 
     it('should throw the error if the value other than an event listner is passed', () => {
-      assert.throw(() => {
+      expect(() => {
         new EventBinding(
           {},
           {
@@ -238,20 +238,24 @@ describe('EventBinding', () => {
             name: 'hello',
           },
         );
-      }, 'A value that EventBinding binds must be EventListener, EventListenerObject or null.');
+      }).toThrow(
+        'A value that EventBinding binds must be EventListener, EventListenerObject or null.',
+      );
     });
   });
 
   describe('.value', () => {
     it('should throw the error if the value other than an event listner is assigned', () => {
-      assert.throw(() => {
+      expect(() => {
         const binding = new EventBinding(null, {
           type: PartType.EVENT,
           node: document.createElement('div'),
           name: 'hello',
         });
         binding.value = {};
-      }, 'A value that EventBinding binds must be EventListener, EventListenerObject or null.');
+      }).toThrow(
+        'A value that EventBinding binds must be EventListener, EventListenerObject or null.',
+      );
     });
   });
 
@@ -276,34 +280,24 @@ describe('EventBinding', () => {
       updater.flush();
       element.dispatchEvent(event);
 
-      assert.lengthOf(getCalls(spiedElement), 1);
-      assert.strictEqual(
-        getCall(spiedElement, 0)?.function.name,
-        'addEventListener',
-      );
-      assert.sameOrderedMembers(getCall(spiedElement, 0)?.args ?? [], [
-        'hello',
-        binding,
-      ]);
-      assert.lengthOf(getCalls(spiedListener1), 1);
-      assert.strictEqual(getCall(spiedListener1, 0)?.function, listener1);
-      assert.sameOrderedMembers(getCall(spiedListener1, 0)?.args ?? [], [
-        event,
-      ]);
-      assert.lengthOf(getCalls(spiedListener2), 0);
+      expect(getCalls(spiedElement)).toHaveLength(1);
+      expect(getCall(spiedElement, 0)?.function.name).toBe('addEventListener');
+      expect(getCall(spiedElement, 0)?.args).toEqual(['hello', binding]);
+      expect(getCalls(spiedListener1)).toHaveLength(1);
+      expect(getCall(spiedListener1, 0)?.function).toBe(listener1);
+      expect(getCall(spiedListener1, 0)?.args).toEqual([event]);
+      expect(getCalls(spiedListener2)).toHaveLength(0);
 
       binding.value = spiedListener2;
       binding.bind(updater);
       updater.flush();
       element.dispatchEvent(event);
 
-      assert.lengthOf(getCalls(spiedElement), 1);
-      assert.lengthOf(getCalls(spiedListener1), 1);
-      assert.lengthOf(getCalls(spiedListener2), 1);
-      assert.strictEqual(getCall(spiedListener2, 0)?.function, listener2);
-      assert.sameOrderedMembers(getCall(spiedListener2, 0)?.args ?? [], [
-        event,
-      ]);
+      expect(getCalls(spiedElement)).toHaveLength(1);
+      expect(getCalls(spiedListener1)).toHaveLength(1);
+      expect(getCalls(spiedListener2)).toHaveLength(1);
+      expect(getCall(spiedListener2, 0)?.function).toBe(listener2);
+      expect(getCall(spiedListener2, 0)?.args).toEqual([event]);
     });
 
     it('should attach the object to the element as an event listener', () => {
@@ -332,59 +326,42 @@ describe('EventBinding', () => {
       updater.flush();
       element.dispatchEvent(event);
 
-      assert.lengthOf(getCalls(spiedElement), 1);
-      assert.strictEqual(
-        getCall(spiedElement, 0)?.function.name,
-        'addEventListener',
-      );
-      assert.sameOrderedMembers(getCall(spiedElement, 0)?.args ?? [], [
+      expect(getCalls(spiedElement)).toHaveLength(1);
+      expect(getCall(spiedElement, 0)?.function.name).toBe('addEventListener');
+      expect(getCall(spiedElement, 0)?.args ?? []).toEqual([
         'hello',
         binding,
         spiedListener1,
       ]);
-      assert.lengthOf(getCalls(spiedListener1), 1);
-      assert.strictEqual(
-        getCall(spiedListener1, 0)?.function,
-        listener1.handleEvent,
-      );
-      assert.sameOrderedMembers(getCall(spiedListener1, 0)?.args ?? [], [
-        event,
-      ]);
-      assert.lengthOf(getCalls(spiedListener2), 0);
+      expect(getCalls(spiedListener1)).toHaveLength(1);
+      expect(getCall(spiedListener1, 0)?.function).toBe(listener1.handleEvent);
+      expect(getCall(spiedListener1, 0)?.args).toEqual([event]);
+      expect(getCalls(spiedListener2)).toHaveLength(0);
 
       binding.value = spiedListener2;
       binding.bind(updater);
       updater.flush();
       element.dispatchEvent(event);
 
-      assert.lengthOf(getCalls(spiedElement), 3);
-      assert.strictEqual(
-        getCall(spiedElement, 1)?.function.name,
+      expect(getCalls(spiedElement)).toHaveLength(3);
+      expect(getCall(spiedElement, 1)?.function.name).toBe(
         'removeEventListener',
       );
-      assert.sameOrderedMembers(getCall(spiedElement, 1)?.args ?? [], [
+      expect(getCall(spiedElement, 1)?.args).toEqual([
         'hello',
         binding,
         spiedListener1,
       ]);
-      assert.strictEqual(
-        getCall(spiedElement, 2)?.function.name,
-        'addEventListener',
-      );
-      assert.sameOrderedMembers(getCall(spiedElement, 2)?.args ?? [], [
+      expect(getCall(spiedElement, 2)?.function.name).toBe('addEventListener');
+      expect(getCall(spiedElement, 2)?.args).toEqual([
         'hello',
         binding,
         spiedListener2,
       ]);
-      assert.lengthOf(getCalls(spiedListener1), 1);
-      assert.lengthOf(getCalls(spiedListener2), 1);
-      assert.strictEqual(
-        getCall(spiedListener2, 0)?.function,
-        listener2.handleEvent,
-      );
-      assert.sameOrderedMembers(getCall(spiedListener2, 0)?.args ?? [], [
-        event,
-      ]);
+      expect(getCalls(spiedListener1)).toHaveLength(1);
+      expect(getCalls(spiedListener2)).toHaveLength(1);
+      expect(getCall(spiedListener2, 0)?.function).toBe(listener2.handleEvent);
+      expect(getCall(spiedListener2, 0)?.args).toEqual([event]);
     });
 
     it('should detach the active event listener when null is passed', () => {
@@ -410,26 +387,16 @@ describe('EventBinding', () => {
       updater.flush();
       element.dispatchEvent(event);
 
-      assert.lengthOf(getCalls(spiedElement), 2);
-      assert.strictEqual(
-        getCall(spiedElement, 0)?.function.name,
-        'addEventListener',
-      );
-      assert.sameOrderedMembers(getCall(spiedElement, 0)?.args ?? [], [
-        'hello',
-        binding,
-      ]);
-      assert.strictEqual(
-        getCall(spiedElement, 1)?.function.name,
+      expect(getCalls(spiedElement)).toHaveLength(2);
+      expect(getCall(spiedElement, 0)?.function.name).toBe('addEventListener');
+      expect(getCall(spiedElement, 0)?.args).toEqual(['hello', binding]);
+      expect(getCall(spiedElement, 1)?.function.name).toBe(
         'removeEventListener',
       );
-      assert.sameOrderedMembers(getCall(spiedElement, 1)?.args ?? [], [
-        'hello',
-        binding,
-      ]);
-      assert.lengthOf(getCalls(spiedListener), 1);
-      assert.strictEqual(getCall(spiedListener, 0)?.function, listener);
-      assert.sameOrderedMembers(getCall(spiedListener, 0)?.args ?? [], [event]);
+      expect(getCall(spiedElement, 1)?.args ?? []).toEqual(['hello', binding]);
+      expect(getCalls(spiedListener)).toHaveLength(1);
+      expect(getCall(spiedListener, 0)?.function).toBe(listener);
+      expect(getCall(spiedListener, 0)?.args ?? []).toEqual([event]);
     });
 
     it('should do nothing if called twice', () => {
@@ -445,7 +412,7 @@ describe('EventBinding', () => {
       binding.bind(updater);
       binding.bind(updater);
 
-      assert.lengthOf(getCalls(updater), 1);
+      expect(getCalls(updater)).toHaveLength(1);
     });
   });
 
@@ -472,27 +439,17 @@ describe('EventBinding', () => {
       updater.flush();
       element.dispatchEvent(event);
 
-      assert.strictEqual(binding.value, null);
-      assert.lengthOf(getCalls(spiedElement), 2);
-      assert.strictEqual(
-        getCall(spiedElement, 0)?.function.name,
-        'addEventListener',
-      );
-      assert.sameOrderedMembers(getCall(spiedElement, 0)?.args ?? [], [
-        'hello',
-        binding,
-      ]);
-      assert.strictEqual(
-        getCall(spiedElement, 1)?.function.name,
+      expect(binding.value).toBe(null);
+      expect(getCalls(spiedElement)).toHaveLength(2);
+      expect(getCall(spiedElement, 0)?.function.name).toBe('addEventListener');
+      expect(getCall(spiedElement, 0)?.args).toEqual(['hello', binding]);
+      expect(getCall(spiedElement, 1)?.function.name).toBe(
         'removeEventListener',
       );
-      assert.sameOrderedMembers(getCall(spiedElement, 1)?.args ?? [], [
-        'hello',
-        binding,
-      ]);
-      assert.lengthOf(getCalls(spiedListener), 1);
-      assert.strictEqual(getCall(spiedListener, 0)?.function, listener);
-      assert.sameOrderedMembers(getCall(spiedListener, 0)?.args ?? [], [event]);
+      expect(getCall(spiedElement, 1)?.args).toEqual(['hello', binding]);
+      expect(getCalls(spiedListener)).toHaveLength(1);
+      expect(getCall(spiedListener, 0)?.function).toBe(listener);
+      expect(getCall(spiedListener, 0)?.args).toEqual([event]);
     });
 
     it('should do nothing if called twice', () => {
@@ -514,7 +471,7 @@ describe('EventBinding', () => {
       binding.unbind(spiedUpdater);
       binding.unbind(spiedUpdater);
 
-      assert.lengthOf(getCalls(spiedUpdater), 1);
+      expect(getCalls(spiedUpdater)).toHaveLength(1);
     });
 
     it('should do nothing if there is no active listner', () => {
@@ -530,7 +487,7 @@ describe('EventBinding', () => {
       binding.unbind(updater);
       binding.unbind(updater);
 
-      assert.lengthOf(getCalls(updater), 0);
+      expect(getCalls(updater)).toHaveLength(0);
     });
   });
 
@@ -550,31 +507,18 @@ describe('EventBinding', () => {
 
       binding.disconnect();
 
-      assert.lengthOf(getCalls(element), 2);
-      assert.strictEqual(
-        getCall(element, 0)?.function.name,
-        'addEventListener',
-      );
-      assert.sameOrderedMembers(getCall(element, 0)?.args ?? [], [
-        'hello',
-        binding,
-      ]);
-      assert.strictEqual(
-        getCall(element, 1)?.function.name,
-        'removeEventListener',
-      );
-      assert.sameOrderedMembers(getCall(element, 1)?.args ?? [], [
-        'hello',
-        binding,
-      ]);
+      expect(getCalls(element)).toHaveLength(2);
+      expect(getCall(element, 0)?.function.name).toBe('addEventListener');
+      expect(getCall(element, 0)?.args ?? []).toEqual(['hello', binding]);
+      expect(getCall(element, 1)?.function.name).toBe('removeEventListener');
+      expect(getCall(element, 1)?.args ?? []).toEqual(['hello', binding]);
 
       binding.disconnect();
 
-      assert.lengthOf(
+      expect(
         getCalls(element),
-        2,
         'Do nothing if the event listener is already detached.',
-      );
+      ).toHaveLength(2);
     });
 
     it('should detach the active event listener object', () => {
@@ -592,33 +536,22 @@ describe('EventBinding', () => {
 
       binding.disconnect();
 
-      assert.lengthOf(getCalls(element), 2);
-      assert.strictEqual(
-        getCall(element, 0)?.function.name,
-        'addEventListener',
-      );
-      assert.sameOrderedMembers(getCall(element, 0)?.args ?? [], [
+      expect(getCalls(element)).toHaveLength(2);
+      expect(getCall(element, 0)?.function.name).toBe('addEventListener');
+      expect(getCall(element, 0)?.args ?? []).toEqual([
         'hello',
         binding,
         listener,
       ]);
-      assert.strictEqual(
-        getCall(element, 1)?.function.name,
-        'removeEventListener',
-      );
-      assert.sameOrderedMembers(getCall(element, 1)?.args ?? [], [
-        'hello',
-        binding,
-        listener,
-      ]);
+      expect(getCall(element, 1)?.function.name).toBe('removeEventListener');
+      expect(getCall(element, 1)?.args).toEqual(['hello', binding, listener]);
 
       binding.disconnect();
 
-      assert.lengthOf(
+      expect(
         getCalls(element),
-        2,
         'Do nothing if the event listener is already detached.',
-      );
+      ).toHaveLength(2);
     });
   });
 });
@@ -634,10 +567,10 @@ describe('NodeBinding', () => {
       } as const;
       const binding = new NodeBinding(listener, part);
 
-      assert.strictEqual(binding.part, part);
-      assert.strictEqual(binding.startNode, element);
-      assert.strictEqual(binding.endNode, element);
-      assert.strictEqual(binding.value, listener);
+      expect(binding.part).toBe(part);
+      expect(binding.startNode).toBe(element);
+      expect(binding.endNode).toBe(element);
+      expect(binding.value).toBe(listener);
     });
   });
 
@@ -653,22 +586,22 @@ describe('NodeBinding', () => {
       binding.bind(updater);
       updater.flush();
 
-      assert.strictEqual(binding.value, 'foo');
-      assert.strictEqual(node.nodeValue, 'foo');
+      expect(binding.value).toBe('foo');
+      expect(node.nodeValue).toBe('foo');
 
       binding.value = 'bar';
       binding.bind(updater);
       updater.flush();
 
-      assert.strictEqual(binding.value, 'bar');
-      assert.strictEqual(node.nodeValue, 'bar');
+      expect(binding.value).toBe('bar');
+      expect(node.nodeValue).toBe('bar');
 
       binding.value = null;
       binding.bind(updater);
       updater.flush();
 
-      assert.strictEqual(binding.value, null);
-      assert.strictEqual(node.nodeValue, '');
+      expect(binding.value).toBe(null);
+      expect(node.nodeValue).toBe('');
     });
 
     it('should do nothing if called twice', () => {
@@ -682,7 +615,7 @@ describe('NodeBinding', () => {
       binding.bind(updater);
       binding.bind(updater);
 
-      assert.lengthOf(getCalls(updater), 1);
+      expect(getCalls(updater)).toHaveLength(1);
     });
   });
 
@@ -698,14 +631,14 @@ describe('NodeBinding', () => {
       binding.bind(updater);
       updater.flush();
 
-      assert.strictEqual(binding.value, 'foo');
-      assert.strictEqual(node.nodeValue, 'foo');
+      expect(binding.value).toBe('foo');
+      expect(node.nodeValue).toBe('foo');
 
       binding.unbind(updater);
       updater.flush();
 
-      assert.strictEqual(binding.value, null);
-      assert.strictEqual(node.nodeValue, '');
+      expect(binding.value).toBe(null);
+      expect(node.nodeValue).toBe('');
     });
 
     it('should do nothing if called twice', () => {
@@ -719,7 +652,7 @@ describe('NodeBinding', () => {
       binding.unbind(updater);
       binding.unbind(updater);
 
-      assert.lengthOf(getCalls(updater), 1);
+      expect(getCalls(updater)).toHaveLength(1);
     });
   });
 
@@ -747,10 +680,10 @@ describe('PropertyBinding', () => {
       } as const;
       const binding = new PropertyBinding('foo', part);
 
-      assert.strictEqual(binding.part, part);
-      assert.strictEqual(binding.startNode, element);
-      assert.strictEqual(binding.endNode, element);
-      assert.strictEqual(binding.value, 'foo');
+      expect(binding.part).toBe(part);
+      expect(binding.startNode).toBe(element);
+      expect(binding.endNode).toBe(element);
+      expect(binding.value).toBe('foo');
     });
   });
 
@@ -767,15 +700,15 @@ describe('PropertyBinding', () => {
       binding.bind(updater);
       updater.flush();
 
-      assert.strictEqual(binding.value, 'foo');
-      assert.strictEqual(element.className, 'foo');
+      expect(binding.value).toBe('foo');
+      expect(element.className).toBe('foo');
 
       binding.value = 'bar';
       binding.bind(updater);
       updater.flush();
 
-      assert.strictEqual(binding.value, 'bar');
-      assert.strictEqual(element.className, 'bar');
+      expect(binding.value).toBe('bar');
+      expect(element.className).toBe('bar');
     });
 
     it('should do nothing if called twice', () => {
@@ -790,7 +723,7 @@ describe('PropertyBinding', () => {
       binding.bind(updater);
       binding.bind(updater);
 
-      assert.lengthOf(getCalls(updater), 1);
+      expect(getCalls(updater)).toHaveLength(1);
     });
   });
 
@@ -807,7 +740,7 @@ describe('PropertyBinding', () => {
       binding.unbind(updater);
       updater.flush();
 
-      assert.lengthOf(getCalls(element), 0);
+      expect(getCalls(element)).toHaveLength(0);
     });
   });
 
@@ -824,7 +757,7 @@ describe('PropertyBinding', () => {
       binding.disconnect();
       updater.flush();
 
-      assert.lengthOf(getCalls(element), 0);
+      expect(getCalls(element)).toHaveLength(0);
     });
   });
 });
@@ -840,27 +773,27 @@ describe('SpreadBinding', () => {
       } as const;
       const binding = new SpreadBinding(props, part);
 
-      assert.strictEqual(binding.part, part);
-      assert.strictEqual(binding.startNode, element);
-      assert.strictEqual(binding.endNode, element);
-      assert.strictEqual(binding.value, props);
+      expect(binding.part).toBe(part);
+      expect(binding.startNode).toBe(element);
+      expect(binding.endNode).toBe(element);
+      expect(binding.value).toBe(props);
     });
 
     it('should throw the error when a non-object value is passed', () => {
-      assert.throw(() => {
+      expect(() => {
         const element = document.createElement('div');
         const part = {
           type: PartType.ELEMENT,
           node: element,
         } as const;
         new SpreadBinding(null, part);
-      }, 'A value of SpreadBinding must be an object.');
+      }).toThrow('A value of SpreadBinding must be an object.');
     });
   });
 
   describe('.value', () => {
     it('should throw the error when a non-object value is passed', () => {
-      assert.throw(() => {
+      expect(() => {
         const element = document.createElement('div');
         const part = {
           type: PartType.ELEMENT,
@@ -869,7 +802,7 @@ describe('SpreadBinding', () => {
         const binding = new SpreadBinding({}, part);
 
         binding.value = null;
-      }, 'A value of SpreadBinding must be an object.');
+      }).toThrow('A value of SpreadBinding must be an object.');
     });
   });
 
@@ -890,8 +823,8 @@ describe('SpreadBinding', () => {
       binding.bind(updater);
       updater.flush();
 
-      assert.strictEqual(element.getAttribute('class'), 'foo');
-      assert.strictEqual(element.getAttribute('title'), 'bar');
+      expect(element.getAttribute('class')).toBe('foo');
+      expect(element.getAttribute('title')).toBe('bar');
     });
 
     it('should bind element properities by properities starting with "."', () => {
@@ -910,8 +843,8 @@ describe('SpreadBinding', () => {
       binding.bind(updater);
       updater.flush();
 
-      assert.strictEqual(element.className, 'foo');
-      assert.strictEqual(element.title, 'bar');
+      expect(element.className).toBe('foo');
+      expect(element.title).toBe('bar');
     });
 
     it('should bind event listeners by properities starting with "@"', () => {
@@ -930,17 +863,11 @@ describe('SpreadBinding', () => {
       binding.bind(updater);
       updater.flush();
 
-      assert.lengthOf(getCalls(element), 2);
-      assert.strictEqual(
-        getCall(element, 0)?.function.name,
-        'addEventListener',
-      );
-      assert.strictEqual(getCall(element, 0)?.args[0], 'click');
-      assert.strictEqual(
-        getCall(element, 1)?.function.name,
-        'addEventListener',
-      );
-      assert.strictEqual(getCall(element, 1)?.args[0], 'touchstart');
+      expect(getCalls(element)).toHaveLength(2);
+      expect(getCall(element, 0)?.function.name).toBe('addEventListener');
+      expect(getCall(element, 0)?.args[0]).toBe('click');
+      expect(getCall(element, 1)?.function.name).toBe('addEventListener');
+      expect(getCall(element, 1)?.args[0]).toBe('touchstart');
     });
 
     it('should skip bindings that are passed the same value as last time', () => {
@@ -967,24 +894,16 @@ describe('SpreadBinding', () => {
       binding.bind(updater);
       updater.flush();
 
-      assert.sameOrderedMembers(
-        getCalls(spiedElement).map((call) => call.function.name),
-        ['setAttribute', 'setAttribute', 'setAttribute'],
-      );
-      assert.sameOrderedMembers(getCall(spiedElement, 0)?.args ?? [], [
-        'class',
-        'foo',
+      expect(getCalls(spiedElement).map((call) => call.function.name)).toEqual([
+        'setAttribute',
+        'setAttribute',
+        'setAttribute',
       ]);
-      assert.sameOrderedMembers(getCall(spiedElement, 1)?.args ?? [], [
-        'title',
-        'bar',
-      ]);
-      assert.sameOrderedMembers(getCall(spiedElement, 2)?.args ?? [], [
-        'title',
-        'baz',
-      ]);
-      assert.strictEqual(element.getAttribute('class'), 'foo');
-      assert.strictEqual(element.getAttribute('title'), 'baz');
+      expect(getCall(spiedElement, 0)?.args).toEqual(['class', 'foo']);
+      expect(getCall(spiedElement, 1)?.args ?? []).toEqual(['title', 'bar']);
+      expect(getCall(spiedElement, 2)?.args ?? []).toEqual(['title', 'baz']);
+      expect(element.getAttribute('class')).toBe('foo');
+      expect(element.getAttribute('title')).toBe('baz');
     });
 
     it('should unbind bindings that no longer exists', () => {
@@ -1007,8 +926,8 @@ describe('SpreadBinding', () => {
       binding.bind(updater);
       updater.flush();
 
-      assert.isFalse(element.hasAttribute('class'));
-      assert.isFalse(element.hasAttribute('title'));
+      expect(element.hasAttribute('class')).toBe(false);
+      expect(element.hasAttribute('title')).toBe(false);
     });
   });
 
@@ -1032,8 +951,8 @@ describe('SpreadBinding', () => {
       binding.unbind(updater);
       updater.flush();
 
-      assert.isFalse(element.hasAttribute('class'));
-      assert.isFalse(element.hasAttribute('title'));
+      expect(element.hasAttribute('class')).toBe(false);
+      expect(element.hasAttribute('title')).toBe(false);
     });
   });
 
@@ -1068,7 +987,7 @@ describe('SpreadBinding', () => {
 
       binding.disconnect();
 
-      assert.strictEqual(disconnects, 2);
+      expect(disconnects).toBe(2);
     });
   });
 });
@@ -1083,16 +1002,12 @@ describe('initializeBinding()', () => {
     const updater = new LocalUpdater();
     const binding = initializeBinding(directive, part, updater);
 
-    assert.instanceOf(binding, MockBinding);
-    assert.lengthOf(getCalls(directive), 1);
-    assert.strictEqual(
-      getCall(directive, 0)?.function,
+    expect(binding).toBeInstanceOf(MockBinding);
+    expect(getCalls(directive)).toHaveLength(1);
+    expect(getCall(directive, 0)?.function).toBe(
       MockDirective.prototype[directiveTag],
     );
-    assert.sameOrderedMembers(getCall(directive, 0)?.args ?? [], [
-      part,
-      updater,
-    ]);
+    expect(getCall(directive, 0)?.args).toEqual([part, updater]);
   });
 
   it('should resolve the value as a AttributeBinding if the part is a AttributePart', () => {
@@ -1107,8 +1022,8 @@ describe('initializeBinding()', () => {
 
     updater.flush();
 
-    assert.instanceOf(binding, AttributeBinding);
-    assert.strictEqual(element.getAttribute('class'), 'foo');
+    expect(binding).toBeInstanceOf(AttributeBinding);
+    expect(element.getAttribute('class')).toBe('foo');
   });
 
   it('should resolve the value as a EventBinding if the part is a EventPart', () => {
@@ -1127,9 +1042,9 @@ describe('initializeBinding()', () => {
 
     element.dispatchEvent(event);
 
-    assert.instanceOf(binding, EventBinding);
-    assert.lengthOf(getCalls(listener), 1);
-    assert.sameOrderedMembers(getCall(listener, 0)?.args ?? [], [event]);
+    expect(binding).toBeInstanceOf(EventBinding);
+    expect(getCalls(listener)).toHaveLength(1);
+    expect(getCall(listener, 0)?.args).toEqual([event]);
   });
 
   it('should resolve the value as a PropertyBinding if the part is a PropertyPart', () => {
@@ -1144,8 +1059,8 @@ describe('initializeBinding()', () => {
 
     updater.flush();
 
-    assert.instanceOf(binding, PropertyBinding);
-    assert.strictEqual(element.className, 'foo');
+    expect(binding).toBeInstanceOf(PropertyBinding);
+    expect(element.className).toBe('foo');
   });
 
   it('should resolve the value as a NodeBinding if the part is a NodePart', () => {
@@ -1159,8 +1074,8 @@ describe('initializeBinding()', () => {
 
     updater.flush();
 
-    assert.instanceOf(binding, NodeBinding);
-    assert.strictEqual(node.nodeValue, 'foo');
+    expect(binding).toBeInstanceOf(NodeBinding);
+    expect(node.nodeValue).toBe('foo');
   });
 
   it('should resolve the value as a NodeBinding if the part is a ChildNodePart', () => {
@@ -1174,8 +1089,8 @@ describe('initializeBinding()', () => {
 
     updater.flush();
 
-    assert.instanceOf(binding, NodeBinding);
-    assert.strictEqual(node.nodeValue, 'foo');
+    expect(binding).toBeInstanceOf(NodeBinding);
+    expect(node.nodeValue).toBe('foo');
   });
 
   it('should resolve the value as a SpreadBinding if the part is a ElementPart', () => {
@@ -1196,9 +1111,9 @@ describe('initializeBinding()', () => {
 
     updater.flush();
 
-    assert.instanceOf(binding, SpreadBinding);
-    assert.strictEqual(element.getAttribute('class'), 'foo');
-    assert.strictEqual(element.getAttribute('title'), 'bar');
+    expect(binding).toBeInstanceOf(SpreadBinding);
+    expect(element.getAttribute('class')).toBe('foo');
+    expect(element.getAttribute('title')).toBe('bar');
   });
 });
 
@@ -1215,11 +1130,11 @@ describe('updateBinding()', () => {
     const newDirective = new MockDirective();
     const newBinding = updateBinding(binding, newDirective, updater);
 
-    assert.strictEqual(newBinding, binding);
-    assert.strictEqual(binding.value, newDirective);
-    assert.lengthOf(getCalls(binding), 1);
-    assert.strictEqual(getCall(binding, 0)?.function.name, 'bind');
-    assert.sameOrderedMembers(getCall(binding, 0)?.args ?? [], [updater]);
+    expect(newBinding).toBe(binding);
+    expect(binding.value).toBe(newDirective);
+    expect(getCalls(binding)).toHaveLength(1);
+    expect(getCall(binding, 0)?.function.name).toBe('bind');
+    expect(getCall(binding, 0)?.args).toEqual([updater]);
   });
 
   it('should update the binding if the both new and old values are non-dirbiectives', () => {
@@ -1232,10 +1147,10 @@ describe('updateBinding()', () => {
     const binding = spy(new NodeBinding('foo', part));
     const newBinding = updateBinding(binding, 'bar', updater);
 
-    assert.strictEqual(newBinding, binding);
-    assert.lengthOf(getCalls(binding), 1);
-    assert.strictEqual(getCall(binding, 0)?.function.name, 'bind');
-    assert.sameOrderedMembers(getCall(binding, 0)?.args ?? [], [updater]);
+    expect(newBinding).toBe(binding);
+    expect(getCalls(binding)).toHaveLength(1);
+    expect(getCall(binding, 0)?.function.name).toBe('bind');
+    expect(getCall(binding, 0)?.args).toEqual([updater]);
   });
 
   it('should return the new binding if the old value is a non-directive and the new value is a directive', () => {
@@ -1249,18 +1164,14 @@ describe('updateBinding()', () => {
     const binding = spy(new NodeBinding('foo', part));
     const newBinding = spy(updateBinding(binding, directive, updater));
 
-    assert.instanceOf(newBinding, MockBinding);
-    assert.lengthOf(getCalls(binding), 1);
-    assert.strictEqual(getCall(binding, 0)?.function.name, 'unbind');
-    assert.lengthOf(getCalls(directive), 1);
-    assert.strictEqual(
-      getCall(directive, 0)?.function,
+    expect(newBinding).toBeInstanceOf(MockBinding);
+    expect(getCalls(binding)).toHaveLength(1);
+    expect(getCall(binding, 0)?.function.name).toBe('unbind');
+    expect(getCalls(directive)).toHaveLength(1);
+    expect(getCall(directive, 0)?.function).toBe(
       MockDirective.prototype[directiveTag],
     );
-    assert.sameOrderedMembers(getCall(directive, 0)?.args ?? [], [
-      part,
-      updater,
-    ]);
+    expect(getCall(directive, 0)?.args).toEqual([part, updater]);
   });
 
   it('should return the new binding if the old value is a directive and the new value is a non-directive', () => {
@@ -1278,9 +1189,9 @@ describe('updateBinding()', () => {
 
     updater.flush();
 
-    assert.instanceOf(newBinding, NodeBinding);
-    assert.lengthOf(getCalls(binding), 1);
-    assert.strictEqual(getCall(binding, 0)?.function.name, 'unbind');
-    assert.strictEqual(node.nodeValue, 'foo');
+    expect(newBinding).toBeInstanceOf(NodeBinding);
+    expect(getCalls(binding)).toHaveLength(1);
+    expect(getCall(binding, 0)?.function.name).toBe('unbind');
+    expect(node.nodeValue).toBe('foo');
   });
 });

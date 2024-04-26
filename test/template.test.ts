@@ -1,4 +1,4 @@
-import { assert, describe, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import {
   AttributeBinding,
@@ -25,36 +25,36 @@ describe('Template', () => {
       const template = html`
         <input type="checkbox" id=${0} .value=${1} @change=${2}>
       `;
-      assert.deepEqual(template.holes, [
+      expect(template.holes).toEqual([
         { type: PartType.ATTRIBUTE, name: 'id', index: 0 },
         { type: PartType.PROPERTY, name: 'value', index: 0 },
         { type: PartType.EVENT, name: 'change', index: 0 },
       ]);
-      assert.strictEqual(template.element.innerHTML, '<input type="checkbox">');
+      expect(template.element.innerHTML).toBe('<input type="checkbox">');
     });
 
     it('should parse holes inside double-quoted attributes', () => {
       const template = html`
         <input type="checkbox" id="${0}" .value="${1}" @change="${2}">
       `;
-      assert.deepEqual(template.holes, [
+      expect(template.holes).toEqual([
         { type: PartType.ATTRIBUTE, name: 'id', index: 0 },
         { type: PartType.PROPERTY, name: 'value', index: 0 },
         { type: PartType.EVENT, name: 'change', index: 0 },
       ]);
-      assert.strictEqual(template.element.innerHTML, '<input type="checkbox">');
+      expect(template.element.innerHTML).toBe('<input type="checkbox">');
     });
 
     it('should parse holes inside single-quoted attributes', () => {
       const template = html`
         <input type="checkbox" id='${0}' .value='${1}' @change='${2}'>
       `;
-      assert.deepEqual(template.holes, [
+      expect(template.holes).toEqual([
         { type: PartType.ATTRIBUTE, name: 'id', index: 0 },
         { type: PartType.PROPERTY, name: 'value', index: 0 },
         { type: PartType.EVENT, name: 'change', index: 0 },
       ]);
-      assert.strictEqual(template.element.innerHTML, '<input type="checkbox">');
+      expect(template.element.innerHTML).toBe('<input type="checkbox">');
     });
 
     it('should parse a hole inside a tag name', () => {
@@ -64,14 +64,13 @@ describe('Template', () => {
         <${2}/>
         <${3} />
       `;
-      assert.deepEqual(template.holes, [
+      expect(template.holes).toEqual([
         { type: PartType.CHILD_NODE, index: 0 },
         { type: PartType.CHILD_NODE, index: 2 },
         { type: PartType.CHILD_NODE, index: 4 },
         { type: PartType.CHILD_NODE, index: 6 },
       ]);
-      assert.strictEqual(
-        template.element.innerHTML,
+      expect(template.element.innerHTML).toBe(
         `
         <!---->
         <!---->
@@ -87,13 +86,12 @@ describe('Template', () => {
         <div ${1} id="foo"></div>
         <div id="foo" ${2} class="bar"></div>
       `;
-      assert.deepEqual(template.holes, [
+      expect(template.holes).toEqual([
         { type: PartType.ELEMENT, index: 0 },
         { type: PartType.ELEMENT, index: 2 },
         { type: PartType.ELEMENT, index: 4 },
       ]);
-      assert.strictEqual(
-        template.element.innerHTML,
+      expect(template.element.innerHTML).toBe(
         `
         <div id="foo"></div>
         <div id="foo"></div>
@@ -109,12 +107,11 @@ describe('Template', () => {
           <li>${2}</li>
         </ul>
       `;
-      assert.deepEqual(template.holes, [
+      expect(template.holes).toEqual([
         { type: PartType.NODE, index: 3 },
         { type: PartType.NODE, index: 6 },
       ]);
-      assert.strictEqual(
-        template.element.innerHTML,
+      expect(template.element.innerHTML).toBe(
         `
         <ul>
           <li></li>
@@ -129,14 +126,13 @@ describe('Template', () => {
         <div>[${0}, ${1}]</div>
         <div>${0}, ${1}</div>
       `;
-      assert.deepEqual(template.holes, [
+      expect(template.holes).toEqual([
         { type: PartType.NODE, index: 2 },
         { type: PartType.NODE, index: 4 },
         { type: PartType.NODE, index: 8 },
         { type: PartType.NODE, index: 10 },
       ]);
-      assert.strictEqual(
-        template.element.innerHTML,
+      expect(template.element.innerHTML).toBe(
         `
         <div>[, ]</div>
         <div>, </div>
@@ -151,14 +147,13 @@ describe('Template', () => {
         <!-- ${2} -->
         <!-- ${3} /-->
       `;
-      assert.deepEqual(template.holes, [
+      expect(template.holes).toEqual([
         { type: PartType.CHILD_NODE, index: 0 },
         { type: PartType.CHILD_NODE, index: 2 },
         { type: PartType.CHILD_NODE, index: 4 },
         { type: PartType.CHILD_NODE, index: 6 },
       ]);
-      assert.strictEqual(
-        template.element.innerHTML,
+      expect(template.element.innerHTML).toBe(
         `
         <!---->
         <!---->
@@ -173,12 +168,11 @@ describe('Template', () => {
         < ${0}>
         < ${0}/>
       `;
-      assert.deepEqual(template.holes, [
+      expect(template.holes).toEqual([
         { type: PartType.NODE, index: 1 },
         { type: PartType.NODE, index: 3 },
       ]);
-      assert.strictEqual(
-        template.element.innerHTML,
+      expect(template.element.innerHTML).toBe(
         `
         &lt; &gt;
         &lt; /&gt;
@@ -187,79 +181,93 @@ describe('Template', () => {
     });
 
     it('should throw an error if passed a marker in an invalid format', () => {
-      assert.throw(() => {
+      expect(() => {
         Template.parseHTML([], 'INVALID_MARKER');
-      }, 'The marker is in an invalid format:');
-      assert.throw(() => {
+      }).toThrow('The marker is in an invalid format:');
+      expect(() => {
         Template.parseHTML([], MARKER.toUpperCase());
-      }, 'The marker is in an invalid format:');
+      }).toThrow('The marker is in an invalid format:');
     });
 
     it('should throw an error when there is a hole as an attribute name', () => {
-      assert.throw(() => {
+      expect(() => {
         html`
           <div ${0}="foo"></div>
         `;
-      }, 'Expressions are not allowed as an attribute name:');
-      assert.throw(() => {
+      }).toThrow('Expressions are not allowed as an attribute name:');
+      expect(() => {
         html`
           <div x-${0}="foo"></div>
         `;
-      }, 'Expressions are not allowed as an attribute name:');
-      assert.throw(() => {
+      }).toThrow('Expressions are not allowed as an attribute name:');
+      expect(() => {
         html`
           <div ${0}-x="foo"></div>
         `;
-      }, 'Expressions are not allowed as an attribute name:');
+      }).toThrow('Expressions are not allowed as an attribute name:');
     });
 
     it('should throw an error when there is a hole with extra strings inside an attribute value', () => {
-      assert.throw(() => {
+      expect(() => {
         html`
           <div class=" ${0}"></div>
         `;
-      }, 'Expressions inside an attribute must make up the entire attribute value:');
-      assert.throw(() => {
+      }).toThrow(
+        'Expressions inside an attribute must make up the entire attribute value:',
+      );
+      expect(() => {
         html`
           <div class="${0} "></div>
         `;
-      }, 'Expressions inside an attribute must make up the entire attribute value:');
+      }).toThrow(
+        'Expressions inside an attribute must make up the entire attribute value:',
+      );
     });
 
     it('should throw an error when there is a hole with extra strings inside a tag name', () => {
-      assert.throw(() => {
+      expect(() => {
         html`
           <x-${0}>
         `;
-      }, 'Expressions are not allowed as a tag name:');
-      assert.throw(() => {
+      }).toThrow('Expressions are not allowed as a tag name:');
+      expect(() => {
         html`
           <${0}-x>
         `;
-      }, 'Expressions inside a comment must make up the entire comment value:');
-      assert.throw(() => {
+      }).toThrow(
+        'Expressions inside a comment must make up the entire comment value:',
+      );
+      expect(() => {
         html`
           <${0}/ >
         `;
-      }, 'Expressions inside a comment must make up the entire comment value:');
+      }).toThrow(
+        'Expressions inside a comment must make up the entire comment value:',
+      );
     });
 
     it('should throw an error when there is a hole with extra strings inside a comment', () => {
-      assert.throw(() => {
+      expect(() => {
         html`
           <!-- x-${0} -->
         `;
-      }, 'Expressions inside a comment must make up the entire comment value:');
-      assert.throw(() => {
+      }).toThrow(
+        'Expressions inside a comment must make up the entire comment value:',
+      );
+      expect(() => {
         html`
           <!-- ${0}-x -->
         `;
-      }, 'Expressions inside a comment must make up the entire comment value:');
-      assert.throw(() => {
+      }).toThrow(
+        'Expressions inside a comment must make up the entire comment value:',
+      );
+      expect(() => {
         html`
           <!-- ${0}/ -->
         `;
-      }, 'Expressions inside a comment must make up the entire comment value:');
+      }).toThrow(
+        'Expressions inside a comment must make up the entire comment value:',
+      );
     });
   });
 
@@ -268,28 +276,24 @@ describe('Template', () => {
       const template = svg`
         <circle fill="black" cx=${0} cy=${1} r=${2} />
       `;
-      assert.deepEqual(template.holes, [
+      expect(template.holes).toEqual([
         { type: PartType.ATTRIBUTE, name: 'cx', index: 0 },
         { type: PartType.ATTRIBUTE, name: 'cy', index: 0 },
         { type: PartType.ATTRIBUTE, name: 'r', index: 0 },
       ]);
-      assert.strictEqual(
-        template.element.innerHTML,
-        '<circle fill="black"></circle>',
-      );
-      assert.strictEqual(
-        template.element.content.firstElementChild?.namespaceURI,
+      expect(template.element.innerHTML).toBe('<circle fill="black"></circle>');
+      expect(template.element.content.firstElementChild?.namespaceURI).toBe(
         'http://www.w3.org/2000/svg',
       );
     });
 
     it('should throw an error when it is passed a marker in an invalid format', () => {
-      assert.throw(() => {
+      expect(() => {
         Template.parseSVG([], 'INVALID_MARKER');
-      }, 'The marker is in an invalid format:');
-      assert.throw(() => {
+      }).toThrow('The marker is in an invalid format:');
+      expect(() => {
         Template.parseSVG([], MARKER.toUpperCase());
-      }, 'The marker is in an invalid format:');
+      }).toThrow('The marker is in an invalid format:');
     });
   });
 
@@ -312,49 +316,48 @@ describe('Template', () => {
       const updater = new LocalUpdater();
       const root = template.hydrate(values, updater);
 
-      assert.instanceOf(root, TemplateRoot);
-      assert.lengthOf(root.bindings, values.length);
-      assert.lengthOf(root.childNodes, 1);
+      expect(root).toBeInstanceOf(TemplateRoot);
+      expect(root.bindings).toHaveLength(values.length);
+      expect(root.childNodes).toHaveLength(1);
 
-      assert.sameOrderedMembers(
-        root.bindings.map((binding) => binding.value),
-        values,
-      );
+      expect(root.bindings.map((binding) => binding.value)).toEqual(values);
 
-      assert.instanceOf(root.bindings[0], AttributeBinding);
-      assert.include(root.bindings[0]?.part, {
+      expect(root.bindings[0]).toBeInstanceOf(AttributeBinding);
+      expect(root.bindings[0]?.part).toMatchObject({
         type: PartType.ATTRIBUTE,
         name: 'class',
       });
-      assert.instanceOf(root.bindings[1], NodeBinding);
-      assert.include(root.bindings[1]?.part, { type: PartType.CHILD_NODE });
-      assert.instanceOf(root.bindings[2], PropertyBinding);
-      assert.include(root.bindings[2]?.part, {
+      expect(root.bindings[1]).toBeInstanceOf(NodeBinding);
+      expect(root.bindings[1]?.part).toMatchObject({
+        type: PartType.CHILD_NODE,
+      });
+      expect(root.bindings[2]).toBeInstanceOf(PropertyBinding);
+      expect(root.bindings[2]?.part).toMatchObject({
         type: PartType.PROPERTY,
         name: 'value',
       });
-      assert.instanceOf(root.bindings[3], EventBinding);
-      assert.include(root.bindings[3]?.part, {
+      expect(root.bindings[3]).toBeInstanceOf(EventBinding);
+      expect(root.bindings[3]?.part).toMatchObject({
         type: PartType.EVENT,
         name: 'onchange',
       });
-      assert.instanceOf(root.bindings[4], SpreadBinding);
-      assert.include(root.bindings[4]?.part, {
+      expect(root.bindings[4]).toBeInstanceOf(SpreadBinding);
+      expect(root.bindings[4]?.part).toMatchObject({
         type: PartType.ELEMENT,
       });
-      assert.instanceOf(root.bindings[5], MockBinding);
-      assert.include(root.bindings[5]?.part, {
+      expect(root.bindings[5]).toBeInstanceOf(MockBinding);
+      expect(root.bindings[5]?.part).toMatchObject({
         type: PartType.NODE,
       });
 
       updater.flush();
 
-      assert.strictEqual(
-        (root.childNodes[0] as Element)?.outerHTML,
-        `<div class="foo">
+      expect((root.childNodes[0] as Element)?.outerHTML).toBe(
+        `
+        <div class="foo">
           <!--bar-->
           <input type="text" class="qux"><span></span>
-        </div>`,
+        </div>`.trim(),
       );
     });
 
@@ -364,9 +367,9 @@ describe('Template', () => {
       `;
       const values = ['foo', 'bar'];
       const updater = new LocalUpdater();
-      assert.throws(() => {
+      expect(() => {
         template.hydrate(values, updater);
-      });
+      }).toThrow('There may be multiple holes indicating the same attribute.');
     });
   });
 });
@@ -393,14 +396,14 @@ describe('TemplateRoot', () => {
         node: marker,
       });
 
-      assert.strictEqual(container.innerHTML, '<p>Hello, World!</p><!---->');
+      expect(container.innerHTML, '<p>Hello).toBe(World!</p><!---->');
 
       root.unmount({
         type: PartType.CHILD_NODE,
         node: marker,
       });
 
-      assert.strictEqual(container.innerHTML, '<!---->');
+      expect(container.innerHTML).toBe('<!---->');
     });
   });
 
@@ -415,8 +418,7 @@ describe('TemplateRoot', () => {
 
       updater.flush();
 
-      assert.strictEqual(
-        (root.childNodes[0] as Element)?.outerHTML,
+      expect((root.childNodes[0] as Element)?.outerHTML).toBe(
         '<p>Count: 0</p>',
       );
 
@@ -424,8 +426,7 @@ describe('TemplateRoot', () => {
 
       updater.flush();
 
-      assert.strictEqual(
-        (root.childNodes[0] as Element)?.outerHTML,
+      expect((root.childNodes[0] as Element)?.outerHTML).toBe(
         '<p>Count: 1</p>',
       );
     });
@@ -451,24 +452,24 @@ describe('TemplateRoot', () => {
       const updater = new LocalUpdater();
       const root = template.hydrate(values, updater);
 
-      assert.strictEqual(disconnects, 0);
+      expect(disconnects).toBe(0);
 
       root.disconnect();
 
-      assert.strictEqual(disconnects, 1);
+      expect(disconnects).toBe(1);
     });
   });
 });
 
 describe('getMarker()', () => {
   it('returns a valid marker string', () => {
-    assert.isTrue(isValidMarker(getMarker()));
+    expect(isValidMarker(getMarker())).toBe(true);
 
     // force randomUUID() polyfill.
     const originalRandomUUID = crypto.randomUUID;
     try {
       (crypto as any).randomUUID = null;
-      assert.isTrue(isValidMarker(getMarker()));
+      expect(isValidMarker(getMarker())).toBe(true);
     } finally {
       crypto.randomUUID = originalRandomUUID;
     }

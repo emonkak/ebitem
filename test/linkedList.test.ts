@@ -1,4 +1,4 @@
-import { assert, describe, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { LinkedList } from '../src/linkedList.js';
 
@@ -6,10 +6,10 @@ describe('LinkedList', () => {
   it('should create an empty list', () => {
     const list = new LinkedList();
 
-    assert.equal(list.isEmpty(), true);
-    assert.equal(list.front(), null);
-    assert.equal(list.back(), null);
-    assert.deepEqual(Array.from(list), []);
+    expect(list.isEmpty()).toBe(true);
+    expect(list.front()).toBe(null);
+    expect(list.back()).toBe(null);
+    expect(Array.from(list)).toEqual([]);
   });
 
   describe('.pushFront()', () => {
@@ -17,11 +17,11 @@ describe('LinkedList', () => {
       const list = new LinkedList();
       const foo = list.pushFront('foo');
 
-      assert.equal(foo.value, 'foo');
-      assert.equal(list.isEmpty(), false);
-      assert.equal(list.front(), foo);
-      assert.equal(list.back(), foo);
-      assert.deepEqual(Array.from(list), ['foo']);
+      expect(foo.value).toBe('foo');
+      expect(list.isEmpty()).toBe(false);
+      expect(list.front()).toBe(foo);
+      expect(list.back()).toBe(foo);
+      expect(Array.from(list)).toEqual(['foo']);
     });
 
     it('should prepend values to the list', () => {
@@ -30,13 +30,13 @@ describe('LinkedList', () => {
       const bar = list.pushFront('bar');
       const baz = list.pushFront('baz');
 
-      assert.equal(foo.value, 'foo');
-      assert.equal(bar.value, 'bar');
-      assert.equal(baz.value, 'baz');
-      assert.equal(list.isEmpty(), false);
-      assert.equal(list.front(), baz);
-      assert.equal(list.back(), foo);
-      assert.deepEqual(Array.from(list), ['baz', 'bar', 'foo']);
+      expect(foo.value).toBe('foo');
+      expect(bar.value).toBe('bar');
+      expect(baz.value).toBe('baz');
+      expect(list.isEmpty()).toBe(false);
+      expect(list.front()).toBe(baz);
+      expect(list.back()).toBe(foo);
+      expect(Array.from(list)).toEqual(['baz', 'bar', 'foo']);
     });
   });
 
@@ -45,11 +45,11 @@ describe('LinkedList', () => {
       const list = new LinkedList();
       const foo = list.pushBack('foo');
 
-      assert.equal(foo.value, 'foo');
-      assert.equal(list.isEmpty(), false);
-      assert.equal(list.front(), foo);
-      assert.equal(list.back(), foo);
-      assert.deepEqual(Array.from(list), ['foo']);
+      expect(foo.value).toBe('foo');
+      expect(list.isEmpty()).toBe(false);
+      expect(list.front()).toBe(foo);
+      expect(list.back()).toBe(foo);
+      expect(Array.from(list)).toEqual(['foo']);
     });
 
     it('should append values to the list', () => {
@@ -58,13 +58,13 @@ describe('LinkedList', () => {
       const bar = list.pushBack('bar');
       const baz = list.pushBack('baz');
 
-      assert.equal(foo.value, 'foo');
-      assert.equal(bar.value, 'bar');
-      assert.equal(baz.value, 'baz');
-      assert.equal(list.isEmpty(), false);
-      assert.equal(list.front(), foo);
-      assert.equal(list.back(), baz);
-      assert.deepEqual(Array.from(list), ['foo', 'bar', 'baz']);
+      expect(foo.value).toBe('foo');
+      expect(bar.value).toBe('bar');
+      expect(baz.value).toBe('baz');
+      expect(list.isEmpty()).toBe(false);
+      expect(list.front()).toBe(foo);
+      expect(list.back()).toBe(baz);
+      expect(Array.from(list)).toEqual(['foo', 'bar', 'baz']);
     });
   });
 
@@ -75,29 +75,29 @@ describe('LinkedList', () => {
       const bar = list.pushBack('bar');
       const baz = list.pushBack('baz');
 
-      assert.equal(list.popFront(), foo);
-      assert.equal(foo.next, null);
-      assert.equal(foo.prev, null);
-      assert.equal(list.isEmpty(), false);
-      assert.equal(list.front(), bar);
-      assert.equal(list.back(), baz);
-      assert.deepEqual(Array.from(list), ['bar', 'baz']);
+      expect(list.popFront()).toBe(foo);
+      expect(foo.next).toBe(null);
+      expect(foo.prev).toBe(null);
+      expect(list.isEmpty()).toBe(false);
+      expect(list.front()).toBe(bar);
+      expect(list.back()).toBe(baz);
+      expect(Array.from(list)).toEqual(['bar', 'baz']);
 
-      assert.equal(list.popFront(), bar);
-      assert.equal(bar.next, null);
-      assert.equal(bar.prev, null);
-      assert.equal(list.isEmpty(), false);
-      assert.equal(list.front(), baz);
-      assert.equal(list.back(), baz);
-      assert.deepEqual(Array.from(list), ['baz']);
+      expect(list.popFront()).toBe(bar);
+      expect(bar.next).toBe(null);
+      expect(bar.prev).toBe(null);
+      expect(list.isEmpty()).toBe(false);
+      expect(list.front()).toBe(baz);
+      expect(list.back()).toBe(baz);
+      expect(Array.from(list)).toEqual(['baz']);
 
-      assert.equal(list.popFront(), baz);
-      assert.equal(baz.next, null);
-      assert.equal(baz.prev, null);
-      assert.equal(list.isEmpty(), true);
-      assert.equal(list.front(), null);
-      assert.equal(list.back(), null);
-      assert.deepEqual(Array.from(list), []);
+      expect(list.popFront()).toBe(baz);
+      expect(baz.next).toBe(null);
+      expect(baz.prev).toBe(null);
+      expect(list.isEmpty()).toBe(true);
+      expect(list.front()).toBe(null);
+      expect(list.back()).toBe(null);
+      expect(Array.from(list)).toEqual([]);
     });
 
     it('should remove the head value', () => {
@@ -106,9 +106,9 @@ describe('LinkedList', () => {
       const bar = list.pushBack('bar');
       const baz = list.pushBack('baz');
 
-      assert.equal(list.popFront(), foo);
-      assert.equal(list.popFront(), bar);
-      assert.equal(list.popFront(), baz);
+      expect(list.popFront()).toBe(foo);
+      expect(list.popFront()).toBe(bar);
+      expect(list.popFront()).toBe(baz);
     });
   });
 
@@ -119,29 +119,29 @@ describe('LinkedList', () => {
       const bar = list.pushBack('bar');
       const baz = list.pushBack('baz');
 
-      assert.equal(list.popBack(), baz);
-      assert.equal(baz.next, null);
-      assert.equal(baz.prev, null);
-      assert.equal(list.isEmpty(), false);
-      assert.equal(list.front(), foo);
-      assert.equal(list.back(), bar);
-      assert.deepEqual(Array.from(list), ['foo', 'bar']);
+      expect(list.popBack()).toBe(baz);
+      expect(baz.next).toBe(null);
+      expect(baz.prev).toBe(null);
+      expect(list.isEmpty()).toBe(false);
+      expect(list.front()).toBe(foo);
+      expect(list.back()).toBe(bar);
+      expect(Array.from(list)).toEqual(['foo', 'bar']);
 
-      assert.equal(list.popBack(), bar);
-      assert.equal(bar.next, null);
-      assert.equal(bar.prev, null);
-      assert.equal(list.isEmpty(), false);
-      assert.equal(list.front(), foo);
-      assert.equal(list.back(), foo);
-      assert.deepEqual(Array.from(list), ['foo']);
+      expect(list.popBack()).toBe(bar);
+      expect(bar.next).toBe(null);
+      expect(bar.prev).toBe(null);
+      expect(list.isEmpty()).toBe(false);
+      expect(list.front()).toBe(foo);
+      expect(list.back()).toBe(foo);
+      expect(Array.from(list)).toEqual(['foo']);
 
-      assert.equal(list.popBack(), foo);
-      assert.equal(foo.next, null);
-      assert.equal(foo.prev, null);
-      assert.equal(list.isEmpty(), true);
-      assert.equal(list.front(), null);
-      assert.equal(list.back(), null);
-      assert.deepEqual(Array.from(list), []);
+      expect(list.popBack()).toBe(foo);
+      expect(foo.next).toBe(null);
+      expect(foo.prev).toBe(null);
+      expect(list.isEmpty()).toBe(true);
+      expect(list.front()).toBe(null);
+      expect(list.back()).toBe(null);
+      expect(Array.from(list)).toEqual([]);
     });
 
     it('should remove the tail value', () => {
@@ -150,14 +150,14 @@ describe('LinkedList', () => {
       const bar = list.pushBack('bar');
       const baz = list.pushBack('baz');
 
-      assert.equal(list.popBack(), baz);
-      assert.equal(list.popBack(), bar);
-      assert.equal(list.popBack(), foo);
+      expect(list.popBack()).toBe(baz);
+      expect(list.popBack()).toBe(bar);
+      expect(list.popBack()).toBe(foo);
 
-      assert.equal(list.isEmpty(), true);
-      assert.equal(list.front(), null);
-      assert.equal(list.back(), null);
-      assert.deepEqual(Array.from(list), []);
+      expect(list.isEmpty()).toBe(true);
+      expect(list.front()).toBe(null);
+      expect(list.back()).toBe(null);
+      expect(Array.from(list)).toEqual([]);
     });
   });
 
@@ -170,12 +170,12 @@ describe('LinkedList', () => {
 
       list.remove(bar);
 
-      assert.equal(bar.next, null);
-      assert.equal(bar.prev, null);
-      assert.equal(list.isEmpty(), false);
-      assert.equal(list.front(), foo);
-      assert.equal(list.back(), baz);
-      assert.deepEqual(Array.from(list), ['foo', 'baz']);
+      expect(bar.next).toBe(null);
+      expect(bar.prev).toBe(null);
+      expect(list.isEmpty()).toBe(false);
+      expect(list.front()).toBe(foo);
+      expect(list.back()).toBe(baz);
+      expect(Array.from(list)).toEqual(['foo', 'baz']);
     });
 
     it('should remove the head value', () => {
@@ -186,12 +186,12 @@ describe('LinkedList', () => {
 
       list.remove(foo);
 
-      assert.equal(foo.next, null);
-      assert.equal(foo.prev, null);
-      assert.equal(list.isEmpty(), false);
-      assert.equal(list.front(), bar);
-      assert.equal(list.back(), baz);
-      assert.deepEqual(Array.from(list), ['bar', 'baz']);
+      expect(foo.next).toBe(null);
+      expect(foo.prev).toBe(null);
+      expect(list.isEmpty()).toBe(false);
+      expect(list.front()).toBe(bar);
+      expect(list.back()).toBe(baz);
+      expect(Array.from(list)).toEqual(['bar', 'baz']);
     });
 
     it('should remove the tail value', () => {
@@ -202,12 +202,12 @@ describe('LinkedList', () => {
 
       list.remove(baz);
 
-      assert.equal(baz.next, null);
-      assert.equal(baz.prev, null);
-      assert.equal(list.isEmpty(), false);
-      assert.equal(list.front(), foo);
-      assert.equal(list.back(), bar);
-      assert.deepEqual(Array.from(list), ['foo', 'bar']);
+      expect(baz.next).toBe(null);
+      expect(baz.prev).toBe(null);
+      expect(list.isEmpty()).toBe(false);
+      expect(list.front()).toBe(foo);
+      expect(list.back()).toBe(bar);
+      expect(Array.from(list)).toEqual(['foo', 'bar']);
     });
   });
 });

@@ -1,4 +1,4 @@
-import { assert, describe, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { AtomSignal, ComputedSignal } from '../src/signal.js';
 
@@ -6,16 +6,16 @@ describe('AtomSignal', () => {
   it('should get 0 of the initial version on initalize', () => {
     const signal = new AtomSignal('foo');
 
-    assert.strictEqual(signal.value, 'foo');
-    assert.strictEqual(signal.version, 0);
+    expect(signal.value).toBe('foo');
+    expect(signal.version).toBe(0);
   });
 
   it('should increment the version on update', () => {
     const signal = new AtomSignal('foo');
 
     signal.value = 'bar';
-    assert.strictEqual(signal.value, 'bar');
-    assert.strictEqual(signal.version, 1);
+    expect(signal.value).toBe('bar');
+    expect(signal.version).toBe(1);
   });
 
   describe('.forceUpdate()', () => {
@@ -24,8 +24,8 @@ describe('AtomSignal', () => {
 
       signal.forceUpdate();
 
-      assert.strictEqual(1, signal.value);
-      assert.strictEqual(1, signal.version);
+      expect(1).toBe(signal.value);
+      expect(1).toBe(signal.version);
     });
   });
 
@@ -37,13 +37,13 @@ describe('AtomSignal', () => {
       signal.subscribe(() => {
         count++;
       });
-      assert.strictEqual(count, 0);
+      expect(count).toBe(0);
 
       signal.value = 'bar';
-      assert.strictEqual(count, 1);
+      expect(count).toBe(1);
 
       signal.value = 'baz';
-      assert.strictEqual(count, 2);
+      expect(count).toBe(2);
     });
 
     it('should not invoke the unsubscribed callback', () => {
@@ -53,13 +53,13 @@ describe('AtomSignal', () => {
       signal.subscribe(() => {
         count++;
       })();
-      assert.strictEqual(count, 0);
+      expect(count).toBe(0);
 
       signal.value = 'bar';
-      assert.strictEqual(count, 0);
+      expect(count).toBe(0);
 
       signal.value = 'baz';
-      assert.strictEqual(count, 0);
+      expect(count).toBe(0);
     });
   });
 
@@ -68,13 +68,13 @@ describe('AtomSignal', () => {
       const signal = new AtomSignal(1);
       const doublySignal = signal.map((n) => n * 2);
 
-      assert.strictEqual(doublySignal.value, 2);
-      assert.strictEqual(doublySignal.version, 0);
+      expect(doublySignal.value).toBe(2);
+      expect(doublySignal.version).toBe(0);
 
       signal.value++;
 
-      assert.strictEqual(doublySignal.value, 4);
-      assert.strictEqual(doublySignal.version, 1);
+      expect(doublySignal.value).toBe(4);
+      expect(doublySignal.version).toBe(1);
     });
   });
 
@@ -82,7 +82,7 @@ describe('AtomSignal', () => {
     it('should return the value', () => {
       const signal = new AtomSignal('foo');
 
-      assert.strictEqual('foo', signal.toJSON());
+      expect('foo').toBe(signal.toJSON());
     });
   });
 
@@ -90,7 +90,7 @@ describe('AtomSignal', () => {
     it('should return the value', () => {
       const signal = new AtomSignal('foo');
 
-      assert.strictEqual('foo', signal.valueOf());
+      expect('foo').toBe(signal.valueOf());
     });
   });
 });
@@ -106,9 +106,9 @@ describe('ComputedSignal', () => {
       [foo, bar, baz],
     );
 
-    assert.deepEqual(signal.value, { foo: 1, bar: 2, baz: 3 });
-    assert.strictEqual(signal.value, signal.value);
-    assert.strictEqual(signal.version, 0);
+    expect(signal.value).toEqual({ foo: 1, bar: 2, baz: 3 });
+    expect(signal.value).toBe(signal.value);
+    expect(signal.version).toBe(0);
   });
 
   it('should increment the version when any dependent signal has been updated', () => {
@@ -122,22 +122,22 @@ describe('ComputedSignal', () => {
     );
 
     foo.value = 10;
-    assert.deepEqual(signal.value, { foo: 10, bar: 2, baz: 3 });
-    assert.strictEqual(signal.version, 1);
+    expect(signal.value).toEqual({ foo: 10, bar: 2, baz: 3 });
+    expect(signal.version).toBe(1);
 
     let oldValue = signal.value;
 
     bar.value = 20;
-    assert.deepEqual(signal.value, { foo: 10, bar: 20, baz: 3 });
-    assert.notStrictEqual(signal.value, oldValue);
-    assert.strictEqual(signal.version, 2);
+    expect(signal.value).toEqual({ foo: 10, bar: 20, baz: 3 });
+    expect(signal.value).not.toBe(oldValue);
+    expect(signal.version).toBe(2);
 
     oldValue = signal.value;
 
     baz.value = 30;
-    assert.deepEqual(signal.value, { foo: 10, bar: 20, baz: 30 });
-    assert.notStrictEqual(signal.value, oldValue);
-    assert.strictEqual(signal.version, 3);
+    expect(signal.value).toEqual({ foo: 10, bar: 20, baz: 30 });
+    expect(signal.value).not.toBe(oldValue);
+    expect(signal.version).toBe(3);
   });
 
   describe('.compose()', () => {
@@ -151,9 +151,9 @@ describe('ComputedSignal', () => {
         [foo, bar, baz],
       );
 
-      assert.deepEqual(signal.value, { foo: 1, bar: 2, baz: 3 });
-      assert.strictEqual(signal.value, signal.value);
-      assert.strictEqual(signal.version, 0);
+      expect(signal.value).toEqual({ foo: 1, bar: 2, baz: 3 });
+      expect(signal.value).toBe(signal.value);
+      expect(signal.version).toBe(0);
     });
   });
 
@@ -173,16 +173,16 @@ describe('ComputedSignal', () => {
       signal.subscribe(() => {
         count++;
       });
-      assert.strictEqual(count, 0);
+      expect(count).toBe(0);
 
       foo.value++;
-      assert.strictEqual(count, 1);
+      expect(count).toBe(1);
 
       bar.value++;
-      assert.strictEqual(count, 2);
+      expect(count).toBe(2);
 
       baz.value++;
-      assert.strictEqual(count, 3);
+      expect(count).toBe(3);
     });
 
     it('should not invoke the unsubscribed callback', () => {
@@ -200,16 +200,16 @@ describe('ComputedSignal', () => {
       signal.subscribe(() => {
         count++;
       })();
-      assert.strictEqual(count, 0);
+      expect(count).toBe(0);
 
       foo.value++;
-      assert.strictEqual(count, 0);
+      expect(count).toBe(0);
 
       bar.value++;
-      assert.strictEqual(count, 0);
+      expect(count).toBe(0);
 
       baz.value++;
-      assert.strictEqual(count, 0);
+      expect(count).toBe(0);
     });
   });
 });
