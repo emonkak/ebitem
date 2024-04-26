@@ -1,5 +1,4 @@
-import { describe, expect, it } from 'vitest';
-import { SpiedObject, getCall, getCalls, spy } from './spy.js';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   AttributeBinding,
@@ -153,12 +152,17 @@ describe('AttributeBinding', () => {
         node: element,
         name: 'contenteditable',
       });
-      const updater = spy(new LocalUpdater());
+      const updater = new LocalUpdater();
+      const enqueueMutationEffectSpy = vi.spyOn(
+        updater,
+        'enqueueMutationEffect',
+      );
 
       binding.bind(updater);
       binding.bind(updater);
 
-      expect(getCalls(updater)).toHaveLength(1);
+      expect(enqueueMutationEffectSpy).toHaveBeenCalledOnce();
+      expect(enqueueMutationEffectSpy).toHaveBeenCalledWith(binding);
     });
   });
 
@@ -187,12 +191,17 @@ describe('AttributeBinding', () => {
         node: element,
         name: 'contenteditable',
       });
-      const updater = spy(new LocalUpdater());
+      const updater = new LocalUpdater();
+      const enqueueMutationEffectSpy = vi.spyOn(
+        updater,
+        'enqueueMutationEffect',
+      );
 
-      binding.unbind(updater);
-      binding.unbind(updater);
+      binding.bind(updater);
+      binding.bind(updater);
 
-      expect(getCalls(updater)).toHaveLength(1);
+      expect(enqueueMutationEffectSpy).toHaveBeenCalledOnce();
+      expect(enqueueMutationEffectSpy).toHaveBeenCalledWith(binding);
     });
   });
 
@@ -261,121 +270,106 @@ describe('EventBinding', () => {
 
   describe('.bind()', () => {
     it('should attach the function to the element as an event listener', () => {
-      const listener1 = () => {};
-      const listener2 = () => {};
+      const listener1 = vi.fn();
+      const listener2 = vi.fn();
       const element = document.createElement('div');
-      const spiedListener1 = spy(listener1);
-      const spiedListener2 = spy(listener2);
-      const spiedElement = spy(element);
+      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
       const part = {
         type: PartType.EVENT,
-        node: spiedElement,
+        node: element,
         name: 'hello',
       } as const;
       const event = new CustomEvent('hello');
-      const binding = new EventBinding(spiedListener1, part);
+      const binding = new EventBinding(listener1, part);
       const updater = new LocalUpdater();
 
       binding.bind(updater);
       updater.flush();
       element.dispatchEvent(event);
 
-      expect(getCalls(spiedElement)).toHaveLength(1);
-      expect(getCall(spiedElement, 0)?.function.name).toBe('addEventListener');
-      expect(getCall(spiedElement, 0)?.args).toEqual(['hello', binding]);
-      expect(getCalls(spiedListener1)).toHaveLength(1);
-      expect(getCall(spiedListener1, 0)?.function).toBe(listener1);
-      expect(getCall(spiedListener1, 0)?.args).toEqual([event]);
-      expect(getCalls(spiedListener2)).toHaveLength(0);
+      expect(addEventListenerSpy).toHaveBeenCalledOnce();
+      expect(addEventListenerSpy).toHaveBeenCalledWith('hello', binding);
+      expect(listener1).toHaveBeenCalledOnce();
+      expect(listener1).toHaveBeenCalledWith(event);
+      expect(listener2).not.toHaveBeenCalled();
 
-      binding.value = spiedListener2;
+      binding.value = listener2;
       binding.bind(updater);
       updater.flush();
       element.dispatchEvent(event);
 
-      expect(getCalls(spiedElement)).toHaveLength(1);
-      expect(getCalls(spiedListener1)).toHaveLength(1);
-      expect(getCalls(spiedListener2)).toHaveLength(1);
-      expect(getCall(spiedListener2, 0)?.function).toBe(listener2);
-      expect(getCall(spiedListener2, 0)?.args).toEqual([event]);
+      expect(listener1).toHaveBeenCalledOnce();
+      expect(listener2).toHaveBeenCalledWith(event);
     });
 
     it('should attach the object to the element as an event listener', () => {
       const element = document.createElement('div');
-      const spiedElement = spy(element);
+      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
+      const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
       const part = {
         type: PartType.EVENT,
-        node: spiedElement,
+        node: element,
         name: 'hello',
       } as const;
       const event = new CustomEvent('hello');
       const listener1 = {
         capture: true,
-        handleEvent: () => {},
+        handleEvent: vi.fn(),
       };
       const listener2 = {
         capture: false,
-        handleEvent: () => {},
+        handleEvent: vi.fn(),
       };
-      const spiedListener1 = spy(listener1);
-      const spiedListener2 = spy(listener2);
-      const binding = new EventBinding(spiedListener1, part);
+      const binding = new EventBinding(listener1, part);
       const updater = new LocalUpdater();
 
       binding.bind(updater);
       updater.flush();
       element.dispatchEvent(event);
 
-      expect(getCalls(spiedElement)).toHaveLength(1);
-      expect(getCall(spiedElement, 0)?.function.name).toBe('addEventListener');
-      expect(getCall(spiedElement, 0)?.args ?? []).toEqual([
+      expect(addEventListenerSpy).toHaveBeenCalledTimes(1);
+      expect(addEventListenerSpy).toHaveBeenLastCalledWith(
         'hello',
         binding,
-        spiedListener1,
-      ]);
-      expect(getCalls(spiedListener1)).toHaveLength(1);
-      expect(getCall(spiedListener1, 0)?.function).toBe(listener1.handleEvent);
-      expect(getCall(spiedListener1, 0)?.args).toEqual([event]);
-      expect(getCalls(spiedListener2)).toHaveLength(0);
+        listener1,
+      );
+      expect(listener1.handleEvent).toHaveBeenCalledOnce();
+      expect(listener1.handleEvent).toHaveBeenCalledWith(event);
+      expect(listener2.handleEvent).not.toHaveBeenCalled();
 
-      binding.value = spiedListener2;
+      binding.value = listener2;
       binding.bind(updater);
       updater.flush();
       element.dispatchEvent(event);
 
-      expect(getCalls(spiedElement)).toHaveLength(3);
-      expect(getCall(spiedElement, 1)?.function.name).toBe(
-        'removeEventListener',
+      expect(addEventListenerSpy).toHaveBeenCalledTimes(2);
+      expect(addEventListenerSpy).toHaveBeenLastCalledWith(
+        'hello',
+        binding,
+        listener2,
       );
-      expect(getCall(spiedElement, 1)?.args).toEqual([
+      expect(removeEventListenerSpy).toHaveBeenCalledOnce();
+      expect(removeEventListenerSpy).toHaveBeenCalledWith(
         'hello',
         binding,
-        spiedListener1,
-      ]);
-      expect(getCall(spiedElement, 2)?.function.name).toBe('addEventListener');
-      expect(getCall(spiedElement, 2)?.args).toEqual([
-        'hello',
-        binding,
-        spiedListener2,
-      ]);
-      expect(getCalls(spiedListener1)).toHaveLength(1);
-      expect(getCalls(spiedListener2)).toHaveLength(1);
-      expect(getCall(spiedListener2, 0)?.function).toBe(listener2.handleEvent);
-      expect(getCall(spiedListener2, 0)?.args).toEqual([event]);
+        listener1,
+      );
+      expect(listener2.handleEvent).toHaveBeenCalledOnce();
+      expect(listener2.handleEvent).toHaveBeenCalledWith(event);
     });
 
     it('should detach the active event listener when null is passed', () => {
-      const listener = () => {};
+      const listener = vi.fn();
       const element = document.createElement('div');
-      const spiedListener = spy(listener);
-      const spiedElement = spy(element);
+      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
+      const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
       const part = {
         type: PartType.EVENT,
-        node: spiedElement,
+        node: element,
         name: 'hello',
       } as const;
       const event = new CustomEvent('hello');
-      const binding = new EventBinding(spiedListener, part);
+      const binding = new EventBinding(listener, part);
       const updater = new LocalUpdater();
 
       binding.bind(updater);
@@ -387,16 +381,12 @@ describe('EventBinding', () => {
       updater.flush();
       element.dispatchEvent(event);
 
-      expect(getCalls(spiedElement)).toHaveLength(2);
-      expect(getCall(spiedElement, 0)?.function.name).toBe('addEventListener');
-      expect(getCall(spiedElement, 0)?.args).toEqual(['hello', binding]);
-      expect(getCall(spiedElement, 1)?.function.name).toBe(
-        'removeEventListener',
-      );
-      expect(getCall(spiedElement, 1)?.args ?? []).toEqual(['hello', binding]);
-      expect(getCalls(spiedListener)).toHaveLength(1);
-      expect(getCall(spiedListener, 0)?.function).toBe(listener);
-      expect(getCall(spiedListener, 0)?.args ?? []).toEqual([event]);
+      expect(addEventListenerSpy).toHaveBeenCalledOnce();
+      expect(addEventListenerSpy).toHaveBeenCalledWith('hello', binding);
+      expect(removeEventListenerSpy).toHaveBeenCalledOnce();
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('hello', binding);
+      expect(listener).toHaveBeenCalledOnce();
+      expect(listener).toHaveBeenCalledWith(event);
     });
 
     it('should do nothing if called twice', () => {
@@ -407,28 +397,33 @@ describe('EventBinding', () => {
         node: element,
         name: 'click',
       });
-      const updater = spy(new LocalUpdater());
+      const updater = new LocalUpdater();
+      const enqueueMutationEffectSpy = vi.spyOn(
+        updater,
+        'enqueueMutationEffect',
+      );
 
       binding.bind(updater);
       binding.bind(updater);
 
-      expect(getCalls(updater)).toHaveLength(1);
+      expect(enqueueMutationEffectSpy).toHaveBeenCalledOnce();
+      expect(enqueueMutationEffectSpy).toHaveBeenCalledWith(binding);
     });
   });
 
   describe('.unbind()', () => {
     it('should detach the active event listener', () => {
-      const listener = () => {};
+      const listener = vi.fn();
       const element = document.createElement('div');
-      const spiedListener = spy(listener);
-      const spiedElement = spy(element);
+      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
+      const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
       const part = {
         type: PartType.EVENT,
-        node: spiedElement,
+        node: element,
         name: 'hello',
       } as const;
       const event = new CustomEvent('hello');
-      const binding = new EventBinding(spiedListener, part);
+      const binding = new EventBinding(listener, part);
       const updater = new LocalUpdater();
 
       binding.bind(updater);
@@ -440,16 +435,12 @@ describe('EventBinding', () => {
       element.dispatchEvent(event);
 
       expect(binding.value).toBe(null);
-      expect(getCalls(spiedElement)).toHaveLength(2);
-      expect(getCall(spiedElement, 0)?.function.name).toBe('addEventListener');
-      expect(getCall(spiedElement, 0)?.args).toEqual(['hello', binding]);
-      expect(getCall(spiedElement, 1)?.function.name).toBe(
-        'removeEventListener',
-      );
-      expect(getCall(spiedElement, 1)?.args).toEqual(['hello', binding]);
-      expect(getCalls(spiedListener)).toHaveLength(1);
-      expect(getCall(spiedListener, 0)?.function).toBe(listener);
-      expect(getCall(spiedListener, 0)?.args).toEqual([event]);
+      expect(addEventListenerSpy).toHaveBeenCalledOnce();
+      expect(addEventListenerSpy).toHaveBeenCalledWith('hello', binding);
+      expect(removeEventListenerSpy).toHaveBeenCalledOnce();
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('hello', binding);
+      expect(listener).toHaveBeenCalledOnce();
+      expect(listener).toHaveBeenCalledWith(event);
     });
 
     it('should do nothing if called twice', () => {
@@ -466,12 +457,16 @@ describe('EventBinding', () => {
 
       updater.flush();
 
-      const spiedUpdater = spy(updater);
+      const enqueueMutationEffectSpy = vi.spyOn(
+        updater,
+        'enqueueMutationEffect',
+      );
 
-      binding.unbind(spiedUpdater);
-      binding.unbind(spiedUpdater);
+      binding.unbind(updater);
+      binding.unbind(updater);
 
-      expect(getCalls(spiedUpdater)).toHaveLength(1);
+      expect(enqueueMutationEffectSpy).toHaveBeenCalledOnce();
+      expect(enqueueMutationEffectSpy).toHaveBeenCalledWith(binding);
     });
 
     it('should do nothing if there is no active listner', () => {
@@ -482,19 +477,25 @@ describe('EventBinding', () => {
         node: element,
         name: 'click',
       });
-      const updater = spy(new LocalUpdater());
+      const updater = new LocalUpdater();
+      const enqueueMutationEffectSpy = vi.spyOn(
+        updater,
+        'enqueueMutationEffect',
+      );
 
       binding.unbind(updater);
       binding.unbind(updater);
 
-      expect(getCalls(updater)).toHaveLength(0);
+      expect(enqueueMutationEffectSpy).not.toHaveBeenCalled();
     });
   });
 
   describe('.disconnect()', () => {
     it('should detach the active event listener function', () => {
       const listener = () => {};
-      const element = spy(document.createElement('div'));
+      const element = document.createElement('div');
+      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
+      const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
       const binding = new EventBinding(listener, {
         type: PartType.EVENT,
         node: element,
@@ -507,23 +508,28 @@ describe('EventBinding', () => {
 
       binding.disconnect();
 
-      expect(getCalls(element)).toHaveLength(2);
-      expect(getCall(element, 0)?.function.name).toBe('addEventListener');
-      expect(getCall(element, 0)?.args ?? []).toEqual(['hello', binding]);
-      expect(getCall(element, 1)?.function.name).toBe('removeEventListener');
-      expect(getCall(element, 1)?.args ?? []).toEqual(['hello', binding]);
+      expect(addEventListenerSpy).toHaveBeenCalledOnce();
+      expect(addEventListenerSpy).toHaveBeenCalledWith('hello', binding);
+      expect(removeEventListenerSpy).toHaveBeenCalledOnce();
+      expect(removeEventListenerSpy).toHaveBeenCalledWith('hello', binding);
 
       binding.disconnect();
 
       expect(
-        getCalls(element),
+        addEventListenerSpy,
         'Do nothing if the event listener is already detached.',
-      ).toHaveLength(2);
+      ).toHaveBeenCalledOnce();
+      expect(
+        removeEventListenerSpy,
+        'Do nothing if the event listener is already detached.',
+      ).toHaveBeenCalledOnce();
     });
 
     it('should detach the active event listener object', () => {
       const listener = { handleEvent: () => {}, capture: true };
-      const element = spy(document.createElement('div'));
+      const element = document.createElement('div');
+      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
+      const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
       const binding = new EventBinding(listener, {
         type: PartType.EVENT,
         node: element,
@@ -536,22 +542,29 @@ describe('EventBinding', () => {
 
       binding.disconnect();
 
-      expect(getCalls(element)).toHaveLength(2);
-      expect(getCall(element, 0)?.function.name).toBe('addEventListener');
-      expect(getCall(element, 0)?.args ?? []).toEqual([
+      expect(addEventListenerSpy).toHaveBeenCalledOnce();
+      expect(addEventListenerSpy).toHaveBeenCalledWith(
         'hello',
         binding,
         listener,
-      ]);
-      expect(getCall(element, 1)?.function.name).toBe('removeEventListener');
-      expect(getCall(element, 1)?.args).toEqual(['hello', binding, listener]);
+      );
+      expect(removeEventListenerSpy).toHaveBeenCalledOnce();
+      expect(removeEventListenerSpy).toHaveBeenCalledWith(
+        'hello',
+        binding,
+        listener,
+      );
 
       binding.disconnect();
 
       expect(
-        getCalls(element),
+        addEventListenerSpy,
         'Do nothing if the event listener is already detached.',
-      ).toHaveLength(2);
+      ).toHaveBeenCalledOnce();
+      expect(
+        removeEventListenerSpy,
+        'Do nothing if the event listener is already detached.',
+      ).toHaveBeenCalledOnce();
     });
   });
 });
@@ -610,12 +623,17 @@ describe('NodeBinding', () => {
         type: PartType.NODE,
         node,
       });
-      const updater = spy(new LocalUpdater());
+      const updater = new LocalUpdater();
+      const enqueueMutationEffectSpy = vi.spyOn(
+        updater,
+        'enqueueMutationEffect',
+      );
 
       binding.bind(updater);
       binding.bind(updater);
 
-      expect(getCalls(updater)).toHaveLength(1);
+      expect(enqueueMutationEffectSpy).toHaveBeenCalledOnce();
+      expect(enqueueMutationEffectSpy).toHaveBeenCalledWith(binding);
     });
   });
 
@@ -647,12 +665,17 @@ describe('NodeBinding', () => {
         type: PartType.NODE,
         node,
       });
-      const updater = spy(new LocalUpdater());
+      const updater = new LocalUpdater();
+      const enqueueMutationEffectSpy = vi.spyOn(
+        updater,
+        'enqueueMutationEffect',
+      );
 
       binding.unbind(updater);
       binding.unbind(updater);
 
-      expect(getCalls(updater)).toHaveLength(1);
+      expect(enqueueMutationEffectSpy).toHaveBeenCalledOnce();
+      expect(enqueueMutationEffectSpy).toHaveBeenCalledWith(binding);
     });
   });
 
@@ -718,46 +741,53 @@ describe('PropertyBinding', () => {
         node: element,
         name: 'className',
       });
-      const updater = spy(new LocalUpdater());
+      const updater = new LocalUpdater();
+      const enqueueMutationEffectSpy = vi.spyOn(
+        updater,
+        'enqueueMutationEffect',
+      );
 
       binding.bind(updater);
       binding.bind(updater);
 
-      expect(getCalls(updater)).toHaveLength(1);
+      expect(enqueueMutationEffectSpy).toHaveBeenCalledOnce();
+      expect(enqueueMutationEffectSpy).toHaveBeenCalledWith(binding);
     });
   });
 
   describe('.unbind()', () => {
     it('should do nothing', () => {
-      const element = spy(document.createElement('div'));
+      const element = document.createElement('div');
       const binding = new PropertyBinding('foo', {
         type: PartType.PROPERTY,
         node: element,
         name: 'className',
       });
       const updater = new LocalUpdater();
+      const setterSpy = vi.spyOn(element, 'className', 'set');
 
       binding.unbind(updater);
       updater.flush();
 
-      expect(getCalls(element)).toHaveLength(0);
+      expect(setterSpy).not.toHaveBeenCalled();
     });
   });
 
   describe('.disconnect()', () => {
     it('should do nothing', () => {
-      const element = spy(document.createElement('div'));
+      const element = document.createElement('div');
       const binding = new PropertyBinding('foo', {
         type: PartType.PROPERTY,
         node: element,
         name: 'className',
       });
       const updater = new LocalUpdater();
+      const setterSpy = vi.spyOn(element, 'className', 'set');
 
       binding.disconnect();
       updater.flush();
 
-      expect(getCalls(element)).toHaveLength(0);
+      expect(setterSpy).not.toHaveBeenCalled();
     });
   });
 });
@@ -852,7 +882,8 @@ describe('SpreadBinding', () => {
         '@click': () => {},
         '@touchstart': () => {},
       };
-      const element = spy(document.createElement('div'));
+      const element = document.createElement('div');
+      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
       const part = {
         type: PartType.ELEMENT,
         node: element,
@@ -863,11 +894,15 @@ describe('SpreadBinding', () => {
       binding.bind(updater);
       updater.flush();
 
-      expect(getCalls(element)).toHaveLength(2);
-      expect(getCall(element, 0)?.function.name).toBe('addEventListener');
-      expect(getCall(element, 0)?.args[0]).toBe('click');
-      expect(getCall(element, 1)?.function.name).toBe('addEventListener');
-      expect(getCall(element, 1)?.args[0]).toBe('touchstart');
+      expect(addEventListenerSpy).toHaveBeenCalledTimes(2);
+      expect(addEventListenerSpy).toHaveBeenCalledWith(
+        'click',
+        expect.any(EventBinding),
+      );
+      expect(addEventListenerSpy).toHaveBeenCalledWith(
+        'touchstart',
+        expect.any(EventBinding),
+      );
     });
 
     it('should skip bindings that are passed the same value as last time', () => {
@@ -876,10 +911,10 @@ describe('SpreadBinding', () => {
         title: 'bar',
       };
       const element = document.createElement('div');
-      const spiedElement = spy(element);
+      const setAttributeSpy = vi.spyOn(element, 'setAttribute');
       const part = {
         type: PartType.ELEMENT,
-        node: spiedElement,
+        node: element,
       } as const;
       const binding = new SpreadBinding(props, part);
       const updater = new LocalUpdater();
@@ -894,14 +929,10 @@ describe('SpreadBinding', () => {
       binding.bind(updater);
       updater.flush();
 
-      expect(getCalls(spiedElement).map((call) => call.function.name)).toEqual([
-        'setAttribute',
-        'setAttribute',
-        'setAttribute',
-      ]);
-      expect(getCall(spiedElement, 0)?.args).toEqual(['class', 'foo']);
-      expect(getCall(spiedElement, 1)?.args ?? []).toEqual(['title', 'bar']);
-      expect(getCall(spiedElement, 2)?.args ?? []).toEqual(['title', 'baz']);
+      expect(setAttributeSpy).toHaveBeenCalledTimes(3);
+      expect(setAttributeSpy).toHaveBeenCalledWith('class', 'foo');
+      expect(setAttributeSpy).toHaveBeenCalledWith('title', 'bar');
+      expect(setAttributeSpy).toHaveBeenCalledWith('title', 'baz');
       expect(element.getAttribute('class')).toBe('foo');
       expect(element.getAttribute('title')).toBe('baz');
     });
@@ -998,16 +1029,14 @@ describe('initializeBinding()', () => {
       type: PartType.NODE,
       node: document.createTextNode(''),
     } as const;
-    const directive = spy(new MockDirective());
+    const directive = new MockDirective();
+    const directiveSpy = vi.spyOn(directive, directiveTag);
     const updater = new LocalUpdater();
     const binding = initializeBinding(directive, part, updater);
 
     expect(binding).toBeInstanceOf(MockBinding);
-    expect(getCalls(directive)).toHaveLength(1);
-    expect(getCall(directive, 0)?.function).toBe(
-      MockDirective.prototype[directiveTag],
-    );
-    expect(getCall(directive, 0)?.args).toEqual([part, updater]);
+    expect(directiveSpy).toHaveBeenCalledOnce();
+    expect(directiveSpy).toHaveBeenCalledWith(part, updater);
   });
 
   it('should resolve the value as a AttributeBinding if the part is a AttributePart', () => {
@@ -1027,7 +1056,7 @@ describe('initializeBinding()', () => {
   });
 
   it('should resolve the value as a EventBinding if the part is a EventPart', () => {
-    const listener = spy(() => {});
+    const listener = vi.fn();
     const element = document.createElement('div');
     const part = {
       type: PartType.EVENT,
@@ -1043,8 +1072,8 @@ describe('initializeBinding()', () => {
     element.dispatchEvent(event);
 
     expect(binding).toBeInstanceOf(EventBinding);
-    expect(getCalls(listener)).toHaveLength(1);
-    expect(getCall(listener, 0)?.args).toEqual([event]);
+    expect(listener).toHaveBeenCalledOnce();
+    expect(listener).toHaveBeenCalledWith(event);
   });
 
   it('should resolve the value as a PropertyBinding if the part is a PropertyPart', () => {
@@ -1126,15 +1155,17 @@ describe('updateBinding()', () => {
       node,
     } as const;
     const updater = new LocalUpdater();
-    const binding = spy(new MockBinding(directive, part));
+    const binding = new MockBinding(directive, part);
+    const bindSpy = vi.spyOn(binding, 'bind');
+    const unbindSpy = vi.spyOn(binding, 'unbind');
     const newDirective = new MockDirective();
     const newBinding = updateBinding(binding, newDirective, updater);
 
     expect(newBinding).toBe(binding);
     expect(binding.value).toBe(newDirective);
-    expect(getCalls(binding)).toHaveLength(1);
-    expect(getCall(binding, 0)?.function.name).toBe('bind');
-    expect(getCall(binding, 0)?.args).toEqual([updater]);
+    expect(bindSpy).toHaveBeenCalledOnce();
+    expect(bindSpy).toHaveBeenCalledWith(updater);
+    expect(unbindSpy).not.toHaveBeenCalled();
   });
 
   it('should update the binding if the both new and old values are non-dirbiectives', () => {
@@ -1144,34 +1175,37 @@ describe('updateBinding()', () => {
       node,
     } as const;
     const updater = new LocalUpdater();
-    const binding = spy(new NodeBinding('foo', part));
+    const binding = new NodeBinding('foo', part);
+    const bindSpy = vi.spyOn(binding, 'bind');
+    const unbindSpy = vi.spyOn(binding, 'unbind');
     const newBinding = updateBinding(binding, 'bar', updater);
 
     expect(newBinding).toBe(binding);
-    expect(getCalls(binding)).toHaveLength(1);
-    expect(getCall(binding, 0)?.function.name).toBe('bind');
-    expect(getCall(binding, 0)?.args).toEqual([updater]);
+    expect(bindSpy).toHaveBeenCalledOnce();
+    expect(bindSpy).toHaveBeenCalledWith(updater);
+    expect(unbindSpy).not.toHaveBeenCalled();
   });
 
   it('should return the new binding if the old value is a non-directive and the new value is a directive', () => {
-    const directive = spy(new MockDirective());
+    const directive = new MockDirective();
+    const directiveSpy = vi.spyOn(directive, directiveTag);
     const node = document.createTextNode('');
     const part = {
       type: PartType.NODE,
       node,
     } as const;
     const updater = new LocalUpdater();
-    const binding = spy(new NodeBinding('foo', part));
-    const newBinding = spy(updateBinding(binding, directive, updater));
+    const binding = new NodeBinding('foo', part);
+    const bindSpy = vi.spyOn(binding, 'bind');
+    const unbindSpy = vi.spyOn(binding, 'unbind');
+    const newBinding = updateBinding(binding, directive, updater);
 
     expect(newBinding).toBeInstanceOf(MockBinding);
-    expect(getCalls(binding)).toHaveLength(1);
-    expect(getCall(binding, 0)?.function.name).toBe('unbind');
-    expect(getCalls(directive)).toHaveLength(1);
-    expect(getCall(directive, 0)?.function).toBe(
-      MockDirective.prototype[directiveTag],
-    );
-    expect(getCall(directive, 0)?.args).toEqual([part, updater]);
+    expect(bindSpy).not.toHaveBeenCalled();
+    expect(unbindSpy).toHaveBeenCalledOnce();
+    expect(unbindSpy).toHaveBeenCalledWith(updater);
+    expect(directiveSpy).toHaveBeenCalledOnce();
+    expect(directiveSpy).toHaveBeenCalledWith(part, updater);
   });
 
   it('should return the new binding if the old value is a directive and the new value is a non-directive', () => {
@@ -1182,16 +1216,17 @@ describe('updateBinding()', () => {
       node,
     } as const;
     const updater = new LocalUpdater();
-    const binding = spy(new MockBinding(directive, part)) as SpiedObject<
-      Binding<MockDirective | string>
+    const binding = new MockBinding(directive, part) as Binding<
+      MockDirective | string
     >;
-    const newBinding = spy(updateBinding(binding, 'foo', updater));
+    const unbindSpy = vi.spyOn(binding, 'unbind');
+    const newBinding = updateBinding(binding, 'foo', updater);
 
     updater.flush();
 
     expect(newBinding).toBeInstanceOf(NodeBinding);
-    expect(getCalls(binding)).toHaveLength(1);
-    expect(getCall(binding, 0)?.function.name).toBe('unbind');
+    expect(unbindSpy).toHaveBeenCalledOnce();
+    expect(unbindSpy).toHaveBeenCalledWith(updater);
     expect(node.nodeValue).toBe('foo');
   });
 });
