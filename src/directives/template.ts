@@ -39,7 +39,7 @@ export class TemplateDirective implements Directive {
   }
 
   [directiveTag](part: Part, updater: Updater): Binding<TemplateDirective> {
-    if (part.type !== PartType.CHILD_NODE) {
+    if (part.type !== PartType.ChildNode) {
       throw new Error('TemplateDirective must be used in ChildNodePart.');
     }
 

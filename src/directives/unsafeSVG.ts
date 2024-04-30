@@ -24,7 +24,7 @@ export class UnsafeSVGDirective implements Directive {
   }
 
   [directiveTag](part: Part, updater: Updater): UnsafeSVGBinding {
-    if (part.type !== PartType.CHILD_NODE) {
+    if (part.type !== PartType.ChildNode) {
       throw new Error('UnsafeSVGDirective must be used in ChildNodePart.');
     }
 

@@ -7,7 +7,7 @@ export function mount<TContext>(
   updater: Updater<TContext>,
 ): void {
   const part = {
-    type: PartType.CHILD_NODE,
+    type: PartType.ChildNode,
     node: document.createComment(''),
   } as const;
 

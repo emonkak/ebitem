@@ -53,7 +53,7 @@ export class SlotDirective<TChildNodeValue> implements Directive {
   }
 
   [directiveTag](part: Part, updater: Updater): SlotBinding<TChildNodeValue> {
-    if (part.type !== PartType.CHILD_NODE) {
+    if (part.type !== PartType.ChildNode) {
       throw new Error('SlotDirective must be used in ChildNodePart.');
     }
 
@@ -92,13 +92,13 @@ export class SlotBinding<TChildNodeValue>
 
     element.appendChild(childMarker);
 
-    const elementPart = { type: PartType.ELEMENT, node: element } as const;
+    const elementPart = { type: PartType.Element, node: element } as const;
     const elementBinding = new SpreadBinding(directive.props, elementPart);
 
     elementBinding.bind(updater);
 
     const childNodePart = {
-      type: PartType.CHILD_NODE,
+      type: PartType.ChildNode,
       node: childMarker,
     } as const;
     const childNodeBinding = initializeBinding(
@@ -143,7 +143,7 @@ export class SlotBinding<TChildNodeValue>
 
     if (element.nodeName !== type.toUpperCase()) {
       const elementPart = {
-        type: PartType.ELEMENT,
+        type: PartType.Element,
         node: document.createElement(this._directive.type),
       } as const;
 

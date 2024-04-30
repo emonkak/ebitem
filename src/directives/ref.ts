@@ -28,7 +28,7 @@ export class RefDirective implements Directive {
   }
 
   [directiveTag](part: Part, updater: Updater): RefBinding {
-    if (part.type !== PartType.ATTRIBUTE || part.name !== 'ref') {
+    if (part.type !== PartType.Attribute || part.name !== 'ref') {
       throw new Error('RefDirective must be used in "ref" attribute.');
     }
 

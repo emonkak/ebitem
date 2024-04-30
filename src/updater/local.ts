@@ -39,21 +39,21 @@ export class LocalUpdater<TContext> implements Updater<TContext>, Effect {
 
   commit(mode: CommitMode): void {
     switch (mode) {
-      case CommitMode.MUTATION:
+      case CommitMode.Mutation:
         const mutationEffects = this._mutationEffects;
         this._mutationEffects = [];
         for (let i = 0, l = mutationEffects.length; i < l; i++) {
           mutationEffects[i]!.commit(mode);
         }
         break;
-      case CommitMode.LAYOUT:
+      case CommitMode.Layout:
         const layoutEffects = this._layoutEffects;
         this._layoutEffects = [];
         for (let i = 0, l = layoutEffects.length; i < l; i++) {
           layoutEffects[i]!.commit(mode);
         }
         break;
-      case CommitMode.PASSIVE:
+      case CommitMode.Passive:
         const passiveEffects = this._passiveEffects;
         this._passiveEffects = [];
         for (let i = 0, l = passiveEffects.length; i < l; i++) {
@@ -80,9 +80,9 @@ export class LocalUpdater<TContext> implements Updater<TContext>, Effect {
   }
 
   flush(): void {
-    this.commit(CommitMode.MUTATION);
-    this.commit(CommitMode.LAYOUT);
-    this.commit(CommitMode.PASSIVE);
+    this.commit(CommitMode.Mutation);
+    this.commit(CommitMode.Layout);
+    this.commit(CommitMode.Passive);
   }
 
   pipeTo(updater: Updater): void {

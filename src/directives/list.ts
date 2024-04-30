@@ -65,7 +65,7 @@ export class ListDirective<TItem, TValue, TKey> implements Directive {
     part: Part,
     updater: Updater,
   ): ListBinding<TItem, TValue, TKey> {
-    if (part.type !== PartType.CHILD_NODE) {
+    if (part.type !== PartType.ChildNode) {
       throw new Error('ListDirective must be used in an arbitrary child.');
     }
 
@@ -274,7 +274,7 @@ class ListItemBinding<T> implements Binding<T>, Effect {
 
   constructor(value: T, listPart: ChildNodePart, updater: Updater) {
     const part = {
-      type: PartType.CHILD_NODE,
+      type: PartType.ChildNode,
       node: document.createComment(''),
     } as const;
 

@@ -15,9 +15,9 @@ export interface Renderable<TContext = unknown> {
 }
 
 export enum CommitMode {
-  MUTATION,
-  LAYOUT,
-  PASSIVE,
+  Mutation,
+  Layout,
+  Passive,
 }
 
 export interface Effect {
@@ -95,70 +95,70 @@ export type Part =
   | PropertyPart;
 
 export enum PartType {
-  ATTRIBUTE,
-  CHILD_NODE,
-  ELEMENT,
-  EVENT,
-  NODE,
-  PROPERTY,
+  Attribute,
+  ChildNode,
+  Element,
+  Event,
+  Node,
+  Property,
 }
 
 export interface AttributePart {
-  type: PartType.ATTRIBUTE;
+  type: PartType.Attribute;
   node: Element;
   name: string;
 }
 
 export interface ChildNodePart {
-  type: PartType.CHILD_NODE;
+  type: PartType.ChildNode;
   node: ChildNode;
 }
 
 export interface ElementPart {
-  type: PartType.ELEMENT;
+  type: PartType.Element;
   node: Element;
 }
 
 export interface EventPart {
-  type: PartType.EVENT;
+  type: PartType.Event;
   node: Element;
   name: string;
 }
 
 export interface PropertyPart {
-  type: PartType.PROPERTY;
+  type: PartType.Property;
   node: Element;
   name: string;
 }
 
 export interface NodePart {
-  type: PartType.NODE;
+  type: PartType.Node;
   node: ChildNode;
 }
 
 export type Hook = EffectHook | MemoHook<any> | ReducerHook<any, any>;
 
 export enum HookType {
-  EFFECT,
-  MEMO,
-  REDUCER,
+  Effect,
+  Memo,
+  Reducer,
 }
 
 export interface EffectHook {
-  type: HookType.EFFECT;
+  type: HookType.Effect;
   callback: EffectCallback;
   cleanup: Cleanup | void;
   dependencies: unknown[] | undefined;
 }
 
 export interface MemoHook<TResult> {
-  type: HookType.MEMO;
+  type: HookType.Memo;
   value: TResult;
   dependencies: unknown[] | undefined;
 }
 
 export interface ReducerHook<TState, TAction> {
-  type: HookType.REDUCER;
+  type: HookType.Reducer;
   dispatch: (action: TAction) => void;
   state: TState;
 }

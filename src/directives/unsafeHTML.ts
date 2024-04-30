@@ -24,7 +24,7 @@ export class UnsafeHTMLDirective implements Directive {
   }
 
   [directiveTag](part: Part, updater: Updater): UnsafeHTMLBinding {
-    if (part.type !== PartType.CHILD_NODE) {
+    if (part.type !== PartType.ChildNode) {
       throw new Error('UnsafeHTMLDirective must be used in ChildNodePart.');
     }
 

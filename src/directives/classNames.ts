@@ -29,7 +29,7 @@ export class ClassNamesDirective implements Directive {
   }
 
   [directiveTag](part: Part, updater: Updater): ClassNamesBinding {
-    if (part.type !== PartType.ATTRIBUTE || part.name !== 'class') {
+    if (part.type !== PartType.Attribute || part.name !== 'class') {
       throw new Error(
         'ClassNamesDirective must be used in the "class" attribute.',
       );

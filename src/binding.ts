@@ -468,28 +468,28 @@ function isSpreadProps(value: unknown): value is SpreadProps {
 
 function resolvePrimitiveBinding(part: Part, value: unknown): Binding<any> {
   switch (part.type) {
-    case PartType.ATTRIBUTE:
+    case PartType.Attribute:
       return new AttributeBinding(value, part);
-    case PartType.CHILD_NODE:
+    case PartType.ChildNode:
       return new NodeBinding(value, part);
-    case PartType.ELEMENT:
+    case PartType.Element:
       return new SpreadBinding(value, part);
-    case PartType.EVENT:
+    case PartType.Event:
       return new EventBinding(value, part);
-    case PartType.NODE:
+    case PartType.Node:
       return new NodeBinding(value, part);
-    case PartType.PROPERTY:
+    case PartType.Property:
       return new PropertyBinding(value, part);
   }
 }
 
 function resolveSpreadPart(name: string, element: Element): Part {
   if (name.length > 1 && name[0] === '@') {
-    return { type: PartType.EVENT, node: element, name: name.slice(1) };
+    return { type: PartType.Event, node: element, name: name.slice(1) };
   } else if (name.length > 1 && name[0] === '.') {
-    return { type: PartType.PROPERTY, node: element, name: name.slice(1) };
+    return { type: PartType.Property, node: element, name: name.slice(1) };
   } else {
-    return { type: PartType.ATTRIBUTE, node: element, name };
+    return { type: PartType.Attribute, node: element, name };
   }
 }
 

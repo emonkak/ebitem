@@ -33,7 +33,7 @@ export class StyleDirective implements Directive {
   }
 
   [directiveTag](part: Part, updater: Updater): StyleBinding {
-    if (part.type !== PartType.ATTRIBUTE || part.name !== 'style') {
+    if (part.type !== PartType.Attribute || part.name !== 'style') {
       throw new Error('StyleDirective must be used in the "style" attribute.');
     }
 

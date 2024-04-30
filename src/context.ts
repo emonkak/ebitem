@@ -95,7 +95,7 @@ export class Context {
     const currentHook = this._hooks[this._hookIndex];
 
     if (currentHook !== undefined) {
-      ensureHookType<EffectHook>(HookType.EFFECT, currentHook);
+      ensureHookType<EffectHook>(HookType.Effect, currentHook);
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
         this._updater.enqueuePassiveEffect(new InvokeEffectHook(currentHook));
@@ -105,7 +105,7 @@ export class Context {
       currentHook.callback = callback;
     } else {
       const newHook: EffectHook = {
-        type: HookType.EFFECT,
+        type: HookType.Effect,
         callback,
         dependencies,
         cleanup: undefined,
@@ -142,7 +142,7 @@ export class Context {
     const currentHook = this._hooks[this._hookIndex];
 
     if (currentHook !== undefined) {
-      ensureHookType<EffectHook>(HookType.EFFECT, currentHook);
+      ensureHookType<EffectHook>(HookType.Effect, currentHook);
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
         this._updater.enqueueLayoutEffect(new InvokeEffectHook(currentHook));
@@ -152,7 +152,7 @@ export class Context {
       currentHook.callback = callback;
     } else {
       const newHook: EffectHook = {
-        type: HookType.EFFECT,
+        type: HookType.Effect,
         callback,
         dependencies,
         cleanup: undefined,
@@ -168,7 +168,7 @@ export class Context {
     let currentHook = this._hooks[this._hookIndex];
 
     if (currentHook !== undefined) {
-      ensureHookType<MemoHook<TResult>>(HookType.MEMO, currentHook);
+      ensureHookType<MemoHook<TResult>>(HookType.Memo, currentHook);
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
         currentHook.value = factory();
@@ -176,7 +176,7 @@ export class Context {
       }
     } else {
       currentHook = {
-        type: HookType.MEMO,
+        type: HookType.Memo,
         value: factory(),
         dependencies,
       };
@@ -192,7 +192,7 @@ export class Context {
     const currentHook = this._hooks[this._hookIndex];
 
     if (currentHook !== undefined) {
-      ensureHookType<EffectHook>(HookType.EFFECT, currentHook);
+      ensureHookType<EffectHook>(HookType.Effect, currentHook);
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
         this._updater.enqueueMutationEffect(new InvokeEffectHook(currentHook));
@@ -202,7 +202,7 @@ export class Context {
       currentHook.callback = callback;
     } else {
       const newHook: EffectHook = {
-        type: HookType.EFFECT,
+        type: HookType.Effect,
         callback,
         dependencies,
         cleanup: undefined,
@@ -222,14 +222,14 @@ export class Context {
 
     if (currentHook !== undefined) {
       ensureHookType<ReducerHook<TState, TAction>>(
-        HookType.REDUCER,
+        HookType.Reducer,
         currentHook,
       );
     } else {
       const renderable = this._renderable;
       const updater = this._updater;
       const newHook: ReducerHook<TState, TAction> = {
-        type: HookType.REDUCER,
+        type: HookType.Reducer,
         state:
           typeof initialState === 'function' ? initialState() : initialState,
         dispatch: (action: TAction) => {

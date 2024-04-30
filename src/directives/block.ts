@@ -57,7 +57,7 @@ export class BlockDirective<TProps, TContext> implements Directive<TContext> {
     part: Part,
     updater: Updater<TContext>,
   ): BlockBinding<TProps, TContext> {
-    if (part.type !== PartType.CHILD_NODE) {
+    if (part.type !== PartType.ChildNode) {
       throw new Error('BlockDirective must be used in ChildNodePart.');
     }
 
@@ -242,7 +242,7 @@ export class BlockBinding<TProps, TContext>
     const hooks = this._hooks;
     for (let i = 0, l = hooks.length; i < l; i++) {
       const hook = hooks[i]!;
-      if (hook.type === HookType.EFFECT) {
+      if (hook.type === HookType.Effect) {
         hook.cleanup?.();
       }
     }

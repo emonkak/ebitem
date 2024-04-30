@@ -17,34 +17,34 @@ export type Hole =
   | PropertyHole;
 
 export interface AttributeHole {
-  type: PartType.ATTRIBUTE;
+  type: PartType.Attribute;
   index: number;
   name: string;
 }
 
 export interface ChildNodeHole {
-  type: PartType.CHILD_NODE;
+  type: PartType.ChildNode;
   index: number;
 }
 
 export interface ElementHole {
-  type: PartType.ELEMENT;
+  type: PartType.Element;
   index: number;
 }
 
 export interface EventHole {
-  type: PartType.EVENT;
+  type: PartType.Event;
   index: number;
   name: string;
 }
 
 export interface NodeHole {
-  type: PartType.NODE;
+  type: PartType.Node;
   index: number;
 }
 
 export interface PropertyHole {
-  type: PartType.PROPERTY;
+  type: PartType.Property;
   index: number;
   name: string;
 }
@@ -130,41 +130,41 @@ export class Template implements AbstractTemplate {
           let part: Part;
 
           switch (currentHole.type) {
-            case PartType.ATTRIBUTE:
+            case PartType.Attribute:
               part = {
-                type: PartType.ATTRIBUTE,
+                type: PartType.Attribute,
                 node: currentNode as Element,
                 name: currentHole.name,
               };
               break;
-            case PartType.CHILD_NODE:
+            case PartType.ChildNode:
               part = {
-                type: PartType.CHILD_NODE,
+                type: PartType.ChildNode,
                 node: currentNode as Comment,
               };
               break;
-            case PartType.ELEMENT:
+            case PartType.Element:
               part = {
-                type: PartType.ELEMENT,
+                type: PartType.Element,
                 node: currentNode as Element,
               };
               break;
-            case PartType.EVENT:
+            case PartType.Event:
               part = {
-                type: PartType.EVENT,
+                type: PartType.Event,
                 node: currentNode as Element,
                 name: currentHole.name,
               };
               break;
-            case PartType.NODE:
+            case PartType.Node:
               part = {
-                type: PartType.NODE,
+                type: PartType.Node,
                 node: currentNode as ChildNode,
               };
               break;
-            case PartType.PROPERTY:
+            case PartType.Property:
               part = {
-                type: PartType.PROPERTY,
+                type: PartType.Property,
                 node: currentNode as Element,
                 name: currentHole.name,
               };
@@ -296,25 +296,25 @@ function parseAttribtues(
 
     if (name === marker && value === '') {
       holes.push({
-        type: PartType.ELEMENT,
+        type: PartType.Element,
         index,
       });
     } else if (value === marker) {
       if (name.length > 1 && name[0] === '@') {
         holes.push({
-          type: PartType.EVENT,
+          type: PartType.Event,
           index,
           name: name.slice(1),
         });
       } else if (name.length > 1 && name[0] === '.') {
         holes.push({
-          type: PartType.PROPERTY,
+          type: PartType.Property,
           index,
           name: name.slice(1),
         });
       } else {
         holes.push({
-          type: PartType.ATTRIBUTE,
+          type: PartType.Attribute,
           index,
           name,
         });
@@ -378,7 +378,7 @@ function parseChildren(rootNode: Node, marker: string): Hole[] {
         ) {
           (currentNode as Comment).data = '';
           holes.push({
-            type: PartType.CHILD_NODE,
+            type: PartType.ChildNode,
             index,
           });
         }
@@ -412,7 +412,7 @@ function parseChildren(rootNode: Node, marker: string): Hole[] {
             currentNode.before(document.createTextNode(''));
 
             holes.push({
-              type: PartType.NODE,
+              type: PartType.Node,
               index,
             });
             index++;

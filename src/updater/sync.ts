@@ -106,11 +106,11 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
         this._pendingLayoutEffects = [];
 
         for (let i = 0, l = mutationEffects.length; i < l; i++) {
-          mutationEffects[i]!.commit(CommitMode.MUTATION);
+          mutationEffects[i]!.commit(CommitMode.Mutation);
         }
 
         for (let i = 0, l = layoutEffects.length; i < l; i++) {
-          layoutEffects[i]!.commit(CommitMode.LAYOUT);
+          layoutEffects[i]!.commit(CommitMode.Layout);
         }
 
         console.timeEnd('(2) Blocking phase');
@@ -124,7 +124,7 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
         this._pendingPassiveEffects = [];
 
         for (let i = 0, l = passiveEffects.length; i < l; i++) {
-          passiveEffects[i]!.commit(CommitMode.PASSIVE);
+          passiveEffects[i]!.commit(CommitMode.Passive);
         }
 
         console.timeEnd('(3) Background phase');
