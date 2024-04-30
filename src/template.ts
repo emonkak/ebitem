@@ -1,12 +1,24 @@
-import { initializeBinding, updateBinding } from './binding.js';
 import {
-  AbstractTemplate,
-  AbstractTemplateRoot,
   Binding,
+  ChildNodePart,
   Part,
   PartType,
-  Updater,
-} from './types.js';
+  initializeBinding,
+  updateBinding,
+} from './binding.js';
+import type { Updater } from './updater.js';
+
+export interface AbstractTemplate {
+  hydrate(values: unknown[], updater: Updater): AbstractTemplateRoot;
+}
+
+export interface AbstractTemplateRoot {
+  get childNodes(): ChildNode[];
+  update(values: unknown[], updater: Updater): void;
+  mount(part: ChildNodePart): void;
+  unmount(part: ChildNodePart): void;
+  disconnect(): void;
+}
 
 export type Hole =
   | AttributeHole

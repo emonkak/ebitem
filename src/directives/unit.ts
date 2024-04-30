@@ -1,4 +1,5 @@
-import { Binding, Directive, Part, Updater, directiveTag } from '../types.js';
+import { Binding, Directive, Part, directiveTag } from '../binding.js';
+import type { Updater } from '../updater.js';
 
 export class UnitDirective implements Directive {
   constructor() {

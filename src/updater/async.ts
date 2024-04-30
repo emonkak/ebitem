@@ -1,12 +1,20 @@
+import { MinHeap } from '../minHeap.js';
 import { Scheduler, createAdaptedScheduler } from '../scheduler.js';
+import type { AbstractScope } from '../scope.js';
 import {
-  AbstractScope,
   CommitMode,
   Effect,
   Renderable,
+  UpdatePriority,
   Updater,
-} from '../types.js';
-import { shouldSkipRender } from '../updater.js';
+  shouldSkipRender,
+} from '../updater.js';
+
+interface Update<TContext> {
+  id: number;
+  renderable: Renderable<TContext>;
+  expirationTime: number;
+}
 
 export interface AsyncUpdaterOptions {
   scheduler?: Scheduler;
@@ -17,7 +25,11 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
 
   private readonly _scheduler: Scheduler;
 
-  private _currentRenderable: Renderable<TContext> | null = null;
+  private _currentRenderble: Renderable<TContext> | null = null;
+
+  private _pendingUpdates: MinHeap<Update<TContext>> = new MinHeap(
+    compareUpdates,
+  );
 
   private _pendingLayoutEffects: Effect[] = [];
 
@@ -25,9 +37,9 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
 
   private _pendingPassiveEffects: Effect[] = [];
 
-  private _pendingRenderables: Renderable<TContext>[] = [];
-
   private _runningUpdateLoop: Promise<void> | null = null;
+
+  private _updateCount = 0;
 
   constructor(
     scope: AbstractScope<TContext>,
@@ -38,11 +50,27 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
   }
 
   get currentRenderable(): Renderable<TContext> | null {
-    return this._currentRenderable;
+    return this._currentRenderble;
+  }
+
+  get currentPriority(): UpdatePriority {
+    return this._currentRenderble?.priority ?? getCurrentUpdatePriority();
   }
 
   get scope(): AbstractScope<TContext> {
     return this._scope;
+  }
+
+  enqueueRenderable(renderable: Renderable<TContext>): void {
+    const expirationTime =
+      this._scheduler.getCurrentTime() +
+      getTimeoutFromPriority(renderable.priority);
+
+    this._pendingUpdates.push({
+      id: ++this._updateCount,
+      renderable,
+      expirationTime,
+    });
   }
 
   enqueueLayoutEffect(effect: Effect): void {
@@ -55,10 +83,6 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
 
   enqueuePassiveEffect(effect: Effect): void {
     this._pendingPassiveEffects.push(effect);
-  }
-
-  enqueueRenderable(renderable: Renderable<TContext>): void {
-    this._pendingRenderables.push(renderable);
   }
 
   isRunning(): boolean {
@@ -90,40 +114,44 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
     do {
       if (this._hasRenderable()) {
         await this._scheduler.postRenderingTask(async () => {
-          console.time('(1) Rendering phase');
+          console.time('(1) Rendering Phase');
 
           let startTime = this._scheduler.getCurrentTime();
+          let update: Update<TContext> | undefined;
 
-          do {
-            const renderables = this._pendingRenderables;
-
-            this._pendingRenderables = [];
-
-            for (let i = 0, l = renderables.length; i < l; i++) {
-              const renderable = renderables[i]!;
-              if (shouldSkipRender(renderable)) {
-                continue;
-              }
-              if (this._scheduler.shouldYieldToMain(startTime)) {
-                await this._scheduler.yieldToMain();
-                startTime = this._scheduler.getCurrentTime();
-              }
-              this._currentRenderable = renderable;
-              try {
-                renderable.render(this, this._scope);
-              } finally {
-                this._currentRenderable = null;
-              }
+          while ((update = this._pendingUpdates.peek()) !== undefined) {
+            const { renderable, expirationTime } = update;
+            if (shouldSkipRender(renderable)) {
+              this._pendingUpdates.pop();
+              continue;
             }
-          } while (this._pendingRenderables.length > 0);
 
-          console.timeEnd('(1) Rendering phase');
+            const currentTime = this._scheduler.getCurrentTime();
+            if (
+              currentTime < expirationTime &&
+              this._scheduler.shouldYieldToMain(startTime, currentTime)
+            ) {
+              break;
+            } else {
+              startTime = this._scheduler.getCurrentTime();
+            }
+
+            this._currentRenderble = renderable;
+            try {
+              renderable.render(this, this._scope);
+            } finally {
+              this._currentRenderble = null;
+              this._pendingUpdates.pop();
+            }
+          }
+
+          console.timeEnd('(1) Rendering Phase');
         });
       }
 
       if (this._hasBlockingEffect()) {
         await this._scheduler.postBlockingTask(async () => {
-          console.time('(2) Blocking phase');
+          console.time('(2) Blocking Phase');
 
           const mutationEffects = this._pendingMutationEffects;
           const layoutEffects = this._pendingLayoutEffects;
@@ -139,13 +167,13 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
             layoutEffects[i]!.commit(CommitMode.Layout);
           }
 
-          console.timeEnd('(2) Blocking phase');
+          console.timeEnd('(2) Blocking Phase');
         });
       }
 
       if (this._hasPassiveEffect()) {
         await this._scheduler.postBackgroundTask(async () => {
-          console.time('(3) Background phase');
+          console.time('(3) Background Phase');
 
           let startTime = this._scheduler.getCurrentTime();
 
@@ -154,14 +182,15 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
           this._pendingPassiveEffects = [];
 
           for (let i = 0, l = passiveEffects.length; i < l; i++) {
-            if (this._scheduler.shouldYieldToMain(startTime)) {
+            const currentTime = this._scheduler.getCurrentTime();
+            if (this._scheduler.shouldYieldToMain(startTime, currentTime)) {
               await this._scheduler.yieldToMain();
               startTime = this._scheduler.getCurrentTime();
             }
             passiveEffects[i]!.commit(CommitMode.Passive);
           }
 
-          console.timeEnd('(3) Background phase');
+          console.timeEnd('(3) Background Phase');
         });
       }
     } while (
@@ -185,6 +214,67 @@ export class AsyncUpdater<TContext> implements Updater<TContext> {
   }
 
   private _hasRenderable(): boolean {
-    return this._pendingRenderables.length > 0;
+    return this._pendingUpdates.size > 0;
+  }
+}
+
+function compareUpdates<TContext>(
+  first: Update<TContext>,
+  second: Update<TContext>,
+): number {
+  return first.expirationTime !== second.expirationTime
+    ? first.expirationTime - second.expirationTime
+    : first.id - second.id;
+}
+
+function getCurrentUpdatePriority(): UpdatePriority {
+  if (window.event !== undefined) {
+    if (isContinuousEvent(window.event)) {
+      return UpdatePriority.High;
+    } else {
+      return UpdatePriority.Realtime;
+    }
+  } else {
+    return UpdatePriority.Normal;
+  }
+}
+
+function getTimeoutFromPriority(priority: UpdatePriority): number {
+  switch (priority) {
+    case UpdatePriority.Idle:
+      return Number.MAX_SAFE_INTEGER;
+    case UpdatePriority.Low:
+      return 10000;
+    case UpdatePriority.Normal:
+      return 5000;
+    case UpdatePriority.High:
+      return 250;
+    case UpdatePriority.Realtime:
+      return -1;
+  }
+}
+
+function isContinuousEvent(event: Event): boolean {
+  switch (event.type as keyof DocumentEventMap) {
+    case 'drag':
+    case 'dragenter':
+    case 'dragleave':
+    case 'dragover':
+    case 'mouseenter':
+    case 'mouseleave':
+    case 'mousemove':
+    case 'mouseout':
+    case 'mouseover':
+    case 'pointerenter':
+    case 'pointerleave':
+    case 'pointermove':
+    case 'pointerout':
+    case 'pointerover':
+    case 'scroll':
+    case 'touchmove':
+    case 'wheel':
+      return true;
+    default:
+      return false;
   }
 }

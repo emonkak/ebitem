@@ -4,9 +4,9 @@ import {
   Directive,
   Part,
   PartType,
-  Updater,
   directiveTag,
-} from '../types.js';
+} from '../binding.js';
+import type { Updater } from '../updater.js';
 
 export function unsafeHTML(content: string): UnsafeHTMLDirective {
   return new UnsafeHTMLDirective(content);

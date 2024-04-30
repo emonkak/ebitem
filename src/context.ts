@@ -1,30 +1,65 @@
 import { TemplateDirective } from './directives/template.js';
-import {
-  AbstractScope,
-  Cleanup,
+import type { AbstractScope } from './scope.js';
+import type { Effect, Renderable, UpdatePriority, Updater } from './updater.js';
+
+export type Hook = EffectHook | MemoHook<any> | ReducerHook<any, any>;
+
+export enum HookType {
   Effect,
-  EffectCallback,
-  EffectHook,
-  Hook,
-  HookType,
-  MemoHook,
-  ReducerHook,
-  RefObject,
-  Renderable,
-  Updater,
-} from './types.js';
+  Memo,
+  Reducer,
+}
 
-export type Usable<TResult> = UsableFunction<TResult> | UsableObject<TResult>;
+export interface EffectHook {
+  type: HookType.Effect;
+  callback: EffectCallback;
+  cleanup: Cleanup | void;
+  dependencies: unknown[] | undefined;
+}
 
-export type UsableFunction<TResult> = (context: Context) => TResult;
+export interface MemoHook<TResult> {
+  type: HookType.Memo;
+  value: TResult;
+  dependencies: unknown[] | undefined;
+}
 
-type ValueOrFunction<T> = T extends Function ? never : T | (() => T);
+export interface ReducerHook<TState, TAction> {
+  type: HookType.Reducer;
+  dispatch: (action: TAction) => void;
+  state: TState;
+}
+
+export type Usable<TResult> = UsableCallback<TResult> | UsableObject<TResult>;
+
+export type UsableCallback<TResult> = (context: Context) => TResult;
 
 export interface UsableObject<TResult> {
   [usableTag](context: Context): TResult;
 }
 
 export const usableTag = Symbol('Usable');
+
+export type Cleanup = () => void;
+
+export type EffectCallback = () => Cleanup | void;
+
+export type Ref<T> = RefCallback<T> | RefObject<T>;
+
+export type RefCallback<T> = (value: T) => void;
+
+export interface RefObject<T> {
+  current: T;
+}
+
+export type InitialState<TState> = (() => TState) | TState extends Function
+  ? never
+  : TState;
+
+export type NewState<TState> =
+  | ((prevState: TState) => TState)
+  | TState extends Function
+  ? never
+  : TState;
 
 export class Context {
   private readonly _renderable: Renderable<Context>;
@@ -66,7 +101,10 @@ export class Context {
   }
 
   requestUpdate(): void {
-    this._renderable.requestUpdate(this._updater);
+    this._renderable.requestUpdate(
+      this._updater,
+      this._updater.currentPriority,
+    );
   }
 
   setContextValue(key: PropertyKey, value: unknown): void {
@@ -216,8 +254,8 @@ export class Context {
 
   useReducer<TState, TAction>(
     reducer: (state: TState, action: TAction) => TState,
-    initialState: ValueOrFunction<TState>,
-  ): [TState, (action: TAction) => void] {
+    initialState: InitialState<TState>,
+  ): [TState, (action: TAction, priority?: UpdatePriority) => void] {
     let currentHook = this._hooks[this._hookIndex];
 
     if (currentHook !== undefined) {
@@ -226,15 +264,19 @@ export class Context {
         currentHook,
       );
     } else {
-      const renderable = this._renderable;
-      const updater = this._updater;
       const newHook: ReducerHook<TState, TAction> = {
         type: HookType.Reducer,
         state:
           typeof initialState === 'function' ? initialState() : initialState,
-        dispatch: (action: TAction) => {
-          newHook.state = reducer(newHook.state, action);
-          renderable.requestUpdate(updater);
+        dispatch: (action: TAction, priority?: UpdatePriority) => {
+          const nextState = reducer(newHook.state, action);
+          if (!Object.is(newHook.state, nextState)) {
+            newHook.state = nextState;
+            this._renderable.requestUpdate(
+              this._updater,
+              priority ?? this._updater.currentPriority,
+            );
+          }
         },
       };
       currentHook = newHook;
@@ -251,8 +293,8 @@ export class Context {
   }
 
   useState<TState>(
-    initialState: ValueOrFunction<TState>,
-  ): [TState, (newState: TState) => void] {
+    initialState: InitialState<TState>,
+  ): [TState, (newState: NewState<TState>, priority?: UpdatePriority) => void] {
     return this.useReducer(
       (state, action) =>
         typeof action === 'function' ? action(state) : action,
@@ -263,15 +305,17 @@ export class Context {
   useSyncEnternalStore<T>(
     subscribe: (subscruber: () => void) => Cleanup | void,
     getSnapshot: () => T,
+    priority?: UpdatePriority,
   ): T {
-    const renderable = this._renderable;
-    const updater = this._updater;
     this.useEffect(
       () =>
         subscribe(() => {
-          renderable.requestUpdate(updater);
+          this._renderable.requestUpdate(
+            this._updater,
+            priority ?? this._updater.currentPriority,
+          );
         }),
-      [subscribe],
+      [subscribe, priority],
     );
     return getSnapshot();
   }

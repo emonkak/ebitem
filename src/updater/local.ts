@@ -1,9 +1,17 @@
-import { CommitMode, Effect, Renderable, Updater } from '../types.js';
+import type { AbstractScope } from '../scope.js';
+import {
+  CommitMode,
+  Effect,
+  Renderable,
+  UpdatePriority,
+  Updater,
+  shouldSkipRender,
+} from '../updater.js';
 
 export class LocalUpdater<TContext> implements Updater<TContext>, Effect {
-  private readonly _currentRenderable: Renderable<TContext> | null;
+  private _currentRenderble: Renderable<TContext> | null;
 
-  private _renderables: Renderable<TContext>[] = [];
+  private _pendingRenderables: Renderable<TContext>[] = [];
 
   private _mutationEffects: Effect[] = [];
 
@@ -13,16 +21,16 @@ export class LocalUpdater<TContext> implements Updater<TContext>, Effect {
 
   private _shouldUpdate = false;
 
-  constructor(currentRenderable: Renderable<TContext> | null = null) {
-    this._currentRenderable = currentRenderable;
+  constructor(currentRenderble: Renderable<TContext> | null = null) {
+    this._currentRenderble = currentRenderble;
   }
 
   get currentRenderable(): Renderable<TContext> | null {
-    return this._currentRenderable;
+    return this._currentRenderble;
   }
 
-  get renderables(): Renderable<TContext>[] {
-    return this._renderables;
+  get currentPriority(): UpdatePriority {
+    return this._currentRenderble?.priority ?? UpdatePriority.Realtime;
   }
 
   get mutationEffects(): Effect[] {
@@ -63,6 +71,10 @@ export class LocalUpdater<TContext> implements Updater<TContext>, Effect {
     }
   }
 
+  enqueueRenderable(renderable: Renderable<TContext>): void {
+    this._pendingRenderables.push(renderable);
+  }
+
   enqueueLayoutEffect(effect: Effect): void {
     this._layoutEffects.push(effect);
   }
@@ -75,19 +87,33 @@ export class LocalUpdater<TContext> implements Updater<TContext>, Effect {
     this._passiveEffects.push(effect);
   }
 
-  enqueueRenderable(renderable: Renderable): void {
-    this._renderables.push(renderable);
-  }
+  flush(scope: AbstractScope<TContext>): void {
+    const originalCurrentUpdate = this._currentRenderble;
 
-  flush(): void {
+    this._pendingRenderables = [];
+
+    for (let i = 0, l = this._pendingRenderables.length; i < l; i++) {
+      const renderable = this._pendingRenderables[i]!;
+      if (shouldSkipRender(renderable)) {
+        continue;
+      }
+      this._currentRenderble = renderable;
+      try {
+        renderable.render(this, scope);
+      } finally {
+        this._currentRenderble = originalCurrentUpdate;
+      }
+    }
+
     this.commit(CommitMode.Mutation);
     this.commit(CommitMode.Layout);
     this.commit(CommitMode.Passive);
   }
 
-  pipeTo(updater: Updater): void {
-    for (let i = 0, l = this._renderables.length; i < l; i++) {
-      updater.enqueueRenderable(this._renderables[i]!);
+  pipe(updater: Updater): void {
+    for (let i = 0, l = this._pendingRenderables.length; i < l; i++) {
+      const renderable = this._pendingRenderables[i]!;
+      updater.enqueueRenderable(renderable);
     }
 
     if (this._mutationEffects.length > 0) {
@@ -106,7 +132,7 @@ export class LocalUpdater<TContext> implements Updater<TContext>, Effect {
       updater.scheduleUpdate();
     }
 
-    this._renderables = [];
+    this._pendingRenderables = [];
     this._shouldUpdate = false;
   }
 

@@ -1,19 +1,16 @@
 import {
-  SpreadBinding,
-  SpreadProps,
-  initializeBinding,
-  updateBinding,
-} from '../binding.js';
-import {
   Binding,
   ChildNodePart,
   Directive,
-  Effect,
   Part,
   PartType,
-  Updater,
+  SpreadBinding,
+  SpreadProps,
   directiveTag,
-} from '../types.js';
+  initializeBinding,
+  updateBinding,
+} from '../binding.js';
+import type { Effect, Updater } from '../updater.js';
 
 export function slot<TChildNodeValue>(
   type: string,

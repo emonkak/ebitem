@@ -1,10 +1,5 @@
-import {
-  Binding,
-  Directive,
-  Part,
-  Updater,
-  directiveTag,
-} from '../src/types.js';
+import { Binding, Directive, Part, directiveTag } from '../src/binding.js';
+import { Updater } from '../src/updater.js';
 
 export class MockDirective implements Directive {
   [directiveTag](part: Part, _updater: Updater): MockBinding {

@@ -3,7 +3,7 @@ export interface Scheduler {
   postRenderingTask<T>(task: Task<T>): Promise<T>;
   postBlockingTask<T>(task: Task<T>): Promise<T>;
   postBackgroundTask<T>(task: Task<T>): Promise<T>;
-  shouldYieldToMain(startTime: number): boolean;
+  shouldYieldToMain(startTime: number, currentTime: number): boolean;
   yieldToMain(): Promise<void>;
 }
 
@@ -60,8 +60,8 @@ export function createAdaptedScheduler(): Scheduler {
   }
 
   if (typeof globalThis?.navigator?.scheduling.isInputPending === 'function') {
-    shouldYieldToMain = function (this: Scheduler, startTime) {
-      const elapsedTime = this.getCurrentTime() - startTime;
+    shouldYieldToMain = (startTime, currentTime) => {
+      const elapsedTime = currentTime - startTime;
       if (elapsedTime < FRAME_INTERVAL) {
         return false;
       }
@@ -76,8 +76,8 @@ export function createAdaptedScheduler(): Scheduler {
       return true;
     };
   } else {
-    shouldYieldToMain = function (this: Scheduler, startTime) {
-      const elapsedTime = this.getCurrentTime() - startTime;
+    shouldYieldToMain = (startTime, currentTime) => {
+      const elapsedTime = currentTime - startTime;
       return elapsedTime >= FRAME_INTERVAL;
     };
   }

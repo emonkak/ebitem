@@ -1,19 +1,46 @@
 export {
+  type Binding,
+  type Directive,
+  directiveTag,
+  mountBinding,
+} from './binding.js';
+export {
+  type Cleanup,
+  type EffectCallback,
+  type InitialState,
+  type NewState,
+  type Ref,
+  type RefCallback,
+  type RefObject,
   type Usable,
-  type UsableFunction,
+  type UsableCallback,
   type UsableObject,
-  usableTag,
   Context,
+  usableTag,
 } from './context.js';
 export {
   type Scheduler,
   type Task,
   createAdaptedScheduler,
 } from './scheduler.js';
-export { Scope } from './scope.js';
-export { Template, TemplateRoot } from './template.js';
-export * from './types.js';
+export {
+  type AbstractScope,
+  type Namespace,
+  Scope,
+} from './scope.js';
+export {
+  type AbstractTemplate,
+  type AbstractTemplateRoot,
+  Template,
+  TemplateRoot,
+} from './template.js';
+export {
+  type Effect,
+  type Renderable,
+  type Updater,
+  CommitMode,
+  UpdatePriority,
+} from './updater.js';
 export { AsyncUpdater } from './updater/async.js';
 export { LocalUpdater } from './updater/local.js';
 export { SyncUpdater } from './updater/sync.js';
-export { mount } from './updater.js';

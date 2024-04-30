@@ -1,18 +1,76 @@
-import {
-  AttributePart,
-  Binding,
-  Effect,
-  ElementPart,
-  EventPart,
-  Part,
-  PartType,
-  PropertyPart,
-  Updater,
-  directiveTag,
-  isDirective,
-} from './types.js';
+import { Effect, Updater } from './updater.js';
+
+export interface Binding<TValue, TContext = unknown> {
+  get part(): Part;
+  get startNode(): ChildNode;
+  get endNode(): ChildNode;
+  set value(newValue: TValue);
+  get value(): TValue;
+  bind(updater: Updater<TContext>): void;
+  unbind(updater: Updater<TContext>): void;
+  disconnect(): void;
+}
+
+export interface Directive<TContext = unknown> {
+  [directiveTag](
+    part: Part,
+    updater: Updater<TContext>,
+  ): Binding<ThisType<this>>;
+}
+
+export type Part =
+  | AttributePart
+  | ChildNodePart
+  | ElementPart
+  | EventPart
+  | NodePart
+  | PropertyPart;
+
+export enum PartType {
+  Attribute,
+  ChildNode,
+  Element,
+  Event,
+  Node,
+  Property,
+}
+
+export interface AttributePart {
+  type: PartType.Attribute;
+  node: Element;
+  name: string;
+}
+
+export interface ChildNodePart {
+  type: PartType.ChildNode;
+  node: ChildNode;
+}
+
+export interface ElementPart {
+  type: PartType.Element;
+  node: Element;
+}
+
+export interface EventPart {
+  type: PartType.Event;
+  node: Element;
+  name: string;
+}
+
+export interface PropertyPart {
+  type: PartType.Property;
+  node: Element;
+  name: string;
+}
+
+export interface NodePart {
+  type: PartType.Node;
+  node: ChildNode;
+}
 
 export type SpreadProps = { [key: string]: unknown };
+
+export const directiveTag = Symbol('Directive');
 
 export class AttributeBinding implements Binding<unknown>, Effect {
   private readonly _part: AttributePart;
@@ -422,6 +480,29 @@ export function initializeBinding<TValue, TContext>(
   }
 }
 
+export function mountBinding<TValue, TContext>(
+  value: TValue,
+  container: ChildNode,
+  updater: Updater<TContext>,
+): Binding<TValue> {
+  const part = {
+    type: PartType.ChildNode,
+    node: document.createComment(''),
+  } as const;
+
+  updater.enqueueMutationEffect({
+    commit() {
+      container.appendChild(part.node);
+    },
+  });
+
+  const binding = initializeBinding(value, part, updater);
+
+  updater.scheduleUpdate();
+
+  return binding;
+}
+
 export function updateBinding<TValue, TContext>(
   binding: Binding<TValue, TContext>,
   newValue: TValue,
@@ -452,6 +533,10 @@ export function updateBinding<TValue, TContext>(
   return binding;
 }
 
+function isDirective(value: unknown): value is Directive<unknown> {
+  return value !== null && typeof value === 'object' && directiveTag in value;
+}
+
 function isEventListener(
   value: object,
 ): value is EventListenerOrEventListenerObject {
@@ -459,6 +544,13 @@ function isEventListener(
     typeof value === 'function' ||
     (typeof value === 'object' &&
       typeof (value as any).handleEvent === 'function')
+  );
+}
+
+function isPrototypeOf<T extends object>(base: T, target: object): target is T {
+  return Object.prototype.isPrototypeOf.call(
+    Object.getPrototypeOf(base),
+    target,
   );
 }
 
@@ -491,11 +583,4 @@ function resolveSpreadPart(name: string, element: Element): Part {
   } else {
     return { type: PartType.Attribute, node: element, name };
   }
-}
-
-function isPrototypeOf<T extends object>(base: T, target: object): target is T {
-  return Object.prototype.isPrototypeOf.call(
-    Object.getPrototypeOf(base),
-    target,
-  );
 }

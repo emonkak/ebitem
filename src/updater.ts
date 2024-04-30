@@ -1,34 +1,48 @@
-import { initializeBinding } from './binding.js';
-import { PartType, Renderable, Updater } from './types.js';
+import type { AbstractScope } from './scope.js';
 
-export function mount<TContext>(
-  value: unknown,
-  container: ChildNode,
-  updater: Updater<TContext>,
-): void {
-  const part = {
-    type: PartType.ChildNode,
-    node: document.createComment(''),
-  } as const;
+export interface Updater<TContext = unknown> {
+  get currentRenderable(): Renderable<TContext> | null;
+  get currentPriority(): UpdatePriority;
+  enqueueRenderable(renderable: Renderable<TContext>): void;
+  enqueueLayoutEffect(effect: Effect): void;
+  enqueueMutationEffect(effect: Effect): void;
+  enqueuePassiveEffect(effect: Effect): void;
+  scheduleUpdate(): void;
+}
 
-  updater.enqueueMutationEffect({
-    commit() {
-      container.appendChild(part.node);
-    },
-  });
+export interface Renderable<TContext = unknown> {
+  get dirty(): boolean;
+  get priority(): UpdatePriority;
+  get parent(): Renderable<TContext> | null;
+  requestUpdate(updater: Updater<TContext>, priority: UpdatePriority): void;
+  render(updater: Updater<TContext>, scope: AbstractScope<TContext>): void;
+}
 
-  initializeBinding(value, part, updater);
+export enum UpdatePriority {
+  Idle,
+  Low,
+  Normal,
+  High,
+  Realtime,
+}
 
-  updater.scheduleUpdate();
+export interface Effect {
+  commit(mode: CommitMode): void;
+}
+
+export enum CommitMode {
+  Mutation,
+  Layout,
+  Passive,
 }
 
 export function shouldSkipRender(renderable: Renderable<unknown>): boolean {
   if (!renderable.dirty) {
     return true;
   }
-  let current: Renderable<unknown> | null = renderable;
-  while ((current = current.parent) !== null) {
-    if (current.dirty) {
+  let parent: Renderable<unknown> | null = renderable;
+  while ((parent = parent.parent) !== null) {
+    if (parent.dirty) {
       return true;
     }
   }

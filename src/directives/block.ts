@@ -1,20 +1,16 @@
 import {
-  AbstractScope,
-  AbstractTemplate,
-  AbstractTemplateRoot,
   Binding,
   ChildNodePart,
   Directive,
-  Effect,
-  Hook,
-  HookType,
   Part,
   PartType,
-  Renderable,
-  Updater,
   directiveTag,
-} from '../types.js';
-import type { TemplateDirective } from './template.js';
+} from '../binding.js';
+import { Hook, HookType } from '../context.js';
+import type { AbstractScope } from '../scope.js';
+import type { AbstractTemplate, AbstractTemplateRoot } from '../template.js';
+import { Effect, Renderable, UpdatePriority, Updater } from '../updater.js';
+import { TemplateDirective } from './template.js';
 
 export type BlockType<TProps, TContext> = (
   props: TProps,
@@ -91,6 +87,8 @@ export class BlockBinding<TProps, TContext>
 
   private _hooks: Hook[] = [];
 
+  private _priority = UpdatePriority.Realtime;
+
   private _flags = BlockFlags.NONE;
 
   constructor(
@@ -119,6 +117,10 @@ export class BlockBinding<TProps, TContext>
     return this._parent;
   }
 
+  get priority(): UpdatePriority {
+    return this._priority;
+  }
+
   get dirty(): boolean {
     return !!(
       this._flags & BlockFlags.UPDATING || this._flags & BlockFlags.UNMOUNTING
@@ -133,16 +135,22 @@ export class BlockBinding<TProps, TContext>
     this._directive = directive;
   }
 
-  requestUpdate(updater: Updater): void {
-    this._requestUpdate(updater);
+  requestUpdate(updater: Updater, priority: UpdatePriority): void {
+    if (!(this._flags & BlockFlags.UPDATING)) {
+      this._priority = priority;
+      this._flags |= BlockFlags.UPDATING;
+      updater.enqueueRenderable(this);
+      updater.scheduleUpdate();
+    } else if (this._priority < priority) {
+      this._priority = priority;
+      updater.enqueueRenderable(this);
+    }
 
     this._flags &= ~BlockFlags.UNMOUNTING;
   }
 
   bind(updater: Updater): void {
-    this._requestUpdate(updater);
-
-    this._flags &= ~BlockFlags.UNMOUNTING;
+    this.requestUpdate(updater, updater.currentPriority);
   }
 
   unbind(updater: Updater): void {
@@ -198,14 +206,12 @@ export class BlockBinding<TProps, TContext>
         this._pendingRoot.disconnect();
 
         this._pendingRoot = newPendingRoot;
-
         this._requestMutation(updater);
       } else {
         this._pendingRoot.update(values, updater);
       }
     } else {
       this._pendingRoot = template.hydrate(values, updater);
-
       this._requestMutation(updater);
     }
 
@@ -247,14 +253,6 @@ export class BlockBinding<TProps, TContext>
       }
     }
     this._hooks = [];
-  }
-
-  private _requestUpdate(updater: Updater): void {
-    if (!(this._flags & BlockFlags.UPDATING)) {
-      updater.enqueueRenderable(this);
-      updater.scheduleUpdate();
-      this._flags |= BlockFlags.UPDATING;
-    }
   }
 
   private _requestMutation(updater: Updater): void {

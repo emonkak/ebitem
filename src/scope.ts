@@ -1,34 +1,54 @@
-import { Context } from './context.js';
-import { Template, getMarker } from './template.js';
-import type {
-  AbstractScope,
-  AbstractTemplate,
-  Hook,
-  Renderable,
-  Updater,
-} from './types.js';
+import { Context, Hook } from './context.js';
+import { AbstractTemplate, Template, getMarker } from './template.js';
+import type { Renderable, Updater } from './updater.js';
 
-type Varibales = { [key: PropertyKey]: unknown };
+export type Namespace = { [key: PropertyKey]: unknown };
+
+export interface AbstractScope<TContext = unknown> {
+  getVariable(key: PropertyKey, renderable: Renderable<TContext>): unknown;
+
+  setVariable(
+    key: PropertyKey,
+    value: unknown,
+    renderable: Renderable<TContext>,
+  ): void;
+
+  createContext(
+    renderable: Renderable<TContext>,
+    hooks: Hook[],
+    updater: Updater<TContext>,
+  ): TContext;
+
+  createHTMLTemplate(
+    tokens: ReadonlyArray<string>,
+    values: unknown[],
+  ): AbstractTemplate;
+
+  createSVGTemplate(
+    tokens: ReadonlyArray<string>,
+    values: unknown[],
+  ): AbstractTemplate;
+}
 
 export class Scope implements AbstractScope<Context> {
-  private readonly _globalVariables: Varibales;
+  private readonly _globalNamespace: Namespace;
 
   private readonly _marker: string;
 
-  private readonly _variableScope: WeakMap<Renderable<Context>, Varibales> =
+  private readonly _namespaces: WeakMap<Renderable<Context>, Namespace> =
     new WeakMap();
 
-  private readonly _templateCaches: WeakMap<TemplateStringsArray, Template> =
+  private readonly _cachedTemplates: WeakMap<TemplateStringsArray, Template> =
     new WeakMap();
 
-  constructor(globalVariables: Varibales = {}) {
-    this._globalVariables = globalVariables;
+  constructor(globalNamespace: Namespace = {}) {
+    this._globalNamespace = globalNamespace;
     this._marker = getMarker();
   }
 
   getVariable(key: PropertyKey, renderable: Renderable<Context>): unknown {
     return (
-      this._variableScope.get(renderable)?.[key] ?? this._globalVariables[key]
+      this._namespaces.get(renderable)?.[key] ?? this._globalNamespace[key]
     );
   }
 
@@ -37,11 +57,11 @@ export class Scope implements AbstractScope<Context> {
     value: unknown,
     renderable: Renderable<Context>,
   ): void {
-    const variables = this._variableScope.get(renderable);
-    if (variables !== undefined) {
-      variables[key] = value;
+    const namespace = this._namespaces.get(renderable);
+    if (namespace !== undefined) {
+      namespace[key] = value;
     } else {
-      this._variableScope.set(renderable, { [key]: value });
+      this._namespaces.set(renderable, { [key]: value });
     }
   }
 
@@ -57,11 +77,11 @@ export class Scope implements AbstractScope<Context> {
     tokens: TemplateStringsArray,
     _values: unknown[],
   ): AbstractTemplate {
-    let template = this._templateCaches.get(tokens);
+    let template = this._cachedTemplates.get(tokens);
 
     if (template === undefined) {
       template = Template.parseHTML(tokens, this._marker);
-      this._templateCaches.set(tokens, template);
+      this._cachedTemplates.set(tokens, template);
     }
 
     return template;
@@ -71,11 +91,11 @@ export class Scope implements AbstractScope<Context> {
     tokens: TemplateStringsArray,
     _values: unknown[],
   ): AbstractTemplate {
-    let template = this._templateCaches.get(tokens);
+    let template = this._cachedTemplates.get(tokens);
 
     if (template === undefined) {
       template = Template.parseSVG(tokens, this._marker);
-      this._templateCaches.set(tokens, template);
+      this._cachedTemplates.set(tokens, template);
     }
 
     return template;

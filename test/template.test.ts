@@ -4,16 +4,19 @@ import {
   AttributeBinding,
   EventBinding,
   NodeBinding,
+  Part,
+  PartType,
   PropertyBinding,
   SpreadBinding,
+  directiveTag,
 } from '../src/binding.js';
+import { Scope } from '../src/scope.js';
 import {
   Template,
   TemplateRoot,
   getMarker,
   isValidMarker,
 } from '../src/template.js';
-import { Part, PartType, directiveTag } from '../src/types.js';
 import { LocalUpdater } from '../src/updater/local.js';
 import { MockBinding, MockDirective } from './mocks.js';
 
@@ -26,9 +29,9 @@ describe('Template', () => {
         <input type="checkbox" id=${0} .value=${1} @change=${2}>
       `;
       expect(template.holes).toEqual([
-        { type: PartType.ATTRIBUTE, name: 'id', index: 0 },
-        { type: PartType.PROPERTY, name: 'value', index: 0 },
-        { type: PartType.EVENT, name: 'change', index: 0 },
+        { type: PartType.Attribute, name: 'id', index: 0 },
+        { type: PartType.Property, name: 'value', index: 0 },
+        { type: PartType.Event, name: 'change', index: 0 },
       ]);
       expect(template.element.innerHTML).toBe('<input type="checkbox">');
     });
@@ -38,9 +41,9 @@ describe('Template', () => {
         <input type="checkbox" id="${0}" .value="${1}" @change="${2}">
       `;
       expect(template.holes).toEqual([
-        { type: PartType.ATTRIBUTE, name: 'id', index: 0 },
-        { type: PartType.PROPERTY, name: 'value', index: 0 },
-        { type: PartType.EVENT, name: 'change', index: 0 },
+        { type: PartType.Attribute, name: 'id', index: 0 },
+        { type: PartType.Property, name: 'value', index: 0 },
+        { type: PartType.Event, name: 'change', index: 0 },
       ]);
       expect(template.element.innerHTML).toBe('<input type="checkbox">');
     });
@@ -50,9 +53,9 @@ describe('Template', () => {
         <input type="checkbox" id='${0}' .value='${1}' @change='${2}'>
       `;
       expect(template.holes).toEqual([
-        { type: PartType.ATTRIBUTE, name: 'id', index: 0 },
-        { type: PartType.PROPERTY, name: 'value', index: 0 },
-        { type: PartType.EVENT, name: 'change', index: 0 },
+        { type: PartType.Attribute, name: 'id', index: 0 },
+        { type: PartType.Property, name: 'value', index: 0 },
+        { type: PartType.Event, name: 'change', index: 0 },
       ]);
       expect(template.element.innerHTML).toBe('<input type="checkbox">');
     });
@@ -65,10 +68,10 @@ describe('Template', () => {
         <${3} />
       `;
       expect(template.holes).toEqual([
-        { type: PartType.CHILD_NODE, index: 0 },
-        { type: PartType.CHILD_NODE, index: 2 },
-        { type: PartType.CHILD_NODE, index: 4 },
-        { type: PartType.CHILD_NODE, index: 6 },
+        { type: PartType.ChildNode, index: 0 },
+        { type: PartType.ChildNode, index: 2 },
+        { type: PartType.ChildNode, index: 4 },
+        { type: PartType.ChildNode, index: 6 },
       ]);
       expect(template.element.innerHTML).toBe(
         `
@@ -87,9 +90,9 @@ describe('Template', () => {
         <div id="foo" ${2} class="bar"></div>
       `;
       expect(template.holes).toEqual([
-        { type: PartType.ELEMENT, index: 0 },
-        { type: PartType.ELEMENT, index: 2 },
-        { type: PartType.ELEMENT, index: 4 },
+        { type: PartType.Element, index: 0 },
+        { type: PartType.Element, index: 2 },
+        { type: PartType.Element, index: 4 },
       ]);
       expect(template.element.innerHTML).toBe(
         `
@@ -108,8 +111,8 @@ describe('Template', () => {
         </ul>
       `;
       expect(template.holes).toEqual([
-        { type: PartType.NODE, index: 3 },
-        { type: PartType.NODE, index: 6 },
+        { type: PartType.Node, index: 3 },
+        { type: PartType.Node, index: 6 },
       ]);
       expect(template.element.innerHTML).toBe(
         `
@@ -127,10 +130,10 @@ describe('Template', () => {
         <div>${0}, ${1}</div>
       `;
       expect(template.holes).toEqual([
-        { type: PartType.NODE, index: 2 },
-        { type: PartType.NODE, index: 4 },
-        { type: PartType.NODE, index: 8 },
-        { type: PartType.NODE, index: 10 },
+        { type: PartType.Node, index: 2 },
+        { type: PartType.Node, index: 4 },
+        { type: PartType.Node, index: 8 },
+        { type: PartType.Node, index: 10 },
       ]);
       expect(template.element.innerHTML).toBe(
         `
@@ -148,10 +151,10 @@ describe('Template', () => {
         <!-- ${3} /-->
       `;
       expect(template.holes).toEqual([
-        { type: PartType.CHILD_NODE, index: 0 },
-        { type: PartType.CHILD_NODE, index: 2 },
-        { type: PartType.CHILD_NODE, index: 4 },
-        { type: PartType.CHILD_NODE, index: 6 },
+        { type: PartType.ChildNode, index: 0 },
+        { type: PartType.ChildNode, index: 2 },
+        { type: PartType.ChildNode, index: 4 },
+        { type: PartType.ChildNode, index: 6 },
       ]);
       expect(template.element.innerHTML).toBe(
         `
@@ -169,8 +172,8 @@ describe('Template', () => {
         < ${0}/>
       `;
       expect(template.holes).toEqual([
-        { type: PartType.NODE, index: 1 },
-        { type: PartType.NODE, index: 3 },
+        { type: PartType.Node, index: 1 },
+        { type: PartType.Node, index: 3 },
       ]);
       expect(template.element.innerHTML).toBe(
         `
@@ -277,9 +280,9 @@ describe('Template', () => {
         <circle fill="black" cx=${0} cy=${1} r=${2} />
       `;
       expect(template.holes).toEqual([
-        { type: PartType.ATTRIBUTE, name: 'cx', index: 0 },
-        { type: PartType.ATTRIBUTE, name: 'cy', index: 0 },
-        { type: PartType.ATTRIBUTE, name: 'r', index: 0 },
+        { type: PartType.Attribute, name: 'cx', index: 0 },
+        { type: PartType.Attribute, name: 'cy', index: 0 },
+        { type: PartType.Attribute, name: 'r', index: 0 },
       ]);
       expect(template.element.innerHTML).toBe('<circle fill="black"></circle>');
       expect(template.element.content.firstElementChild?.namespaceURI).toBe(
@@ -314,6 +317,7 @@ describe('Template', () => {
         new MockDirective(),
       ];
       const updater = new LocalUpdater();
+      const scope = new Scope();
       const root = template.hydrate(values, updater);
 
       expect(root).toBeInstanceOf(TemplateRoot);
@@ -324,33 +328,33 @@ describe('Template', () => {
 
       expect(root.bindings[0]).toBeInstanceOf(AttributeBinding);
       expect(root.bindings[0]?.part).toMatchObject({
-        type: PartType.ATTRIBUTE,
+        type: PartType.Attribute,
         name: 'class',
       });
       expect(root.bindings[1]).toBeInstanceOf(NodeBinding);
       expect(root.bindings[1]?.part).toMatchObject({
-        type: PartType.CHILD_NODE,
+        type: PartType.ChildNode,
       });
       expect(root.bindings[2]).toBeInstanceOf(PropertyBinding);
       expect(root.bindings[2]?.part).toMatchObject({
-        type: PartType.PROPERTY,
+        type: PartType.Property,
         name: 'value',
       });
       expect(root.bindings[3]).toBeInstanceOf(EventBinding);
       expect(root.bindings[3]?.part).toMatchObject({
-        type: PartType.EVENT,
+        type: PartType.Event,
         name: 'onchange',
       });
       expect(root.bindings[4]).toBeInstanceOf(SpreadBinding);
       expect(root.bindings[4]?.part).toMatchObject({
-        type: PartType.ELEMENT,
+        type: PartType.Element,
       });
       expect(root.bindings[5]).toBeInstanceOf(MockBinding);
       expect(root.bindings[5]?.part).toMatchObject({
-        type: PartType.NODE,
+        type: PartType.Node,
       });
 
-      updater.flush();
+      updater.flush(scope);
 
       expect((root.childNodes[0] as Element)?.outerHTML).toBe(
         `
@@ -382,9 +386,10 @@ describe('TemplateRoot', () => {
       `;
       const values = ['World'];
       const updater = new LocalUpdater();
+      const scope = new Scope();
       const root = template.hydrate(values, updater);
 
-      updater.flush();
+      updater.flush(scope);
 
       const container = document.createElement('div');
       const marker = document.createComment('');
@@ -392,14 +397,14 @@ describe('TemplateRoot', () => {
       container.appendChild(marker);
 
       root.mount({
-        type: PartType.CHILD_NODE,
+        type: PartType.ChildNode,
         node: marker,
       });
 
       expect(container.innerHTML, '<p>Hello).toBe(World!</p><!---->');
 
       root.unmount({
-        type: PartType.CHILD_NODE,
+        type: PartType.ChildNode,
         node: marker,
       });
 
@@ -414,9 +419,10 @@ describe('TemplateRoot', () => {
       `;
       const values = [0];
       const updater = new LocalUpdater();
+      const scope = new Scope();
       const root = template.hydrate(values, updater);
 
-      updater.flush();
+      updater.flush(scope);
 
       expect((root.childNodes[0] as Element)?.outerHTML).toBe(
         '<p>Count: 0</p>',
@@ -424,7 +430,7 @@ describe('TemplateRoot', () => {
 
       root.update([1], updater);
 
-      updater.flush();
+      updater.flush(scope);
 
       expect((root.childNodes[0] as Element)?.outerHTML).toBe(
         '<p>Count: 1</p>',

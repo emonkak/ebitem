@@ -1,5 +1,12 @@
-import { initializeBinding, updateBinding } from '../binding.js';
-import { Binding, Directive, Part, Updater, directiveTag } from '../types.js';
+import {
+  Binding,
+  Directive,
+  Part,
+  directiveTag,
+  initializeBinding,
+  updateBinding,
+} from '../binding.js';
+import type { Updater } from '../updater.js';
 import { UnitDirective, unit } from './unit.js';
 
 type ValueOrFunction<T> = T extends Function ? never : T | (() => T);

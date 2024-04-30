@@ -1,17 +1,14 @@
 import {
-  AbstractScope,
-  AbstractTemplate,
-  AbstractTemplateRoot,
   Binding,
   ChildNodePart,
   Directive,
-  Effect,
   Part,
   PartType,
-  Renderable,
-  Updater,
   directiveTag,
-} from '../types.js';
+} from '../binding.js';
+import type { AbstractScope } from '../scope.js';
+import type { AbstractTemplate, AbstractTemplateRoot } from '../template.js';
+import { Effect, Renderable, UpdatePriority, Updater } from '../updater.js';
 
 const TemplateFlags = {
   NONE: 0,
@@ -66,6 +63,8 @@ export class TemplateBinding
 
   private _template: AbstractTemplate | null = null;
 
+  private _priority = UpdatePriority.Realtime;
+
   private _flags = TemplateFlags.NONE;
 
   constructor(
@@ -98,6 +97,10 @@ export class TemplateBinding
     return this._parent;
   }
 
+  get priority(): UpdatePriority {
+    return this._priority;
+  }
+
   get dirty(): boolean {
     return !!(
       this._flags & TemplateFlags.UPDATING ||
@@ -109,16 +112,22 @@ export class TemplateBinding
     this._directive = newDirective;
   }
 
-  requestUpdate(updater: Updater): void {
-    this._requestUpdate(updater);
+  requestUpdate(updater: Updater, priority: UpdatePriority): void {
+    if (!(this._flags & TemplateFlags.UPDATING)) {
+      this._priority = priority;
+      this._flags |= TemplateFlags.UPDATING;
+      updater.enqueueRenderable(this);
+      updater.scheduleUpdate();
+    } else if (this._priority < priority) {
+      this._priority = priority;
+      updater.enqueueRenderable(this);
+    }
 
     this._flags &= ~TemplateFlags.UNMOUNTING;
   }
 
   bind(updater: Updater): void {
-    this._requestUpdate(updater);
-
-    this._flags &= ~TemplateFlags.UNMOUNTING;
+    this.requestUpdate(updater, updater.currentPriority);
   }
 
   unbind(updater: Updater): void {
@@ -173,14 +182,6 @@ export class TemplateBinding
     }
 
     this._pendingRoot = null;
-  }
-
-  private _requestUpdate(updater: Updater) {
-    if (!(this._flags & TemplateFlags.UPDATING)) {
-      updater.enqueueRenderable(this);
-      updater.scheduleUpdate();
-      this._flags |= TemplateFlags.UPDATING;
-    }
   }
 
   private _requestMutation(updater: Updater) {

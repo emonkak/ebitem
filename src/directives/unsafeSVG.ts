@@ -4,9 +4,9 @@ import {
   Directive,
   Part,
   PartType,
-  Updater,
   directiveTag,
-} from '../types.js';
+} from '../binding.js';
+import type { Updater } from '../updater.js';
 
 export function unsafeSVG(content: string): UnsafeSVGDirective {
   return new UnsafeSVGDirective(content);

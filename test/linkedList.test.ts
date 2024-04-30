@@ -117,7 +117,7 @@ describe('LinkedList', () => {
       expect(Array.from(list)).toEqual([]);
     });
 
-    it('should remove the head value', () => {
+    it('should remove head values', () => {
       const list = new LinkedList();
       const foo = list.pushBack('foo');
       const bar = list.pushBack('bar');
@@ -178,7 +178,7 @@ describe('LinkedList', () => {
       expect(Array.from(list)).toEqual([]);
     });
 
-    it('should remove the tail value', () => {
+    it('should remove tail values', () => {
       const list = new LinkedList();
       const foo = list.pushBack('foo');
       const bar = list.pushBack('bar');

@@ -1,24 +1,25 @@
+import type { AbstractScope } from '../scope.js';
 import {
-  AbstractScope,
   CommitMode,
   Effect,
   Renderable,
+  UpdatePriority,
   Updater,
-} from '../types.js';
-import { shouldSkipRender } from '../updater.js';
+  shouldSkipRender,
+} from '../updater.js';
 
 export class SyncUpdater<TContext> implements Updater<TContext> {
   private readonly _scope: AbstractScope<TContext>;
 
-  private _currentRenderable: Renderable<TContext> | null = null;
+  private _currentRenderble: Renderable<TContext> | null = null;
+
+  private _pendingRenderables: Renderable<TContext>[] = [];
 
   private _pendingMutationEffects: Effect[] = [];
 
   private _pendingLayoutEffects: Effect[] = [];
 
   private _pendingPassiveEffects: Effect[] = [];
-
-  private _pendingRenderables: Renderable<TContext>[] = [];
 
   private _isRunning = false;
 
@@ -27,7 +28,11 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
   }
 
   get currentRenderable(): Renderable<TContext> | null {
-    return this._currentRenderable;
+    return this._currentRenderble;
+  }
+
+  get currentPriority(): UpdatePriority {
+    return this._currentRenderble?.priority ?? UpdatePriority.Realtime;
   }
 
   get scope(): AbstractScope<TContext> {
@@ -46,7 +51,7 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
     this._pendingPassiveEffects.push(effect);
   }
 
-  enqueueRenderable(renderable: Renderable): void {
+  enqueueRenderable(renderable: Renderable<TContext>): void {
     this._pendingRenderables.push(renderable);
   }
 
@@ -75,20 +80,18 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
         console.time('(1) Rendering phase');
 
         do {
-          const renderables = this._pendingRenderables;
-
           this._pendingRenderables = [];
 
-          for (let i = 0, l = renderables.length; i < l; i++) {
-            const renderable = renderables[i]!;
+          for (let i = 0, l = this._pendingRenderables.length; i < l; i++) {
+            const renderable = this._pendingRenderables[i]!;
             if (shouldSkipRender(renderable)) {
               continue;
             }
-            this._currentRenderable = renderable;
+            this._currentRenderble = renderable;
             try {
               renderable.render(this, this._scope);
             } finally {
-              this._currentRenderable = null;
+              this._currentRenderble = null;
             }
           }
         } while (this._pendingRenderables.length > 0);

@@ -230,17 +230,8 @@ describe('shouldYieldToMain()', () => {
     it('should return false if the elapsed time is less than 5ms', () => {
       const adaptedScheduler = createAdaptedScheduler();
 
-      const getCurrentTimeSpy1 = vi
-        .spyOn(adaptedScheduler, 'getCurrentTime')
-        .mockReturnValue(0);
-      expect(adaptedScheduler.shouldYieldToMain(0)).toBe(false);
-      expect(getCurrentTimeSpy1).toHaveBeenCalledOnce();
-
-      const getCurrentTimeSpy2 = vi
-        .spyOn(adaptedScheduler, 'getCurrentTime')
-        .mockReturnValue(4);
-      expect(adaptedScheduler.shouldYieldToMain(0)).toBe(false);
-      expect(getCurrentTimeSpy2).toHaveBeenCalledOnce();
+      expect(adaptedScheduler.shouldYieldToMain(0, 0)).toBe(false);
+      expect(adaptedScheduler.shouldYieldToMain(0, 4)).toBe(false);
     });
 
     it('should return the result of isInputPending() without continuous events if the elapsed time is between 5ms and 49ms', () => {
@@ -249,21 +240,13 @@ describe('shouldYieldToMain()', () => {
         .spyOn(navigator.scheduling, 'isInputPending')
         .mockReturnValue(false);
 
-      const getCurrentTimeSpy1 = vi
-        .spyOn(adaptedScheduler, 'getCurrentTime')
-        .mockReturnValue(5);
-      expect(adaptedScheduler.shouldYieldToMain(0)).toBe(false);
-      expect(getCurrentTimeSpy1).toHaveBeenCalledOnce();
+      expect(adaptedScheduler.shouldYieldToMain(0, 5)).toBe(false);
       expect(isInputPendingSpy).toHaveBeenCalledTimes(1);
       expect(isInputPendingSpy).toHaveBeenLastCalledWith({
         includeContinuous: false,
       });
 
-      const getCurrentTimeSpy2 = vi
-        .spyOn(adaptedScheduler, 'getCurrentTime')
-        .mockReturnValue(49);
-      expect(adaptedScheduler.shouldYieldToMain(0)).toBe(false);
-      expect(getCurrentTimeSpy2).toHaveBeenCalledOnce();
+      expect(adaptedScheduler.shouldYieldToMain(0, 49)).toBe(false);
       expect(isInputPendingSpy).toHaveBeenCalledTimes(2);
       expect(isInputPendingSpy).toHaveBeenLastCalledWith({
         includeContinuous: false,
@@ -276,21 +259,13 @@ describe('shouldYieldToMain()', () => {
         .spyOn(navigator.scheduling, 'isInputPending')
         .mockReturnValue(false);
 
-      const getCurrentTimeSpy1 = vi
-        .spyOn(adaptedScheduler, 'getCurrentTime')
-        .mockReturnValue(50);
-      expect(adaptedScheduler.shouldYieldToMain(0)).toBe(false);
-      expect(getCurrentTimeSpy1).toHaveBeenCalledOnce();
+      expect(adaptedScheduler.shouldYieldToMain(0, 50)).toBe(false);
       expect(isInputPendingSpy).toHaveBeenCalledTimes(1);
       expect(isInputPendingSpy).toHaveBeenLastCalledWith({
         includeContinuous: true,
       });
 
-      const getCurrentTimeSpy2 = vi
-        .spyOn(adaptedScheduler, 'getCurrentTime')
-        .mockReturnValue(299);
-      expect(adaptedScheduler.shouldYieldToMain(0)).toBe(false);
-      expect(getCurrentTimeSpy2).toHaveBeenCalledOnce();
+      expect(adaptedScheduler.shouldYieldToMain(0, 299)).toBe(false);
       expect(isInputPendingSpy).toHaveBeenCalledTimes(2);
       expect(isInputPendingSpy).toHaveBeenLastCalledWith({
         includeContinuous: true,
@@ -299,11 +274,7 @@ describe('shouldYieldToMain()', () => {
 
     it('should return true if the elapsed time is greater than or equal to 300ms', () => {
       const adaptedScheduler = createAdaptedScheduler();
-      const getCurrentTimeSpy = vi
-        .spyOn(adaptedScheduler, 'getCurrentTime')
-        .mockReturnValue(300);
-      expect(adaptedScheduler.shouldYieldToMain(0)).toBe(true);
-      expect(getCurrentTimeSpy).toHaveBeenCalledOnce();
+      expect(adaptedScheduler.shouldYieldToMain(0, 300)).toBe(true);
     });
   });
 
@@ -321,23 +292,9 @@ describe('shouldYieldToMain()', () => {
     it('should return true if the elapsed time is greater than or equal to 5ms', () => {
       const adaptedScheduler = createAdaptedScheduler();
 
-      const getCurrentTimeSpy1 = vi
-        .spyOn(adaptedScheduler, 'getCurrentTime')
-        .mockReturnValue(0);
-      expect(adaptedScheduler.shouldYieldToMain(0)).toBe(false);
-      expect(getCurrentTimeSpy1).toHaveBeenCalledOnce();
-
-      const getCurrentTimeSpy2 = vi
-        .spyOn(adaptedScheduler, 'getCurrentTime')
-        .mockReturnValue(4);
-      expect(adaptedScheduler.shouldYieldToMain(0)).toBe(false);
-      expect(getCurrentTimeSpy2).toHaveBeenCalledOnce();
-
-      const getCurrentTimeSpy3 = vi
-        .spyOn(adaptedScheduler, 'getCurrentTime')
-        .mockReturnValue(5);
-      expect(adaptedScheduler.shouldYieldToMain(0)).toBe(true);
-      expect(getCurrentTimeSpy3).toHaveBeenCalledOnce();
+      expect(adaptedScheduler.shouldYieldToMain(0, 0)).toBe(false);
+      expect(adaptedScheduler.shouldYieldToMain(0, 4)).toBe(false);
+      expect(adaptedScheduler.shouldYieldToMain(0, 5)).toBe(true);
     });
   });
 });
