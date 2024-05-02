@@ -7,10 +7,11 @@ import {
   directiveTag,
 } from '../binding.js';
 import { Hook, HookType } from '../context.js';
+import { isHigherPriority } from '../scheduler.js';
 import type { AbstractScope } from '../scope.js';
 import type { AbstractTemplate, AbstractTemplateRoot } from '../template.js';
-import { Effect, Renderable, UpdatePriority, Updater } from '../updater.js';
-import { TemplateDirective } from './template.js';
+import type { Effect, Renderable, Updater } from '../updater.js';
+import type { TemplateDirective } from './template.js';
 
 export type BlockType<TProps, TContext> = (
   props: TProps,
@@ -87,7 +88,7 @@ export class BlockBinding<TProps, TContext>
 
   private _hooks: Hook[] = [];
 
-  private _priority = UpdatePriority.Realtime;
+  private _priority: TaskPriority = 'user-visible';
 
   private _flags = BlockFlags.NONE;
 
@@ -117,7 +118,7 @@ export class BlockBinding<TProps, TContext>
     return this._parent;
   }
 
-  get priority(): UpdatePriority {
+  get priority(): TaskPriority {
     return this._priority;
   }
 
@@ -135,13 +136,13 @@ export class BlockBinding<TProps, TContext>
     this._directive = directive;
   }
 
-  requestUpdate(updater: Updater, priority: UpdatePriority): void {
+  requestUpdate(updater: Updater, priority: TaskPriority): void {
     if (!(this._flags & BlockFlags.UPDATING)) {
       this._priority = priority;
       this._flags |= BlockFlags.UPDATING;
       updater.enqueueRenderable(this);
       updater.scheduleUpdate();
-    } else if (this._priority < priority) {
+    } else if (isHigherPriority(priority, this._priority)) {
       this._priority = priority;
       updater.enqueueRenderable(this);
     }
@@ -150,7 +151,10 @@ export class BlockBinding<TProps, TContext>
   }
 
   bind(updater: Updater): void {
-    this.requestUpdate(updater, updater.currentPriority);
+    this.requestUpdate(
+      updater,
+      this._parent?.priority ?? updater.getCurrentPriority(),
+    );
   }
 
   unbind(updater: Updater): void {
@@ -163,10 +167,6 @@ export class BlockBinding<TProps, TContext>
   }
 
   render(updater: Updater<TContext>, scope: AbstractScope<TContext>): void {
-    if (!(this._flags & BlockFlags.UPDATING)) {
-      return;
-    }
-
     const { type, props } = this._directive;
 
     if (this._memoizedType !== null && type !== this._memoizedType) {

@@ -1,4 +1,4 @@
-import { Effect, Updater } from './updater.js';
+import type { Effect, Updater } from './updater.js';
 
 export interface Binding<TValue, TContext = unknown> {
   get part(): Part;
@@ -25,15 +25,6 @@ export type Part =
   | EventPart
   | NodePart
   | PropertyPart;
-
-export enum PartType {
-  Attribute,
-  ChildNode,
-  Element,
-  Event,
-  Node,
-  Property,
-}
 
 export interface AttributePart {
   type: PartType.Attribute;
@@ -69,6 +60,15 @@ export interface NodePart {
 }
 
 export type SpreadProps = { [key: string]: unknown };
+
+export enum PartType {
+  Attribute,
+  ChildNode,
+  Element,
+  Event,
+  Node,
+  Property,
+}
 
 export const directiveTag = Symbol('Directive');
 
@@ -498,7 +498,9 @@ export function mountBinding<TValue, TContext>(
 
   const binding = initializeBinding(value, part, updater);
 
-  updater.scheduleUpdate();
+  if (!updater.isUpdating()) {
+    updater.scheduleUpdate();
+  }
 
   return binding;
 }

@@ -1,4 +1,9 @@
-import { AsyncUpdater, Context, Scope, mountBinding } from '@emonkak/ebitem';
+import {
+  ConcurrentUpdater,
+  Context,
+  Scope,
+  mountBinding,
+} from '@emonkak/ebitem';
 import {
   TemplateDirective,
   block,
@@ -78,6 +83,7 @@ function App(_props: {}, context: Context): TemplateDirective {
   return context.html`
     <div ${{ class: 'root' }}>
       <${block(Counter, { count: counterSignal })} />
+      <p>COUNT by Signal: <strong>${counterSignal}</strong></p>
       <ul><${itemsList}></ul>
       <p>
         <button type="button" @click=${onIncrement}>+1</button>
@@ -157,7 +163,7 @@ function Counter({ count }: CounterProps, context: Context): TemplateDirective {
           'is-odd': count.value % 2 !== 0,
           'is-even': count.value % 2 === 0,
         })}
-        data-count=${count.value}>${count}</span>
+        data-count=${count.value}>${count.value}</span>
       <span class="count-condition">${condition(
         count.value % 2 === 0,
         '(Even)',
@@ -191,6 +197,6 @@ function shuffle<T>(elements: T[]): T[] {
   return elements;
 }
 
-const updater = new AsyncUpdater(new Scope());
+const updater = new ConcurrentUpdater(new Scope());
 
 mountBinding(block(App, {}), document.body, updater);

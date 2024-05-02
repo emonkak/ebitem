@@ -121,6 +121,7 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
         this._signal.value,
         updater,
       );
+      updater.scheduleUpdate();
     });
   }
 }

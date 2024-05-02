@@ -1,15 +1,20 @@
+interface Scheduler {
+  postTask<T>(
+    callback: () => T | PromiseLike<T>,
+    options?: SchedulerPostTaskOptions,
+  ): Promise<T>;
+  yield(options?: SchedulerYieldOptions): Promise<void>;
+}
+
 interface SchedulerPostTaskOptions {
   delay?: number;
   priority?: TaskPriority;
-  signal?: AbortSignal;
+  signal?: TaskSignal;
 }
 
-interface Scheduler {
-  postTask<T>(
-    callback: (...params: P) => T | PromiseLike<T>,
-    options?: SchedulerPostTaskOptions,
-  ): Promise<T>;
-  yield(): Promise<void>;
+interface SchedulerYieldOptions {
+  priority?: TaskPriority | 'inherit';
+  signal?: TaskSignal | 'inherit';
 }
 
 declare var Scheduler: {
@@ -18,6 +23,16 @@ declare var Scheduler: {
 };
 
 declare var scheduler: Scheduler;
+
+interface TaskController extends AbortController {
+  readonly signal: TaskSignal;
+  setPriority(priority: TaskPriority): void;
+}
+
+declare var TaskController: {
+  prototype: TaskController;
+  new (): TaskController;
+};
 
 interface TaskSignal extends AbortSignal {
   readonly priority: TaskPriority;
@@ -34,13 +49,29 @@ interface TaskSignal extends AbortSignal {
   ): void;
 }
 
+interface TaskSignalEventMap {
+  prioritychange: TaskPriorityChangeEvent;
+}
+
 declare var TaskSignal: {
   prototype: TaskSignal;
   new (): TaskSignal;
 };
 
-interface TaskSignalEventMap {
-  prioritychange: Event;
+interface TaskPriorityChangeEvent extends Event {
+  readonly previousPriority: TaskPriority;
 }
+
+interface TaskPriorityChangeEventInit extends EventInit {
+  previousPriority?: TaskPriority;
+}
+
+declare var TaskPriorityChangeEvent: {
+  prototype: TaskPriorityChangeEvent;
+  new (
+    type: string,
+    eventInitDict: TaskPriorityChangeEventInit,
+  ): TaskPriorityChangeEvent;
+};
 
 type TaskPriority = 'user-blocking' | 'user-visible' | 'background';

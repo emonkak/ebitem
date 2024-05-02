@@ -2,7 +2,8 @@ import type { AbstractScope } from './scope.js';
 
 export interface Updater<TContext = unknown> {
   get currentRenderable(): Renderable<TContext> | null;
-  get currentPriority(): UpdatePriority;
+  getCurrentPriority(): TaskPriority;
+  isUpdating(): boolean;
   enqueueRenderable(renderable: Renderable<TContext>): void;
   enqueueLayoutEffect(effect: Effect): void;
   enqueueMutationEffect(effect: Effect): void;
@@ -12,35 +13,23 @@ export interface Updater<TContext = unknown> {
 
 export interface Renderable<TContext = unknown> {
   get dirty(): boolean;
-  get priority(): UpdatePriority;
   get parent(): Renderable<TContext> | null;
-  requestUpdate(updater: Updater<TContext>, priority: UpdatePriority): void;
+  get priority(): TaskPriority;
+  requestUpdate(updater: Updater<TContext>, priority: TaskPriority): void;
   render(updater: Updater<TContext>, scope: AbstractScope<TContext>): void;
 }
 
-export enum UpdatePriority {
-  Idle,
-  Low,
-  Normal,
-  High,
-  Realtime,
-}
-
 export interface Effect {
-  commit(mode: CommitMode): void;
+  commit(): void;
 }
 
-export enum CommitMode {
-  Mutation,
-  Layout,
-  Passive,
-}
-
-export function shouldSkipRender(renderable: Renderable<unknown>): boolean {
+export function shouldSkipRender<TContext>(
+  renderable: Renderable<TContext>,
+): boolean {
   if (!renderable.dirty) {
     return true;
   }
-  let parent: Renderable<unknown> | null = renderable;
+  let parent: Renderable<TContext> | null = renderable;
   while ((parent = parent.parent) !== null) {
     if (parent.dirty) {
       return true;

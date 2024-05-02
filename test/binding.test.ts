@@ -14,7 +14,7 @@ import {
   updateBinding,
 } from '../src/binding.js';
 import { Scope } from '../src/scope.js';
-import { LocalUpdater } from '../src/updater/local.js';
+import { SyncUpdater } from '../src/updater/sync.js';
 import { MockBinding, MockDirective } from './mocks.js';
 
 describe('AttributeBinding', () => {
@@ -43,18 +43,17 @@ describe('AttributeBinding', () => {
         node: element,
         name: 'class',
       });
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(binding.value).toBe('foo');
       expect(element.getAttribute('class')).toBe('foo');
 
       binding.value = 'bar';
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(binding.value).toBe('bar');
       expect(element.getAttribute('class')).toBe('bar');
@@ -77,18 +76,17 @@ describe('AttributeBinding', () => {
         node: element,
         name: 'class',
       });
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(binding.value).toBe(obj1);
       expect(element.getAttribute('class')).toBe('foo');
 
       binding.value = obj2;
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(binding.value).toBe(obj2);
       expect(element.getAttribute('class')).toBe('bar');
@@ -101,18 +99,17 @@ describe('AttributeBinding', () => {
         node: element,
         name: 'contenteditable',
       });
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(binding.value).toBe(true);
       expect(element.hasAttribute('contenteditable')).toBe(true);
 
       binding.value = false;
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(binding.value).toBe(false);
       expect(element.hasAttribute('contenteditable')).toBe(false);
@@ -125,12 +122,11 @@ describe('AttributeBinding', () => {
         node: element,
         name: 'contenteditable',
       });
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       element.toggleAttribute('contenteditable', true);
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(binding.value).toBe(null);
       expect(element.hasAttribute('contenteditable')).toBe(false);
@@ -143,12 +139,11 @@ describe('AttributeBinding', () => {
         node: element,
         name: 'contenteditable',
       });
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       element.toggleAttribute('contenteditable', true);
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(binding.value).toBe(undefined);
       expect(element.hasAttribute('contenteditable')).toBe(false);
@@ -161,7 +156,7 @@ describe('AttributeBinding', () => {
         node: element,
         name: 'contenteditable',
       });
-      const updater = new LocalUpdater();
+      const updater = new SyncUpdater(new Scope());
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
         'enqueueMutationEffect',
@@ -183,12 +178,11 @@ describe('AttributeBinding', () => {
         node: element,
         name: 'contenteditable',
       });
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       element.toggleAttribute('contenteditable', true);
       binding.unbind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(binding.value).toBe(null);
       expect(element.hasAttribute('contenteditable')).toBe(false);
@@ -201,7 +195,7 @@ describe('AttributeBinding', () => {
         node: element,
         name: 'contenteditable',
       });
-      const updater = new LocalUpdater();
+      const updater = new SyncUpdater(new Scope());
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
         'enqueueMutationEffect',
@@ -291,11 +285,10 @@ describe('EventBinding', () => {
       } as const;
       const event = new CustomEvent('hello');
       const binding = new EventBinding(listener1, part);
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
       element.dispatchEvent(event);
 
       expect(addEventListenerSpy).toHaveBeenCalledOnce();
@@ -306,7 +299,7 @@ describe('EventBinding', () => {
 
       binding.value = listener2;
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
       element.dispatchEvent(event);
 
       expect(listener1).toHaveBeenCalledOnce();
@@ -332,11 +325,10 @@ describe('EventBinding', () => {
         handleEvent: vi.fn(),
       };
       const binding = new EventBinding(listener1, part);
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
       element.dispatchEvent(event);
 
       expect(addEventListenerSpy).toHaveBeenCalledTimes(1);
@@ -351,7 +343,7 @@ describe('EventBinding', () => {
 
       binding.value = listener2;
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
       element.dispatchEvent(event);
 
       expect(addEventListenerSpy).toHaveBeenCalledTimes(2);
@@ -382,16 +374,15 @@ describe('EventBinding', () => {
       } as const;
       const event = new CustomEvent('hello');
       const binding = new EventBinding(listener, part);
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
       element.dispatchEvent(event);
 
       binding.value = null;
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
       element.dispatchEvent(event);
 
       expect(addEventListenerSpy).toHaveBeenCalledOnce();
@@ -410,7 +401,7 @@ describe('EventBinding', () => {
         node: element,
         name: 'click',
       });
-      const updater = new LocalUpdater();
+      const updater = new SyncUpdater(new Scope());
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
         'enqueueMutationEffect',
@@ -437,15 +428,14 @@ describe('EventBinding', () => {
       } as const;
       const event = new CustomEvent('hello');
       const binding = new EventBinding(listener, part);
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
       element.dispatchEvent(event);
 
       binding.unbind(updater);
-      updater.flush(scope);
+      updater.flush();
       element.dispatchEvent(event);
 
       expect(binding.value).toBe(null);
@@ -465,12 +455,11 @@ describe('EventBinding', () => {
         node: element,
         name: 'click',
       });
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
 
-      updater.flush(scope);
+      updater.flush();
 
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
@@ -492,7 +481,7 @@ describe('EventBinding', () => {
         node: element,
         name: 'click',
       });
-      const updater = new LocalUpdater();
+      const updater = new SyncUpdater(new Scope());
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
         'enqueueMutationEffect',
@@ -516,11 +505,10 @@ describe('EventBinding', () => {
         node: element,
         name: 'hello',
       });
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       binding.disconnect();
 
@@ -551,11 +539,10 @@ describe('EventBinding', () => {
         node: element,
         name: 'hello',
       });
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       binding.disconnect();
 
@@ -611,25 +598,24 @@ describe('NodeBinding', () => {
         type: PartType.Node,
         node,
       });
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(binding.value).toBe('foo');
       expect(node.nodeValue).toBe('foo');
 
       binding.value = 'bar';
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(binding.value).toBe('bar');
       expect(node.nodeValue).toBe('bar');
 
       binding.value = null;
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(binding.value).toBe(null);
       expect(node.nodeValue).toBe('');
@@ -641,7 +627,7 @@ describe('NodeBinding', () => {
         type: PartType.Node,
         node,
       });
-      const updater = new LocalUpdater();
+      const updater = new SyncUpdater(new Scope());
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
         'enqueueMutationEffect',
@@ -662,17 +648,16 @@ describe('NodeBinding', () => {
         type: PartType.Node,
         node,
       });
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(binding.value).toBe('foo');
       expect(node.nodeValue).toBe('foo');
 
       binding.unbind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(binding.value).toBe(null);
       expect(node.nodeValue).toBe('');
@@ -684,7 +669,7 @@ describe('NodeBinding', () => {
         type: PartType.Node,
         node,
       });
-      const updater = new LocalUpdater();
+      const updater = new SyncUpdater(new Scope());
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
         'enqueueMutationEffect',
@@ -737,18 +722,17 @@ describe('PropertyBinding', () => {
         node: element,
         name: 'className',
       });
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(binding.value).toBe('foo');
       expect(element.className).toBe('foo');
 
       binding.value = 'bar';
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(binding.value).toBe('bar');
       expect(element.className).toBe('bar');
@@ -761,7 +745,7 @@ describe('PropertyBinding', () => {
         node: element,
         name: 'className',
       });
-      const updater = new LocalUpdater();
+      const updater = new SyncUpdater(new Scope());
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
         'enqueueMutationEffect',
@@ -784,11 +768,10 @@ describe('PropertyBinding', () => {
         node: element,
         name: 'className',
       });
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.unbind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(setterSpy).not.toHaveBeenCalled();
     });
@@ -803,11 +786,10 @@ describe('PropertyBinding', () => {
         node: element,
         name: 'className',
       });
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.disconnect();
-      updater.flush(scope);
+      updater.flush();
 
       expect(setterSpy).not.toHaveBeenCalled();
     });
@@ -870,11 +852,10 @@ describe('SpreadBinding', () => {
         node: element,
       } as const;
       const binding = new SpreadBinding(props, part);
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(element.getAttribute('class')).toBe('foo');
       expect(element.getAttribute('title')).toBe('bar');
@@ -891,11 +872,10 @@ describe('SpreadBinding', () => {
         node: element,
       } as const;
       const binding = new SpreadBinding(props, part);
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(element.className).toBe('foo');
       expect(element.title).toBe('bar');
@@ -913,11 +893,10 @@ describe('SpreadBinding', () => {
         node: element,
       } as const;
       const binding = new SpreadBinding(props, part);
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(addEventListenerSpy).toHaveBeenCalledTimes(2);
       expect(addEventListenerSpy).toHaveBeenCalledWith(
@@ -942,18 +921,17 @@ describe('SpreadBinding', () => {
         node: element,
       } as const;
       const binding = new SpreadBinding(props, part);
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       binding.value = {
         class: 'foo', // same value as last time
         title: 'baz',
       };
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(setAttributeSpy).toHaveBeenCalledTimes(3);
       expect(setAttributeSpy).toHaveBeenCalledWith('class', 'foo');
@@ -974,15 +952,14 @@ describe('SpreadBinding', () => {
         node: element,
       } as const;
       const binding = new SpreadBinding(props, part);
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       binding.value = { class: undefined };
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(element.hasAttribute('class')).toBe(false);
       expect(element.hasAttribute('title')).toBe(false);
@@ -1001,14 +978,13 @@ describe('SpreadBinding', () => {
         node: element,
       } as const;
       const binding = new SpreadBinding(props, part);
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       binding.unbind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       expect(element.hasAttribute('class')).toBe(false);
       expect(element.hasAttribute('title')).toBe(false);
@@ -1039,11 +1015,10 @@ describe('SpreadBinding', () => {
         node: element,
       } as const;
       const binding = new SpreadBinding(props, part);
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind(updater);
-      updater.flush(scope);
+      updater.flush();
 
       binding.disconnect();
 
@@ -1060,7 +1035,7 @@ describe('initializeBinding()', () => {
     } as const;
     const directive = new MockDirective();
     const directiveSpy = vi.spyOn(directive, directiveTag);
-    const updater = new LocalUpdater();
+    const updater = new SyncUpdater(new Scope());
     const binding = initializeBinding(directive, part, updater);
 
     expect(binding).toBeInstanceOf(MockBinding);
@@ -1075,11 +1050,10 @@ describe('initializeBinding()', () => {
       node: element,
       name: 'class',
     } as const;
-    const updater = new LocalUpdater();
-    const scope = new Scope();
+    const updater = new SyncUpdater(new Scope());
     const binding = initializeBinding('foo', part, updater);
 
-    updater.flush(scope);
+    updater.flush();
 
     expect(binding).toBeInstanceOf(AttributeBinding);
     expect(element.getAttribute('class')).toBe('foo');
@@ -1094,11 +1068,10 @@ describe('initializeBinding()', () => {
       name: 'hello',
     } as const;
     const event = new CustomEvent('hello');
-    const updater = new LocalUpdater();
-    const scope = new Scope();
+    const updater = new SyncUpdater(new Scope());
     const binding = initializeBinding(listener, part, updater);
 
-    updater.flush(scope);
+    updater.flush();
 
     element.dispatchEvent(event);
 
@@ -1114,11 +1087,10 @@ describe('initializeBinding()', () => {
       node: element,
       name: 'className',
     } as const;
-    const updater = new LocalUpdater();
-    const scope = new Scope();
+    const updater = new SyncUpdater(new Scope());
     const binding = initializeBinding('foo', part, updater);
 
-    updater.flush(scope);
+    updater.flush();
 
     expect(binding).toBeInstanceOf(PropertyBinding);
     expect(element.className).toBe('foo');
@@ -1130,11 +1102,10 @@ describe('initializeBinding()', () => {
       type: PartType.Node,
       node,
     } as const;
-    const updater = new LocalUpdater();
-    const scope = new Scope();
+    const updater = new SyncUpdater(new Scope());
     const binding = initializeBinding('foo', part, updater);
 
-    updater.flush(scope);
+    updater.flush();
 
     expect(binding).toBeInstanceOf(NodeBinding);
     expect(node.nodeValue).toBe('foo');
@@ -1146,11 +1117,10 @@ describe('initializeBinding()', () => {
       type: PartType.ChildNode,
       node,
     } as const;
-    const updater = new LocalUpdater();
-    const scope = new Scope();
+    const updater = new SyncUpdater(new Scope());
     const binding = initializeBinding('foo', part, updater);
 
-    updater.flush(scope);
+    updater.flush();
 
     expect(binding).toBeInstanceOf(NodeBinding);
     expect(node.nodeValue).toBe('foo');
@@ -1162,8 +1132,7 @@ describe('initializeBinding()', () => {
       type: PartType.Element,
       node: element,
     } as const;
-    const updater = new LocalUpdater();
-    const scope = new Scope();
+    const updater = new SyncUpdater(new Scope());
     const binding = initializeBinding(
       {
         class: 'foo',
@@ -1173,7 +1142,7 @@ describe('initializeBinding()', () => {
       updater,
     );
 
-    updater.flush(scope);
+    updater.flush();
 
     expect(binding).toBeInstanceOf(SpreadBinding);
     expect(element.getAttribute('class')).toBe('foo');
@@ -1189,7 +1158,7 @@ describe('updateBinding()', () => {
       type: PartType.Node,
       node,
     } as const;
-    const updater = new LocalUpdater();
+    const updater = new SyncUpdater(new Scope());
     const binding = new MockBinding(directive, part);
     const bindSpy = vi.spyOn(binding, 'bind');
     const unbindSpy = vi.spyOn(binding, 'unbind');
@@ -1209,7 +1178,7 @@ describe('updateBinding()', () => {
       type: PartType.Node,
       node,
     } as const;
-    const updater = new LocalUpdater();
+    const updater = new SyncUpdater(new Scope());
     const binding = new NodeBinding('foo', part);
     const bindSpy = vi.spyOn(binding, 'bind');
     const unbindSpy = vi.spyOn(binding, 'unbind');
@@ -1229,7 +1198,7 @@ describe('updateBinding()', () => {
       type: PartType.Node,
       node,
     } as const;
-    const updater = new LocalUpdater();
+    const updater = new SyncUpdater(new Scope());
     const binding = new NodeBinding('foo', part);
     const bindSpy = vi.spyOn(binding, 'bind');
     const unbindSpy = vi.spyOn(binding, 'unbind');
@@ -1250,15 +1219,14 @@ describe('updateBinding()', () => {
       type: PartType.Node,
       node,
     } as const;
-    const updater = new LocalUpdater();
-    const scope = new Scope();
+    const updater = new SyncUpdater(new Scope());
     const binding = new MockBinding(directive, part) as Binding<
       MockDirective | string
     >;
     const unbindSpy = vi.spyOn(binding, 'unbind');
     const newBinding = updateBinding(binding, 'foo', updater);
 
-    updater.flush(scope);
+    updater.flush();
 
     expect(newBinding).toBeInstanceOf(NodeBinding);
     expect(unbindSpy).toHaveBeenCalledOnce();

@@ -6,9 +6,10 @@ import {
   PartType,
   directiveTag,
 } from '../binding.js';
+import { isHigherPriority } from '../scheduler.js';
 import type { AbstractScope } from '../scope.js';
 import type { AbstractTemplate, AbstractTemplateRoot } from '../template.js';
-import { Effect, Renderable, UpdatePriority, Updater } from '../updater.js';
+import type { Effect, Renderable, Updater } from '../updater.js';
 
 const TemplateFlags = {
   NONE: 0,
@@ -63,7 +64,7 @@ export class TemplateBinding
 
   private _template: AbstractTemplate | null = null;
 
-  private _priority = UpdatePriority.Realtime;
+  private _priority: TaskPriority = 'user-blocking';
 
   private _flags = TemplateFlags.NONE;
 
@@ -97,7 +98,7 @@ export class TemplateBinding
     return this._parent;
   }
 
-  get priority(): UpdatePriority {
+  get priority(): TaskPriority {
     return this._priority;
   }
 
@@ -112,13 +113,13 @@ export class TemplateBinding
     this._directive = newDirective;
   }
 
-  requestUpdate(updater: Updater, priority: UpdatePriority): void {
+  requestUpdate(updater: Updater, priority: TaskPriority): void {
     if (!(this._flags & TemplateFlags.UPDATING)) {
       this._priority = priority;
       this._flags |= TemplateFlags.UPDATING;
       updater.enqueueRenderable(this);
       updater.scheduleUpdate();
-    } else if (this._priority < priority) {
+    } else if (isHigherPriority(priority, this._priority)) {
       this._priority = priority;
       updater.enqueueRenderable(this);
     }
@@ -127,7 +128,10 @@ export class TemplateBinding
   }
 
   bind(updater: Updater): void {
-    this.requestUpdate(updater, updater.currentPriority);
+    this.requestUpdate(
+      updater,
+      this._parent?.priority ?? updater.getCurrentPriority(),
+    );
   }
 
   unbind(updater: Updater): void {
@@ -140,10 +144,6 @@ export class TemplateBinding
   }
 
   render(updater: Updater, _scope: AbstractScope): void {
-    if (!(this._flags & TemplateFlags.UPDATING)) {
-      return;
-    }
-
     const { template, values } = this._directive;
 
     if (this._pendingRoot !== null && this._template !== template) {

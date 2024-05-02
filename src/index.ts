@@ -20,7 +20,6 @@ export {
 } from './context.js';
 export {
   type Scheduler,
-  type Task,
   createAdaptedScheduler,
 } from './scheduler.js';
 export {
@@ -38,9 +37,9 @@ export {
   type Effect,
   type Renderable,
   type Updater,
-  CommitMode,
-  UpdatePriority,
 } from './updater.js';
-export { AsyncUpdater } from './updater/async.js';
-export { LocalUpdater } from './updater/local.js';
+export {
+  type ConcurrentUpdaterOptions,
+  ConcurrentUpdater,
+} from './updater/concurrent.js';
 export { SyncUpdater } from './updater/sync.js';

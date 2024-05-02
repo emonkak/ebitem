@@ -1,9 +1,4 @@
-import {
-  AtomSignal,
-  ComputedSignal,
-  MemoizedSignal,
-  Signal,
-} from '../src/signal.js';
+import { AtomSignal, ComputedSignal, Signal } from '../src/signal.js';
 
 enum Visibility {
   ALL,
@@ -27,7 +22,10 @@ class TodoStore {
 
   public readonly visibility: AtomSignal<Visibility>;
 
-  public readonly visibleTodos: MemoizedSignal<Todo[]>;
+  public readonly visibleTodos: ComputedSignal<
+    Todo[],
+    [AtomSignal<Todo[]>, AtomSignal<Visibility>]
+  >;
 
   constructor({ todos, visibility }: TodoState) {
     this.todos = new AtomSignal(todos);
@@ -46,13 +44,12 @@ class TodoStore {
         }
       },
       [this.todos, this.visibility],
-    ).memoized();
+    );
   }
 
   addTodo(todo: Todo): void {
-    this.todos.mutate((todos) => {
-      todos.push(todo);
-    });
+    this.todos.value.push(todo);
+    this.todos.forceUpdate();
   }
 }
 

@@ -23,8 +23,8 @@ describe('getCurrentTime()', () => {
     it('should return the current time', () => {
       const now = Date.now();
       const spy = vi.spyOn(performance, 'now').mockReturnValue(now);
-      const adaptedScheduler = createAdaptedScheduler();
-      expect(adaptedScheduler.getCurrentTime()).toBe(now);
+      const scheduler = createAdaptedScheduler();
+      expect(scheduler.getCurrentTime()).toBe(now);
       expect(spy).toHaveBeenCalledOnce();
     });
   });
@@ -41,38 +41,19 @@ describe('getCurrentTime()', () => {
     it('should return the current time', () => {
       const now = Date.now();
       const spy = vi.spyOn(Date, 'now').mockReturnValue(now);
-      const adaptedScheduler = createAdaptedScheduler();
-      expect(adaptedScheduler.getCurrentTime()).toBe(now);
+      const scheduler = createAdaptedScheduler();
+      expect(scheduler.getCurrentTime()).toBe(now);
       expect(spy).toHaveBeenCalledOnce();
     });
   });
 });
 
-describe('postRenderingTask()', () => {
+describe('requestCallback()', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('should schedule the task as a microtask', () => {
-    const result = {};
-    const task = () => Promise.resolve(result);
-    const queueMicrotaskSpy = vi
-      .spyOn(globalThis, 'queueMicrotask')
-      .mockImplementation((callback) => {
-        callback();
-      });
-    const adaptedScheduler = createAdaptedScheduler();
-    expect(adaptedScheduler.postRenderingTask(task)).resolves.toBe(result);
-    expect(queueMicrotaskSpy).toHaveBeenCalledOnce();
-  });
-});
-
-describe('postBlockingTask()', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  describe('using scheduler.postTask()', () => {
+  describe('using Scheduler.postTask()', () => {
     beforeEach(() => {
       vi.stubGlobal('scheduler', {
         postTask(callback) {
@@ -85,21 +66,21 @@ describe('postBlockingTask()', () => {
       vi.unstubAllGlobals();
     });
 
-    it('should schedule the task in user-blocking priority', () => {
+    it('should schedule the callback', () => {
       const result = {};
-      const task = () => Promise.resolve(result);
-      const postTaskSpy = vi.spyOn(scheduler, 'postTask');
-      const adaptedScheduler = createAdaptedScheduler();
-      expect(adaptedScheduler.postBlockingTask(task)).resolves.toBe(result);
-      expect(postTaskSpy).toHaveBeenCalledWith(
-        task,
-        expect.objectContaining({ priority: 'user-blocking' }),
+      const callback = () => Promise.resolve(result);
+      const options = { priority: 'user-blocking' } as const;
+      const postTaskSpy = vi.spyOn(globalThis.scheduler, 'postTask');
+      const scheduler = createAdaptedScheduler();
+      expect(scheduler.requestCallback(callback, options)).resolves.toBe(
+        result,
       );
+      expect(postTaskSpy).toHaveBeenCalledWith(callback, options);
       expect(postTaskSpy).toHaveBeenCalledOnce();
     });
   });
 
-  describe('using requestAnimationFrame()', () => {
+  describe('using queueMicrotask', () => {
     beforeEach(() => {
       vi.stubGlobal('scheduler', {});
     });
@@ -108,51 +89,78 @@ describe('postBlockingTask()', () => {
       vi.unstubAllGlobals();
     });
 
-    it('should schedule the task', () => {
+    it('should schedule the callback with "user-blocking" priority by queueMicrotask()', () => {
       const result = {};
-      const task = () => Promise.resolve(result);
+      const callback = () => Promise.resolve(result);
       const queueMicrotaskSpy = vi
-        .spyOn(globalThis, 'requestAnimationFrame')
+        .spyOn(globalThis, 'queueMicrotask')
         .mockImplementation((callback) => {
-          callback(0);
-          return 0;
+          callback();
         });
-      const adaptedScheduler = createAdaptedScheduler();
-      expect(adaptedScheduler.postBlockingTask(task)).resolves.toBe(result);
+      const scheduler = createAdaptedScheduler();
+      expect(
+        scheduler.requestCallback(callback, {
+          priority: 'user-blocking',
+        }),
+      ).resolves.toBe(result);
       expect(queueMicrotaskSpy).toHaveBeenCalledOnce();
     });
   });
-});
 
-describe('postBackgroundTask()', () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  describe('using scheduler.postTask()', () => {
+  describe('using setTimeout()', () => {
     beforeEach(() => {
-      vi.stubGlobal('scheduler', {
-        postTask(callback) {
-          return callback();
-        },
-      } as Partial<Scheduler>);
+      vi.stubGlobal('scheduler', {});
+      vi.stubGlobal('requestIdleCallback', undefined);
     });
 
-    afterEach(() => {
-      vi.unstubAllGlobals();
-    });
-
-    it('should schedule the task in user-blocking priority', () => {
+    it('should schedule the callback without priority', () => {
       const result = {};
-      const task = () => Promise.resolve(result);
-      const postTaskSpy = vi.spyOn(scheduler, 'postTask');
-      const adaptedScheduler = createAdaptedScheduler();
-      expect(adaptedScheduler.postBackgroundTask(task)).resolves.toBe(result);
-      expect(postTaskSpy).toHaveBeenCalledWith(
-        task,
-        expect.objectContaining({ priority: 'background' }),
-      );
-      expect(postTaskSpy).toHaveBeenCalledOnce();
+      const callback = () => Promise.resolve(result);
+      const setTimeoutSpy = vi
+        .spyOn(globalThis, 'setTimeout')
+        .mockImplementation((callback) => {
+          callback();
+          return 0 as any;
+        });
+      const scheduler = createAdaptedScheduler();
+      expect(scheduler.requestCallback(callback)).resolves.toBe(result);
+      expect(setTimeoutSpy).toHaveBeenCalledOnce();
+    });
+
+    it('should schedule the callback with "user-visible" priority', () => {
+      const result = {};
+      const callback = () => Promise.resolve(result);
+      const setTimeoutSpy = vi
+        .spyOn(globalThis, 'setTimeout')
+        .mockImplementation((callback) => {
+          callback();
+          return 0 as any;
+        });
+      const scheduler = createAdaptedScheduler();
+      expect(
+        scheduler.requestCallback(callback, {
+          priority: 'user-visible',
+        }),
+      ).resolves.toBe(result);
+      expect(setTimeoutSpy).toHaveBeenCalledOnce();
+    });
+
+    it('should schedule the callback with "background" priority', () => {
+      const result = {};
+      const callback = () => Promise.resolve(result);
+      const setTimeoutSpy = vi
+        .spyOn(globalThis, 'setTimeout')
+        .mockImplementation((callback) => {
+          callback();
+          return 0 as any;
+        });
+      const scheduler = createAdaptedScheduler();
+      expect(
+        scheduler.requestCallback(callback, {
+          priority: 'background',
+        }),
+      ).resolves.toBe(result);
+      expect(setTimeoutSpy).toHaveBeenCalledOnce();
     });
   });
 
@@ -169,40 +177,18 @@ describe('postBackgroundTask()', () => {
       vi.unstubAllGlobals();
     });
 
-    it('should schedule the task as an idle callback', () => {
+    it('should schedule the callback with "background" priority', () => {
       const result = {};
-      const task = () => Promise.resolve(result);
+      const callback = () => Promise.resolve(result);
       const requestIdleCallbackSpy = vi.spyOn(
         globalThis,
         'requestIdleCallback',
       );
-      const adaptedScheduler = createAdaptedScheduler();
-      expect(adaptedScheduler.postBackgroundTask(task)).resolves.toBe(result);
+      const scheduler = createAdaptedScheduler();
+      expect(
+        scheduler.requestCallback(callback, { priority: 'background' }),
+      ).resolves.toBe(result);
       expect(requestIdleCallbackSpy).toHaveBeenCalledOnce();
-    });
-  });
-
-  describe('using queueMicrotask()', () => {
-    beforeEach(() => {
-      vi.stubGlobal('scheduler', {});
-      vi.stubGlobal('requestIdleCallback', undefined);
-    });
-
-    afterEach(() => {
-      vi.unstubAllGlobals();
-    });
-
-    it('should schedule the task as a microtask', () => {
-      const result = {};
-      const task = () => Promise.resolve(result);
-      const queueMicrotaskSpy = vi
-        .spyOn(globalThis, 'queueMicrotask')
-        .mockImplementation((callback) => {
-          callback();
-        });
-      const adaptedScheduler = createAdaptedScheduler();
-      expect(adaptedScheduler.postBackgroundTask(task)).resolves.toBe(result);
-      expect(queueMicrotaskSpy).toHaveBeenCalledOnce();
     });
   });
 });
@@ -228,25 +214,25 @@ describe('shouldYieldToMain()', () => {
     });
 
     it('should return false if the elapsed time is less than 5ms', () => {
-      const adaptedScheduler = createAdaptedScheduler();
+      const scheduler = createAdaptedScheduler();
 
-      expect(adaptedScheduler.shouldYieldToMain(0, 0)).toBe(false);
-      expect(adaptedScheduler.shouldYieldToMain(0, 4)).toBe(false);
+      expect(scheduler.shouldYieldToMain(0)).toBe(false);
+      expect(scheduler.shouldYieldToMain(4)).toBe(false);
     });
 
     it('should return the result of isInputPending() without continuous events if the elapsed time is between 5ms and 49ms', () => {
-      const adaptedScheduler = createAdaptedScheduler();
+      const scheduler = createAdaptedScheduler();
       const isInputPendingSpy = vi
         .spyOn(navigator.scheduling, 'isInputPending')
         .mockReturnValue(false);
 
-      expect(adaptedScheduler.shouldYieldToMain(0, 5)).toBe(false);
+      expect(scheduler.shouldYieldToMain(5)).toBe(false);
       expect(isInputPendingSpy).toHaveBeenCalledTimes(1);
       expect(isInputPendingSpy).toHaveBeenLastCalledWith({
         includeContinuous: false,
       });
 
-      expect(adaptedScheduler.shouldYieldToMain(0, 49)).toBe(false);
+      expect(scheduler.shouldYieldToMain(49)).toBe(false);
       expect(isInputPendingSpy).toHaveBeenCalledTimes(2);
       expect(isInputPendingSpy).toHaveBeenLastCalledWith({
         includeContinuous: false,
@@ -254,18 +240,18 @@ describe('shouldYieldToMain()', () => {
     });
 
     it('should return the result of isInputPending() with continuous events if the elapsed time is between 50ms and 299ms', () => {
-      const adaptedScheduler = createAdaptedScheduler();
+      const scheduler = createAdaptedScheduler();
       const isInputPendingSpy = vi
         .spyOn(navigator.scheduling, 'isInputPending')
         .mockReturnValue(false);
 
-      expect(adaptedScheduler.shouldYieldToMain(0, 50)).toBe(false);
+      expect(scheduler.shouldYieldToMain(50)).toBe(false);
       expect(isInputPendingSpy).toHaveBeenCalledTimes(1);
       expect(isInputPendingSpy).toHaveBeenLastCalledWith({
         includeContinuous: true,
       });
 
-      expect(adaptedScheduler.shouldYieldToMain(0, 299)).toBe(false);
+      expect(scheduler.shouldYieldToMain(299)).toBe(false);
       expect(isInputPendingSpy).toHaveBeenCalledTimes(2);
       expect(isInputPendingSpy).toHaveBeenLastCalledWith({
         includeContinuous: true,
@@ -273,8 +259,8 @@ describe('shouldYieldToMain()', () => {
     });
 
     it('should return true if the elapsed time is greater than or equal to 300ms', () => {
-      const adaptedScheduler = createAdaptedScheduler();
-      expect(adaptedScheduler.shouldYieldToMain(0, 300)).toBe(true);
+      const scheduler = createAdaptedScheduler();
+      expect(scheduler.shouldYieldToMain(300)).toBe(true);
     });
   });
 
@@ -290,11 +276,11 @@ describe('shouldYieldToMain()', () => {
     });
 
     it('should return true if the elapsed time is greater than or equal to 5ms', () => {
-      const adaptedScheduler = createAdaptedScheduler();
+      const scheduler = createAdaptedScheduler();
 
-      expect(adaptedScheduler.shouldYieldToMain(0, 0)).toBe(false);
-      expect(adaptedScheduler.shouldYieldToMain(0, 4)).toBe(false);
-      expect(adaptedScheduler.shouldYieldToMain(0, 5)).toBe(true);
+      expect(scheduler.shouldYieldToMain(0)).toBe(false);
+      expect(scheduler.shouldYieldToMain(4)).toBe(false);
+      expect(scheduler.shouldYieldToMain(5)).toBe(true);
     });
   });
 });
@@ -308,7 +294,7 @@ describe('yieldToMain()', () => {
     beforeEach(() => {
       vi.stubGlobal('scheduler', {
         yield() {
-          return new Promise<void>(queueMicrotask);
+          return Promise.resolve();
         },
       });
     });
@@ -317,13 +303,13 @@ describe('yieldToMain()', () => {
       vi.unstubAllGlobals();
     });
 
-    it('should return the promise of scheduler.yield()', () => {
-      const adaptedScheduler = createAdaptedScheduler();
-      const yieldSpy = vi
-        .spyOn(scheduler, 'yield')
-        .mockReturnValue(Promise.resolve());
-      expect(adaptedScheduler.yieldToMain()).resolves.toBeUndefined();
+    it('should return the promise by scheduler.yield()', () => {
+      const scheduler = createAdaptedScheduler();
+      const yieldSpy = vi.spyOn(globalThis.scheduler, 'yield');
+      const options = { priority: 'inherit' } as const;
+      expect(scheduler.yieldToMain(options)).resolves.toBeUndefined();
       expect(yieldSpy).toHaveBeenCalledOnce();
+      expect(yieldSpy).toHaveBeenCalledWith(options);
     });
   });
 
@@ -336,14 +322,14 @@ describe('yieldToMain()', () => {
       vi.unstubAllGlobals();
     });
 
-    it('should wait until the current task has completed', () => {
-      const adaptedScheduler = createAdaptedScheduler();
+    it('should wait until the current callback has completed', () => {
+      const scheduler = createAdaptedScheduler();
       const queueMicrotaskSpy = vi
         .spyOn(globalThis, 'queueMicrotask')
         .mockImplementation((callback) => {
           callback();
         });
-      expect(adaptedScheduler.yieldToMain()).resolves.toBeUndefined();
+      expect(scheduler.yieldToMain()).resolves.toBeUndefined();
       expect(queueMicrotaskSpy).toHaveBeenCalledOnce();
     });
   });

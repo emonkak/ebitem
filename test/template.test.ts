@@ -17,7 +17,7 @@ import {
   getMarker,
   isValidMarker,
 } from '../src/template.js';
-import { LocalUpdater } from '../src/updater/local.js';
+import { SyncUpdater } from '../src/updater/sync.js';
 import { MockBinding, MockDirective } from './mocks.js';
 
 const MARKER = getMarker();
@@ -316,8 +316,7 @@ describe('Template', () => {
         { class: 'qux' },
         new MockDirective(),
       ];
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
       const root = template.hydrate(values, updater);
 
       expect(root).toBeInstanceOf(TemplateRoot);
@@ -354,7 +353,7 @@ describe('Template', () => {
         type: PartType.Node,
       });
 
-      updater.flush(scope);
+      updater.flush();
 
       expect((root.childNodes[0] as Element)?.outerHTML).toBe(
         `
@@ -370,7 +369,7 @@ describe('Template', () => {
         <div class=${0} class=${1}></div>
       `;
       const values = ['foo', 'bar'];
-      const updater = new LocalUpdater();
+      const updater = new SyncUpdater(new Scope());
       expect(() => {
         template.hydrate(values, updater);
       }).toThrow('There may be multiple holes indicating the same attribute.');
@@ -385,11 +384,10 @@ describe('TemplateRoot', () => {
         <p>Hello, ${0}!</p>
       `;
       const values = ['World'];
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
       const root = template.hydrate(values, updater);
 
-      updater.flush(scope);
+      updater.flush();
 
       const container = document.createElement('div');
       const marker = document.createComment('');
@@ -418,11 +416,10 @@ describe('TemplateRoot', () => {
         <p>Count: ${0}</p>
       `;
       const values = [0];
-      const updater = new LocalUpdater();
-      const scope = new Scope();
+      const updater = new SyncUpdater(new Scope());
       const root = template.hydrate(values, updater);
 
-      updater.flush(scope);
+      updater.flush();
 
       expect((root.childNodes[0] as Element)?.outerHTML).toBe(
         '<p>Count: 0</p>',
@@ -430,7 +427,7 @@ describe('TemplateRoot', () => {
 
       root.update([1], updater);
 
-      updater.flush(scope);
+      updater.flush();
 
       expect((root.childNodes[0] as Element)?.outerHTML).toBe(
         '<p>Count: 1</p>',
@@ -455,7 +452,7 @@ describe('TemplateRoot', () => {
           },
         }),
       ];
-      const updater = new LocalUpdater();
+      const updater = new SyncUpdater(new Scope());
       const root = template.hydrate(values, updater);
 
       expect(disconnects).toBe(0);
