@@ -115,28 +115,13 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
   }
 
   private _startSubscription(updater: Updater): Subscription {
-    const weakThis = new WeakRef(this);
-
-    const subscription = this._signal.subscribe(() => {
-      const that = weakThis.deref();
-
-      if (that !== undefined) {
-        // FIXME: The binding will be updated with a new value whether or not
-        // the target is connected to the document. Is is just a performance
-        // issue?
-        that._valueBinding = updateBinding(
-          that._valueBinding,
-          that._signal.value,
-          updater,
-        );
-      } else {
-        // The signal will be automatically unsubscribed when this instance is
-        // garbage-collected.
-        subscription();
-      }
+    return this._signal.subscribe(() => {
+      this._valueBinding = updateBinding(
+        this._valueBinding,
+        this._signal.value,
+        updater,
+      );
     });
-
-    return subscription;
   }
 }
 
