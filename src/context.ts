@@ -12,7 +12,6 @@ export enum HookType {
 
 export interface EffectHook {
   type: HookType.Effect;
-  callback: EffectCallback;
   cleanup: Cleanup | void;
   dependencies: unknown[] | undefined;
 }
@@ -136,20 +135,22 @@ export class Context {
       ensureHookType<EffectHook>(HookType.Effect, currentHook);
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
-        this._updater.enqueuePassiveEffect(new InvokeEffectHook(currentHook));
-        currentHook.dependencies = dependencies;
+        this._updater.enqueuePassiveEffect(
+          new InvokeEffectHook(currentHook, callback),
+        );
       }
 
-      currentHook.callback = callback;
+      currentHook.dependencies = dependencies;
     } else {
       const newHook: EffectHook = {
         type: HookType.Effect,
-        callback,
         dependencies,
         cleanup: undefined,
       };
       this._hooks.push(newHook);
-      this._updater.enqueuePassiveEffect(new InvokeEffectHook(newHook));
+      this._updater.enqueuePassiveEffect(
+        new InvokeEffectHook(newHook, callback),
+      );
     }
 
     this._hookIndex++;
@@ -183,20 +184,22 @@ export class Context {
       ensureHookType<EffectHook>(HookType.Effect, currentHook);
 
       if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
-        this._updater.enqueueLayoutEffect(new InvokeEffectHook(currentHook));
-        currentHook.dependencies = dependencies;
+        this._updater.enqueueLayoutEffect(
+          new InvokeEffectHook(currentHook, callback),
+        );
       }
 
-      currentHook.callback = callback;
+      currentHook.dependencies = dependencies;
     } else {
       const newHook: EffectHook = {
         type: HookType.Effect,
-        callback,
         dependencies,
         cleanup: undefined,
       };
       this._hooks.push(newHook);
-      this._updater.enqueueLayoutEffect(new InvokeEffectHook(newHook));
+      this._updater.enqueueLayoutEffect(
+        new InvokeEffectHook(newHook, callback),
+      );
     }
 
     this._hookIndex++;
@@ -224,32 +227,6 @@ export class Context {
     this._hookIndex++;
 
     return currentHook.value;
-  }
-
-  useMutationEffect(callback: EffectCallback, dependencies?: unknown[]): void {
-    const currentHook = this._hooks[this._hookIndex];
-
-    if (currentHook !== undefined) {
-      ensureHookType<EffectHook>(HookType.Effect, currentHook);
-
-      if (dependenciesAreChanged(currentHook.dependencies, dependencies)) {
-        this._updater.enqueueMutationEffect(new InvokeEffectHook(currentHook));
-        currentHook.dependencies = dependencies;
-      }
-
-      currentHook.callback = callback;
-    } else {
-      const newHook: EffectHook = {
-        type: HookType.Effect,
-        callback,
-        dependencies,
-        cleanup: undefined,
-      };
-      this._hooks.push(newHook);
-      this._updater.enqueueMutationEffect(new InvokeEffectHook(newHook));
-    }
-
-    this._hookIndex++;
   }
 
   useReducer<TState, TAction>(
@@ -324,8 +301,11 @@ export class Context {
 class InvokeEffectHook implements Effect {
   private readonly _hook: EffectHook;
 
-  constructor(hook: EffectHook) {
+  private readonly _callback: () => void;
+
+  constructor(hook: EffectHook, callback: () => void) {
     this._hook = hook;
+    this._callback = callback;
   }
 
   commit(): void {
@@ -334,7 +314,7 @@ class InvokeEffectHook implements Effect {
       this._hook.cleanup = undefined;
     }
 
-    const callback = this._hook.callback;
+    const callback = this._callback;
 
     this._hook.cleanup = callback();
   }
