@@ -18,6 +18,7 @@ describe('LinkedList', () => {
       const foo = list.pushFront('foo');
 
       expect(foo.value).toBe('foo');
+      expect(list.contains(foo)).toBe(true);
       expect(list.isEmpty()).toBe(false);
       expect(list.front()).toBe(foo);
       expect(list.back()).toBe(foo);
@@ -33,6 +34,9 @@ describe('LinkedList', () => {
       expect(foo.value).toBe('foo');
       expect(bar.value).toBe('bar');
       expect(baz.value).toBe('baz');
+      expect(list.contains(foo)).toBe(true);
+      expect(list.contains(bar)).toBe(true);
+      expect(list.contains(baz)).toBe(true);
       expect(list.isEmpty()).toBe(false);
       expect(list.front()).toBe(baz);
       expect(list.back()).toBe(foo);
@@ -46,6 +50,7 @@ describe('LinkedList', () => {
       const foo = list.pushBack('foo');
 
       expect(foo.value).toBe('foo');
+      expect(list.contains(foo)).toBe(true);
       expect(list.isEmpty()).toBe(false);
       expect(list.front()).toBe(foo);
       expect(list.back()).toBe(foo);
@@ -61,6 +66,9 @@ describe('LinkedList', () => {
       expect(foo.value).toBe('foo');
       expect(bar.value).toBe('bar');
       expect(baz.value).toBe('baz');
+      expect(list.contains(foo)).toBe(true);
+      expect(list.contains(bar)).toBe(true);
+      expect(list.contains(baz)).toBe(true);
       expect(list.isEmpty()).toBe(false);
       expect(list.front()).toBe(foo);
       expect(list.back()).toBe(baz);
@@ -76,6 +84,9 @@ describe('LinkedList', () => {
       const baz = list.pushBack('baz');
 
       expect(list.popFront()).toBe(foo);
+      expect(list.contains(foo)).toBe(false);
+      expect(list.contains(bar)).toBe(true);
+      expect(list.contains(baz)).toBe(true);
       expect(foo.next).toBe(null);
       expect(foo.prev).toBe(null);
       expect(list.isEmpty()).toBe(false);
@@ -84,6 +95,9 @@ describe('LinkedList', () => {
       expect(Array.from(list)).toEqual(['bar', 'baz']);
 
       expect(list.popFront()).toBe(bar);
+      expect(list.contains(foo)).toBe(false);
+      expect(list.contains(bar)).toBe(false);
+      expect(list.contains(baz)).toBe(true);
       expect(bar.next).toBe(null);
       expect(bar.prev).toBe(null);
       expect(list.isEmpty()).toBe(false);
@@ -92,6 +106,9 @@ describe('LinkedList', () => {
       expect(Array.from(list)).toEqual(['baz']);
 
       expect(list.popFront()).toBe(baz);
+      expect(list.contains(foo)).toBe(false);
+      expect(list.contains(bar)).toBe(false);
+      expect(list.contains(baz)).toBe(false);
       expect(baz.next).toBe(null);
       expect(baz.prev).toBe(null);
       expect(list.isEmpty()).toBe(true);
@@ -109,6 +126,14 @@ describe('LinkedList', () => {
       expect(list.popFront()).toBe(foo);
       expect(list.popFront()).toBe(bar);
       expect(list.popFront()).toBe(baz);
+
+      expect(list.contains(foo)).toBe(false);
+      expect(list.contains(bar)).toBe(false);
+      expect(list.contains(baz)).toBe(false);
+      expect(list.isEmpty()).toBe(true);
+      expect(list.front()).toBe(null);
+      expect(list.back()).toBe(null);
+      expect(Array.from(list)).toEqual([]);
     });
   });
 
@@ -120,6 +145,9 @@ describe('LinkedList', () => {
       const baz = list.pushBack('baz');
 
       expect(list.popBack()).toBe(baz);
+      expect(list.contains(foo)).toBe(true);
+      expect(list.contains(bar)).toBe(true);
+      expect(list.contains(baz)).toBe(false);
       expect(baz.next).toBe(null);
       expect(baz.prev).toBe(null);
       expect(list.isEmpty()).toBe(false);
@@ -128,6 +156,9 @@ describe('LinkedList', () => {
       expect(Array.from(list)).toEqual(['foo', 'bar']);
 
       expect(list.popBack()).toBe(bar);
+      expect(list.contains(foo)).toBe(true);
+      expect(list.contains(bar)).toBe(false);
+      expect(list.contains(baz)).toBe(false);
       expect(bar.next).toBe(null);
       expect(bar.prev).toBe(null);
       expect(list.isEmpty()).toBe(false);
@@ -136,6 +167,9 @@ describe('LinkedList', () => {
       expect(Array.from(list)).toEqual(['foo']);
 
       expect(list.popBack()).toBe(foo);
+      expect(list.contains(foo)).toBe(false);
+      expect(list.contains(bar)).toBe(false);
+      expect(list.contains(baz)).toBe(false);
       expect(foo.next).toBe(null);
       expect(foo.prev).toBe(null);
       expect(list.isEmpty()).toBe(true);
@@ -154,6 +188,9 @@ describe('LinkedList', () => {
       expect(list.popBack()).toBe(bar);
       expect(list.popBack()).toBe(foo);
 
+      expect(list.contains(foo)).toBe(false);
+      expect(list.contains(bar)).toBe(false);
+      expect(list.contains(baz)).toBe(false);
       expect(list.isEmpty()).toBe(true);
       expect(list.front()).toBe(null);
       expect(list.back()).toBe(null);
@@ -172,6 +209,9 @@ describe('LinkedList', () => {
 
       expect(bar.next).toBe(null);
       expect(bar.prev).toBe(null);
+      expect(list.contains(foo)).toBe(true);
+      expect(list.contains(bar)).toBe(false);
+      expect(list.contains(baz)).toBe(true);
       expect(list.isEmpty()).toBe(false);
       expect(list.front()).toBe(foo);
       expect(list.back()).toBe(baz);
@@ -188,6 +228,9 @@ describe('LinkedList', () => {
 
       expect(foo.next).toBe(null);
       expect(foo.prev).toBe(null);
+      expect(list.contains(foo)).toBe(false);
+      expect(list.contains(bar)).toBe(true);
+      expect(list.contains(baz)).toBe(true);
       expect(list.isEmpty()).toBe(false);
       expect(list.front()).toBe(bar);
       expect(list.back()).toBe(baz);
@@ -204,10 +247,21 @@ describe('LinkedList', () => {
 
       expect(baz.next).toBe(null);
       expect(baz.prev).toBe(null);
+      expect(list.contains(foo)).toBe(true);
+      expect(list.contains(bar)).toBe(true);
+      expect(list.contains(baz)).toBe(false);
       expect(list.isEmpty()).toBe(false);
       expect(list.front()).toBe(foo);
       expect(list.back()).toBe(bar);
       expect(Array.from(list)).toEqual(['foo', 'bar']);
+    });
+
+    it('should not remove a value not contained in the list', () => {
+      const list = new LinkedList();
+
+      expect(() =>
+        list.remove({ prev: null, next: null, value: 'foo' }),
+      ).toThrow('The node is not contained in this list.');
     });
   });
 });

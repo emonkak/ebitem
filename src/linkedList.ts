@@ -4,12 +4,12 @@ export interface Node<T> {
   value: T;
 }
 
-export class LinkedList<T> {
+export class LinkedList<T> implements Iterable<T> {
   private _head: Node<T> | null = null;
 
   private _tail: Node<T> | null = null;
 
-  *[Symbol.iterator]() {
+  *[Symbol.iterator](): Iterator<T> {
     for (let node = this._head; node !== null; node = node.next) {
       yield node.value;
     }
@@ -25,6 +25,15 @@ export class LinkedList<T> {
 
   isEmpty(): boolean {
     return this._head === null;
+  }
+
+  contains(other: Node<T>): boolean {
+    for (let node = this._head; node !== null; node = node.next) {
+      if (node === other) {
+        return true;
+      }
+    }
+    return false;
   }
 
   popBack(): Node<T> | null {
@@ -86,6 +95,12 @@ export class LinkedList<T> {
   }
 
   remove(node: Node<T>): void {
+    // biome-ignore lint: use DEBUG label
+    DEBUG: {
+      if (!this.contains(node)) {
+        throw new Error('The node is not contained in this list.');
+      }
+    }
     if (node.prev !== null) {
       node.prev.next = node.next;
     } else {
