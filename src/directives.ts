@@ -13,7 +13,10 @@ export {
 } from './directives/condition.js';
 export { ListDirective, list } from './directives/list.js';
 export { RefDirective, ref } from './directives/ref.js';
-export { SlotDirective, slot } from './directives/slot.js';
+export {
+  DynamicElementDirective,
+  dynamicElement,
+} from './directives/dynamicElement.js';
 export { type StyleMap, StyleDirective, style } from './directives/style.js';
 export { TemplateDirective } from './directives/template.js';
 export { UnitDirective, unit } from './directives/unit.js';

@@ -68,7 +68,11 @@ export class ListDirective<TItem, TValue, TKey> implements Directive {
       throw new Error('ListDirective must be used in an arbitrary child.');
     }
 
-    return new ListBinding(this, part, updater);
+    const binding = new ListBinding(this, part);
+
+    binding.bind(updater);
+
+    return binding;
   }
 }
 
@@ -79,27 +83,15 @@ export class ListBinding<TItem, TValue, TKey>
 
   private _directive: ListDirective<TItem, TValue, TKey>;
 
-  private _bindings: ListItemBinding<TValue>[];
+  private _bindings: ListItemBinding<TValue>[] = [];
 
-  private _keys: TKey[];
+  private _keys: TKey[] = [];
 
   constructor(
     directive: ListDirective<TItem, TValue, TKey>,
     part: ChildNodePart,
-    updater: Updater,
   ) {
-    const { items, keySelector, valueSelector } = directive;
-    const bindings = new Array<ListItemBinding<TValue>>(items.length);
-    const keys = items.map(keySelector);
-    const values = items.map(valueSelector);
-
-    for (let i = 0, l = bindings.length; i < l; i++) {
-      bindings[i] = new ListItemBinding(values[i]!, part, updater);
-    }
-
     this._directive = directive;
-    this._keys = keys;
-    this._bindings = bindings;
     this._part = part;
   }
 
@@ -124,6 +116,42 @@ export class ListBinding<TItem, TValue, TKey>
   }
 
   bind(updater: Updater): void {
+    if (this._bindings.length > 0) {
+      this._reconcileItems(updater);
+    } else {
+      this._initializeItems(updater);
+    }
+  }
+
+  unbind(updater: Updater): void {
+    for (let i = 0, l = this._bindings.length; i < l; i++) {
+      this._bindings[i]!.unbind(updater);
+    }
+
+    this._bindings = [];
+  }
+
+  disconnect(): void {
+    for (let i = 0, l = this._bindings.length; i < l; i++) {
+      this._bindings[i]!.disconnect();
+    }
+  }
+
+  private _initializeItems(updater: Updater): void {
+    const { items, keySelector, valueSelector } = this._directive;
+    const bindings = new Array<ListItemBinding<TValue>>(items.length);
+    const keys = items.map(keySelector);
+    const values = items.map(valueSelector);
+
+    for (let i = 0, l = bindings.length; i < l; i++) {
+      bindings[i] = new ListItemBinding(values[i]!, this._part, updater);
+    }
+
+    this._bindings = bindings;
+    this._keys = keys;
+  }
+
+  private _reconcileItems(updater: Updater): void {
     const { items, keySelector, valueSelector } = this._directive;
     const oldBindings: (ListItemBinding<TValue> | undefined)[] = this._bindings;
     const oldKeys = this._keys;
@@ -238,20 +266,6 @@ export class ListBinding<TItem, TValue, TKey>
 
     this._bindings = newBindings;
     this._keys = newKeys;
-  }
-
-  unbind(updater: Updater): void {
-    for (let i = 0, l = this._bindings.length; i < l; i++) {
-      this._bindings[i]!.unbind(updater);
-    }
-
-    this._bindings = [];
-  }
-
-  disconnect(): void {
-    for (let i = 0, l = this._bindings.length; i < l; i++) {
-      this._bindings[i]!.disconnect();
-    }
   }
 }
 

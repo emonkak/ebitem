@@ -10,9 +10,9 @@ import {
   choice,
   classNames,
   condition,
+  dynamicElement,
   list,
   ref,
-  slot,
   style,
   unless,
   unsafeHTML,
@@ -92,7 +92,7 @@ function App(_props: {}, context: Context): TemplateDirective {
       </p>
       <${context.html`<div>Hello World!</div>`} />
       <${unsafeHTML('<div style="color: red">Hello World!</div>')} />
-      <${slot(
+      <${dynamicElement(
         'article',
         { style: style({ color: 'blue' }) },
         context.html`<span>Hello World!</span>`,
@@ -174,7 +174,7 @@ function Counter({ count }: CounterProps, context: Context): TemplateDirective {
       <span class="count-choose">${choice(count.value % 2, (count) =>
         count === 0 ? '(Even)' : '(Odd)',
       )}</span>
-      <${slot(
+      <${element(
         count.value % 2 === 0 ? 'strong' : 'em',
         { style: style({ color: 'blue' }) },
         context.html`<span>Hello World!</span>`,
