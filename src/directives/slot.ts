@@ -196,6 +196,7 @@ export class SlotBinding<TChildNodeValue>
           .parentNode as Element | null;
         if (oldElement !== null) {
           element.replaceChildren(...oldElement.childNodes);
+          oldElement.remove();
         }
       }
 
