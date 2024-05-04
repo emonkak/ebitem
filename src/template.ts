@@ -3,7 +3,7 @@ import {
   ChildNodePart,
   Part,
   PartType,
-  initializeBinding,
+  createBinding,
   updateBinding,
 } from './binding.js';
 import type { Updater } from './updater.js';
@@ -183,11 +183,7 @@ export class Template implements AbstractTemplate {
               break;
           }
 
-          bindings[holeIndex] = initializeBinding(
-            values[holeIndex],
-            part,
-            updater,
-          );
+          bindings[holeIndex] = createBinding(values[holeIndex], part, updater);
           holeIndex++;
 
           if (holeIndex >= holes.length) {
@@ -226,14 +222,8 @@ export class TemplateRoot implements AbstractTemplateRoot {
   update(newValues: unknown[], updater: Updater): void {
     for (let i = 0, l = this._bindings.length; i < l; i++) {
       const binding = this._bindings[i]!;
-      const value = newValues[i]!;
-      if (!Object.is(binding.value, value)) {
-        this._bindings[i] = updateBinding(
-          this._bindings[i]!,
-          newValues[i],
-          updater,
-        );
-      }
+      const newValue = newValues[i]!;
+      updateBinding(binding, newValue, updater);
     }
   }
 

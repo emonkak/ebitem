@@ -174,7 +174,7 @@ function Counter({ count }: CounterProps, context: Context): TemplateDirective {
       <span class="count-choose">${choice(count.value % 2, (count) =>
         count === 0 ? '(Even)' : '(Odd)',
       )}</span>
-      <${element(
+      <${dynamicElement(
         count.value % 2 === 0 ? 'strong' : 'em',
         { style: style({ color: 'blue' }) },
         context.html`<span>Hello World!</span>`,

@@ -2,15 +2,14 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   AttributeBinding,
-  Binding,
   EventBinding,
   NodeBinding,
   Part,
   PartType,
   PropertyBinding,
   SpreadBinding,
+  createBinding,
   directiveTag,
-  initializeBinding,
   updateBinding,
 } from '../src/binding.js';
 import { Scope } from '../src/scope.js';
@@ -1027,7 +1026,7 @@ describe('SpreadBinding', () => {
   });
 });
 
-describe('initializeBinding()', () => {
+describe('createBinding()', () => {
   it('should perform the value if it is a directive', () => {
     const part = {
       type: PartType.Node,
@@ -1036,7 +1035,7 @@ describe('initializeBinding()', () => {
     const directive = new MockDirective();
     const directiveSpy = vi.spyOn(directive, directiveTag);
     const updater = new SyncUpdater(new Scope());
-    const binding = initializeBinding(directive, part, updater);
+    const binding = createBinding(directive, part, updater);
 
     expect(binding).toBeInstanceOf(MockBinding);
     expect(directiveSpy).toHaveBeenCalledOnce();
@@ -1051,7 +1050,7 @@ describe('initializeBinding()', () => {
       name: 'class',
     } as const;
     const updater = new SyncUpdater(new Scope());
-    const binding = initializeBinding('foo', part, updater);
+    const binding = createBinding('foo', part, updater);
 
     updater.flush();
 
@@ -1069,7 +1068,7 @@ describe('initializeBinding()', () => {
     } as const;
     const event = new CustomEvent('hello');
     const updater = new SyncUpdater(new Scope());
-    const binding = initializeBinding(listener, part, updater);
+    const binding = createBinding(listener, part, updater);
 
     updater.flush();
 
@@ -1088,7 +1087,7 @@ describe('initializeBinding()', () => {
       name: 'className',
     } as const;
     const updater = new SyncUpdater(new Scope());
-    const binding = initializeBinding('foo', part, updater);
+    const binding = createBinding('foo', part, updater);
 
     updater.flush();
 
@@ -1103,7 +1102,7 @@ describe('initializeBinding()', () => {
       node,
     } as const;
     const updater = new SyncUpdater(new Scope());
-    const binding = initializeBinding('foo', part, updater);
+    const binding = createBinding('foo', part, updater);
 
     updater.flush();
 
@@ -1118,7 +1117,7 @@ describe('initializeBinding()', () => {
       node,
     } as const;
     const updater = new SyncUpdater(new Scope());
-    const binding = initializeBinding('foo', part, updater);
+    const binding = createBinding('foo', part, updater);
 
     updater.flush();
 
@@ -1133,7 +1132,7 @@ describe('initializeBinding()', () => {
       node: element,
     } as const;
     const updater = new SyncUpdater(new Scope());
-    const binding = initializeBinding(
+    const binding = createBinding(
       {
         class: 'foo',
         title: 'bar',
@@ -1151,7 +1150,40 @@ describe('initializeBinding()', () => {
 });
 
 describe('updateBinding()', () => {
-  it('should update the binding if the both new and old values are directives', () => {
+  it('should update the binding if the new and old values are not the same', () => {
+    const node = document.createTextNode('');
+    const part = {
+      type: PartType.Node,
+      node,
+    } as const;
+    const updater = new SyncUpdater(new Scope());
+    const binding = new NodeBinding('foo', part);
+    const bindSpy = vi.spyOn(binding, 'bind');
+
+    updateBinding(binding, 'bar', updater);
+
+    expect(binding.value).toBe('bar');
+    expect(bindSpy).toHaveBeenCalledOnce();
+    expect(bindSpy).toHaveBeenCalledWith(updater);
+  });
+
+  it('should not update the binding if the new and old values are the same', () => {
+    const node = document.createTextNode('');
+    const part = {
+      type: PartType.Node,
+      node,
+    } as const;
+    const updater = new SyncUpdater(new Scope());
+    const binding = new NodeBinding('foo', part);
+    const bindSpy = vi.spyOn(binding, 'bind');
+
+    updateBinding(binding, 'foo', updater);
+
+    expect(binding.value).toBe('foo');
+    expect(bindSpy).not.toHaveBeenCalled();
+  });
+
+  it('should throw the error if the old value is a directive and the new value is a non-directive', () => {
     const directive = new MockDirective();
     const node = document.createTextNode('');
     const part = {
@@ -1160,59 +1192,26 @@ describe('updateBinding()', () => {
     } as const;
     const updater = new SyncUpdater(new Scope());
     const binding = new MockBinding(directive, part);
-    const bindSpy = vi.spyOn(binding, 'bind');
-    const unbindSpy = vi.spyOn(binding, 'unbind');
-    const newDirective = new MockDirective();
-    const newBinding = updateBinding(binding, newDirective, updater);
 
-    expect(newBinding).toBe(binding);
-    expect(binding.value).toBe(newDirective);
-    expect(bindSpy).toHaveBeenCalledOnce();
-    expect(bindSpy).toHaveBeenCalledWith(updater);
-    expect(unbindSpy).not.toHaveBeenCalled();
+    expect(() => updateBinding(binding, null as any, updater)).toThrow(
+      'The new value should be a directive of "MockDirective", but got "null".',
+    );
+    expect(() =>
+      updateBinding(binding, function foo() {} as any, updater),
+    ).toThrow(
+      'The new value should be a directive of "MockDirective", but got "foo".',
+    );
+    expect(() => updateBinding(binding, (() => {}) as any, updater)).toThrow(
+      'The new value should be a directive of "MockDirective", but got "function".',
+    );
+    expect(() =>
+      updateBinding(binding, new (class {})() as any, updater),
+    ).toThrow(
+      'The new value should be a directive of "MockDirective", but got "object".',
+    );
   });
 
-  it('should update the binding if the both new and old values are non-dirbiectives', () => {
-    const node = document.createTextNode('');
-    const part = {
-      type: PartType.Node,
-      node,
-    } as const;
-    const updater = new SyncUpdater(new Scope());
-    const binding = new NodeBinding('foo', part);
-    const bindSpy = vi.spyOn(binding, 'bind');
-    const unbindSpy = vi.spyOn(binding, 'unbind');
-    const newBinding = updateBinding(binding, 'bar', updater);
-
-    expect(newBinding).toBe(binding);
-    expect(bindSpy).toHaveBeenCalledOnce();
-    expect(bindSpy).toHaveBeenCalledWith(updater);
-    expect(unbindSpy).not.toHaveBeenCalled();
-  });
-
-  it('should return the new binding if the old value is a non-directive and the new value is a directive', () => {
-    const directive = new MockDirective();
-    const directiveSpy = vi.spyOn(directive, directiveTag);
-    const node = document.createTextNode('');
-    const part = {
-      type: PartType.Node,
-      node,
-    } as const;
-    const updater = new SyncUpdater(new Scope());
-    const binding = new NodeBinding('foo', part);
-    const bindSpy = vi.spyOn(binding, 'bind');
-    const unbindSpy = vi.spyOn(binding, 'unbind');
-    const newBinding = updateBinding(binding, directive, updater);
-
-    expect(newBinding).toBeInstanceOf(MockBinding);
-    expect(bindSpy).not.toHaveBeenCalled();
-    expect(unbindSpy).toHaveBeenCalledOnce();
-    expect(unbindSpy).toHaveBeenCalledWith(updater);
-    expect(directiveSpy).toHaveBeenCalledOnce();
-    expect(directiveSpy).toHaveBeenCalledWith(part, updater);
-  });
-
-  it('should return the new binding if the old value is a directive and the new value is a non-directive', () => {
+  it('should throw the error if the old value is a directive and the new value is a different directive', () => {
     const directive = new MockDirective();
     const node = document.createTextNode('');
     const part = {
@@ -1220,17 +1219,27 @@ describe('updateBinding()', () => {
       node,
     } as const;
     const updater = new SyncUpdater(new Scope());
-    const binding = new MockBinding(directive, part) as Binding<
-      MockDirective | string
-    >;
-    const unbindSpy = vi.spyOn(binding, 'unbind');
-    const newBinding = updateBinding(binding, 'foo', updater);
+    const binding = new MockBinding(directive, part);
 
-    updater.flush();
+    expect(() =>
+      updateBinding(binding, { [directiveTag]() {} } as any, updater),
+    ).toThrow(
+      'The new value should be a directive of "MockDirective", but got "Object".',
+    );
+  });
 
-    expect(newBinding).toBeInstanceOf(NodeBinding);
-    expect(unbindSpy).toHaveBeenCalledOnce();
-    expect(unbindSpy).toHaveBeenCalledWith(updater);
-    expect(node.nodeValue).toBe('foo');
+  it('should throw the erorr if the old value is a non-directive and the new value is a directive', () => {
+    const directive = new MockDirective();
+    const node = document.createTextNode('');
+    const part = {
+      type: PartType.Node,
+      node,
+    } as const;
+    const updater = new SyncUpdater(new Scope());
+    const binding = new NodeBinding('foo', part);
+
+    expect(() => updateBinding(binding, directive, updater)).toThrow(
+      'The new value should not be a directive, but got "MockDirective".',
+    );
   });
 });

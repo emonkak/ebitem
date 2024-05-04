@@ -4,8 +4,8 @@ import {
   Directive,
   Part,
   PartType,
+  createBinding,
   directiveTag,
-  initializeBinding,
 } from '../binding.js';
 import type { Effect, Updater } from '../updater.js';
 
@@ -291,7 +291,7 @@ class ListItemBinding<T> implements Binding<T>, Effect {
       node: document.createComment(''),
     } as const;
 
-    this._itemBinding = initializeBinding(value, part, updater);
+    this._itemBinding = createBinding(value, part, updater);
     this._listPart = listPart;
 
     this._requestMutation(updater);

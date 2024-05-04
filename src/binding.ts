@@ -432,12 +432,10 @@ export class SpreadBinding implements Binding<unknown> {
       let binding = this._bindings.get(name);
 
       if (binding !== undefined) {
-        if (!Object.is(binding.value, value)) {
-          binding = updateBinding(binding, value, updater);
-        }
+        updateBinding(binding, value, updater);
       } else {
         const part = resolveSpreadPart(name, this._part.node);
-        binding = initializeBinding(value, part, updater);
+        binding = createBinding(value, part, updater);
       }
 
       this._bindings.set(name, binding);
@@ -466,7 +464,7 @@ export class SpreadBinding implements Binding<unknown> {
   }
 }
 
-export function initializeBinding<TValue, TContext>(
+export function createBinding<TValue, TContext>(
   value: TValue,
   part: Part,
   updater: Updater<TContext>,
@@ -496,7 +494,7 @@ export function mountBinding<TValue, TContext>(
     },
   });
 
-  const binding = initializeBinding(value, part, updater);
+  const binding = createBinding(value, part, updater);
 
   if (!updater.isUpdating()) {
     updater.scheduleUpdate();
@@ -509,30 +507,34 @@ export function updateBinding<TValue, TContext>(
   binding: Binding<TValue, TContext>,
   newValue: TValue,
   updater: Updater<TContext>,
-): Binding<TValue> {
-  const oldValue = binding.value;
-
-  if (isDirective(newValue)) {
-    if (isDirective(oldValue) && isPrototypeOf(oldValue, newValue)) {
-      binding.value = newValue;
-      binding.bind(updater);
+): void {
+  // biome-ignore lint: use DEBUG label
+  DEBUG: {
+    if (isDirective(binding.value)) {
+      if (!isDirective(newValue) || !samePrototype(binding.value, newValue)) {
+        throw new Error(
+          'The new value should be a directive of "' +
+            typeOf(binding.value) +
+            '", but got "' +
+            typeOf(newValue) +
+            '". Consider using condition() directive instead.',
+        );
+      }
     } else {
-      binding.unbind(updater);
-      binding = newValue[directiveTag](
-        binding.part,
-        updater,
-      ) as Binding<TValue>;
+      if (isDirective(newValue)) {
+        throw new Error(
+          'The new value should not be a directive, but got "' +
+            typeOf(newValue) +
+            '". Consider using condition() directive instead.',
+        );
+      }
     }
-  } else {
-    if (isDirective(oldValue)) {
-      binding.unbind(updater);
-      binding = resolvePrimitiveBinding(binding.part, newValue);
-    }
+  }
+
+  if (!Object.is(binding.value, newValue)) {
     binding.value = newValue;
     binding.bind(updater);
   }
-
-  return binding;
 }
 
 function isDirective(value: unknown): value is Directive<unknown> {
@@ -546,13 +548,6 @@ function isEventListener(
     typeof value === 'function' ||
     (typeof value === 'object' &&
       typeof (value as any).handleEvent === 'function')
-  );
-}
-
-function isPrototypeOf<T extends object>(base: T, target: object): target is T {
-  return Object.prototype.isPrototypeOf.call(
-    Object.getPrototypeOf(base),
-    target,
   );
 }
 
@@ -585,4 +580,30 @@ function resolveSpreadPart(name: string, element: Element): Part {
   } else {
     return { type: PartType.Attribute, node: element, name };
   }
+}
+
+function samePrototype<T extends object>(base: T, target: object): target is T {
+  return Object.prototype.isPrototypeOf.call(
+    Object.getPrototypeOf(base),
+    target,
+  );
+}
+
+function typeOf(value: unknown): string {
+  switch (typeof value) {
+    case 'function':
+      if (value.name !== '') {
+        return value.name;
+      }
+      break;
+    case 'object':
+      if (value === null) {
+        return 'null';
+      }
+      if (value.constructor.name !== '') {
+        return value.constructor.name;
+      }
+      break;
+  }
+  return typeof value;
 }

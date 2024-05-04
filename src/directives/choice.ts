@@ -2,8 +2,8 @@ import {
   Binding,
   Directive,
   Part,
+  createBinding,
   directiveTag,
-  initializeBinding,
   updateBinding,
 } from '../binding.js';
 import type { Updater } from '../updater.js';
@@ -36,7 +36,7 @@ export class ChoiceDirective<TKey, TValue> implements Directive {
   [directiveTag](part: Part, updater: Updater): ChoiceBinding<TKey, TValue> {
     const factory = this._factory;
     const value = factory(this._key);
-    const initialBinding = initializeBinding(value, part, updater);
+    const initialBinding = createBinding(value, part, updater);
     return new ChoiceBinding(this, initialBinding);
   }
 }
@@ -88,13 +88,7 @@ export class ChoiceBinding<TKey, TValue>
     const newValue = factory(newKey);
 
     if (Object.is(oldKey, newKey)) {
-      if (!Object.is(this._currentBinding.value, newValue)) {
-        this._currentBinding = updateBinding(
-          this._currentBinding,
-          newValue,
-          updater,
-        );
-      }
+      updateBinding(this._currentBinding, newValue, updater);
     } else {
       this._currentBinding.unbind(updater);
       this._cachedBindings.set(oldKey, this._currentBinding);
@@ -102,9 +96,10 @@ export class ChoiceBinding<TKey, TValue>
       const cachedBinding = this._cachedBindings.get(newKey);
 
       if (cachedBinding !== undefined) {
-        this._currentBinding = updateBinding(cachedBinding, newValue, updater);
+        this._currentBinding.value = newValue;
+        this._currentBinding.bind(updater);
       } else {
-        this._currentBinding = initializeBinding(
+        this._currentBinding = createBinding(
           newValue,
           this._currentBinding.part,
           updater,

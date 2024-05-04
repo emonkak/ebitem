@@ -2,8 +2,8 @@ import {
   Binding,
   Directive,
   Part,
+  createBinding,
   directiveTag,
-  initializeBinding,
   updateBinding,
 } from '../binding.js';
 import type { Updater } from '../updater.js';
@@ -125,18 +125,14 @@ export class ConditionBinding<TTrue, TFalse>
         this._falseBinding?.unbind(updater);
       }
       if (this._trueBinding !== null) {
-        if (
-          this._condition !== condition ||
-          !Object.is(this._trueBinding.value, newValue)
-        ) {
-          this._trueBinding = updateBinding(
-            this._trueBinding,
-            newValue,
-            updater,
-          );
+        if (this._condition !== condition) {
+          this._trueBinding.value = newValue;
+          this._trueBinding.bind(updater);
+        } else {
+          updateBinding(this._trueBinding, newValue, updater);
         }
       } else {
-        this._trueBinding = initializeBinding(newValue, this._part, updater);
+        this._trueBinding = createBinding(newValue, this._part, updater);
       }
     } else {
       const newValue =
@@ -145,18 +141,14 @@ export class ConditionBinding<TTrue, TFalse>
         this._trueBinding?.unbind(updater);
       }
       if (this._falseBinding !== null) {
-        if (
-          this._condition !== condition ||
-          !Object.is(this._falseBinding.value, newValue)
-        ) {
-          this._falseBinding = updateBinding(
-            this._falseBinding,
-            newValue,
-            updater,
-          );
+        if (this._condition !== condition) {
+          this._falseBinding.value = newValue;
+          this._falseBinding.bind(updater);
+        } else {
+          updateBinding(this._falseBinding, newValue, updater);
         }
       } else {
-        this._falseBinding = initializeBinding(newValue, this._part, updater);
+        this._falseBinding = createBinding(newValue, this._part, updater);
       }
     }
 
@@ -176,7 +168,12 @@ export class ConditionBinding<TTrue, TFalse>
   }
 
   disconnect(): void {
-    this._trueBinding?.disconnect();
-    this._falseBinding?.disconnect();
+    const { condition } = this._directive;
+
+    if (condition) {
+      this._falseBinding?.disconnect();
+    } else {
+      this._trueBinding?.disconnect();
+    }
   }
 }

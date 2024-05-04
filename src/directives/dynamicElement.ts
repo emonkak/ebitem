@@ -6,8 +6,8 @@ import {
   PartType,
   SpreadBinding,
   SpreadProps,
+  createBinding,
   directiveTag,
-  initializeBinding,
   updateBinding,
 } from '../binding.js';
 import type { Effect, Updater } from '../updater.js';
@@ -65,7 +65,7 @@ export class DynamicElementDirective<TChildNodeValue> implements Directive {
       type: PartType.ChildNode,
       node: childNodeMarker,
     } as const;
-    const childNodeBinding = initializeBinding(
+    const childNodeBinding = createBinding(
       this.childNodeValue,
       childNodePart,
       updater,
@@ -161,21 +161,14 @@ export class DynamicElementBinding<TChildNodeValue>
       this._requestMutation(updater);
       this._flags |= DynamicElementBindingFlags.REPARENTING;
     } else {
-      this._elementBinding.value = props;
-      this._elementBinding.bind(updater);
+      updateBinding(this._elementBinding, props, updater);
 
       if (!(this._flags & DynamicElementBindingFlags.MOUNTED)) {
         this._requestMutation(updater);
       }
     }
 
-    if (!Object.is(this._childNodeBinding.value, childNodeValue)) {
-      this._childNodeBinding = updateBinding(
-        this._childNodeBinding,
-        childNodeValue,
-        updater,
-      );
-    }
+    updateBinding(this._childNodeBinding, childNodeValue, updater);
 
     this._flags &= ~DynamicElementBindingFlags.UNMOUNTING;
   }
@@ -223,6 +216,8 @@ export class DynamicElementBinding<TChildNodeValue>
   }
 
   init(updater: Updater): void {
+    this._spreadBinding.bind(updater);
+    this._childNodeBinding.bind(updater);
     this._requestMutation(updater);
   }
 

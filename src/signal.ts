@@ -2,9 +2,8 @@ import {
   Binding,
   Directive,
   Part,
+  createBinding,
   directiveTag,
-  initializeBinding,
-  updateBinding,
 } from './binding.js';
 import { Context, UsableObject, usableTag } from './context.js';
 import { LinkedList } from './linkedList.js';
@@ -52,7 +51,7 @@ export abstract class Signal<T> implements Directive, UsableObject<void> {
   }
 
   [directiveTag](part: Part, updater: Updater): SignalBinding<T> {
-    const valueBinding = initializeBinding(this.value, part, updater);
+    const valueBinding = createBinding(this.value, part, updater);
     const binding = new SignalBinding(this, valueBinding);
 
     binding.init(updater);
@@ -100,9 +99,8 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
 
   bind(updater: Updater): void {
     const newValue = this._signal.value;
-    if (!Object.is(newValue, this._valueBinding.value)) {
-      this._valueBinding = updateBinding(this._valueBinding, newValue, updater);
-    }
+    this._valueBinding.value = newValue;
+    this._valueBinding.bind(updater);
     this._subscription ??= this._startSubscription(updater);
   }
 
@@ -122,11 +120,8 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
 
   private _startSubscription(updater: Updater): Subscription {
     return this._signal.subscribe(() => {
-      this._valueBinding = updateBinding(
-        this._valueBinding,
-        this._signal.value,
-        updater,
-      );
+      this._valueBinding.value = this._signal.value;
+      this._valueBinding.bind(updater);
       updater.scheduleUpdate();
     });
   }
