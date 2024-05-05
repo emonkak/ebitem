@@ -9,26 +9,26 @@ import {
 import type { Updater } from '../updater.js';
 import { UnitDirective, unit } from './unit.js';
 
-type ValueOrFunction<T> = T extends Function ? never : T | (() => T);
+type FunctionOrValue<T> = (() => T) | T extends Function ? never : T;
 
 export function condition<TTrue, TFalse>(
   condition: boolean,
-  trueCase: ValueOrFunction<TTrue>,
-  falseCase: ValueOrFunction<TFalse>,
+  trueCase: FunctionOrValue<TTrue>,
+  falseCase: FunctionOrValue<TFalse>,
 ): ConditionDirective<TTrue, TFalse> {
   return new ConditionDirective(condition, trueCase, falseCase);
 }
 
 export function when<TTrue>(
   condition: boolean,
-  trueCase: ValueOrFunction<TTrue>,
+  trueCase: FunctionOrValue<TTrue>,
 ): ConditionDirective<TTrue, UnitDirective> {
   return new ConditionDirective(condition, trueCase, unit);
 }
 
 export function unless<TFalse>(
   condition: boolean,
-  falseCase: ValueOrFunction<TFalse>,
+  falseCase: FunctionOrValue<TFalse>,
 ): ConditionDirective<UnitDirective, TFalse> {
   return new ConditionDirective(condition, unit, falseCase);
 }
@@ -36,14 +36,14 @@ export function unless<TFalse>(
 export class ConditionDirective<TTrue, TFalse> implements Directive {
   private readonly _condition: boolean;
 
-  private readonly _trueCase: ValueOrFunction<TTrue>;
+  private readonly _trueCase: FunctionOrValue<TTrue>;
 
-  private readonly _falseCase: ValueOrFunction<TFalse>;
+  private readonly _falseCase: FunctionOrValue<TFalse>;
 
   constructor(
     condition: boolean,
-    trueCase: ValueOrFunction<TTrue>,
-    falseCase: ValueOrFunction<TFalse>,
+    trueCase: FunctionOrValue<TTrue>,
+    falseCase: FunctionOrValue<TFalse>,
   ) {
     this._condition = condition;
     this._trueCase = trueCase;
@@ -54,11 +54,11 @@ export class ConditionDirective<TTrue, TFalse> implements Directive {
     return this._condition;
   }
 
-  get trueCase(): ValueOrFunction<TTrue> {
+  get trueCase(): FunctionOrValue<TTrue> {
     return this._trueCase;
   }
 
-  get falseCase(): ValueOrFunction<TFalse> {
+  get falseCase(): FunctionOrValue<TFalse> {
     return this._falseCase;
   }
 
