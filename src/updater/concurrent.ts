@@ -1,6 +1,6 @@
-import { LinkedList } from '../linkedList.js';
 import { Scheduler, createAdaptedScheduler } from '../scheduler.js';
 import type { AbstractScope } from '../scope.js';
+import { AtomSignal } from '../signal.js';
 import { Effect, Renderable, Updater, shouldSkipRender } from '../updater.js';
 
 export interface ConcurrentUpdaterOptions {
@@ -19,11 +19,11 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
 
   private readonly _scheduler: Scheduler;
 
+  private readonly _taskCount = new AtomSignal(0);
+
   private _currentRenderble: Renderable | null = null;
 
   private _currentPipeline: Pipeline<TContext> = createPipeline();
-
-  private _runningTasks = new LinkedList<Promise<void>>();
 
   constructor(
     scope: AbstractScope<TContext>,
@@ -71,12 +71,22 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
   }
 
   isUpdating(): boolean {
-    return !this._runningTasks.isEmpty();
+    return this._taskCount.value > 0;
   }
 
-  async waitForUpdate(): Promise<void> {
-    while (!this._runningTasks.isEmpty()) {
-      await Promise.all(this._runningTasks);
+  waitForUpdate(): Promise<void> {
+    const taskCount = this._taskCount;
+    if (taskCount.value > 0) {
+      return new Promise((resolve) => {
+        const subscription = taskCount.subscribe(() => {
+          if (taskCount.value === 0) {
+            subscription();
+            resolve();
+          }
+        });
+      });
+    } else {
+      return Promise.resolve();
     }
   }
 
@@ -131,14 +141,16 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
 
     for (let i = 0, l = pendingRenderables.length; i < l; i++) {
       const renderable = pendingRenderables[i]!;
-      const task = this._scheduler.requestCallback(
-        () => this._beginRenderPipeline(renderable),
-        { priority: renderable.priority },
+      this._scheduler.requestCallback(
+        async () => {
+          await this._beginRenderPipeline(renderable);
+          this._taskCount.value--;
+        },
+        {
+          priority: renderable.priority,
+        },
       );
-      const taskNode = this._runningTasks.pushBack(task);
-      task.then(() => {
-        this._runningTasks.remove(taskNode);
-      });
+      this._taskCount.value++;
     }
   }
 
@@ -149,17 +161,15 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
       pipeline.pendingMutationEffects = [];
       pipeline.pendingLayoutEffects = [];
 
-      const task = this._scheduler.requestCallback(
+      this._scheduler.requestCallback(
         () => {
           flushEffects(pendingMutationEffects);
           flushEffects(pendingLayoutEffects);
+          this._taskCount.value--;
         },
         { priority: 'user-blocking' },
       );
-      const taskNode = this._runningTasks.pushBack(task);
-      task.then(() => {
-        this._runningTasks.remove(taskNode);
-      });
+      this._taskCount.value++;
     }
   }
 
@@ -169,16 +179,14 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
     if (pendingPassiveEffects.length > 0) {
       pipeline.pendingPassiveEffects = [];
 
-      const task = this._scheduler.requestCallback(
+      this._scheduler.requestCallback(
         () => {
           flushEffects(pendingPassiveEffects);
+          this._taskCount.value--;
         },
         { priority: 'background' },
       );
-      const taskNode = this._runningTasks.pushBack(task);
-      task.then(() => {
-        this._runningTasks.remove(taskNode);
-      });
+      this._taskCount.value++;
     }
   }
 }
