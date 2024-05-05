@@ -128,10 +128,13 @@ export class TemplateBinding
   }
 
   bind(updater: Updater): void {
-    this.requestUpdate(
-      updater,
-      this._parent?.priority ?? updater.getCurrentPriority(),
-    );
+    if (!(this._flags & TemplateFlags.UPDATING)) {
+      this._priority = this._parent?.priority ?? updater.getCurrentPriority();
+      this._flags |= TemplateFlags.UPDATING;
+      updater.enqueueRenderable(this);
+    }
+
+    this._flags &= ~TemplateFlags.UNMOUNTING;
   }
 
   unbind(updater: Updater): void {

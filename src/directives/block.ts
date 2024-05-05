@@ -151,10 +151,13 @@ export class BlockBinding<TProps, TContext>
   }
 
   bind(updater: Updater): void {
-    this.requestUpdate(
-      updater,
-      this._parent?.priority ?? updater.getCurrentPriority(),
-    );
+    if (!(this._flags & BlockFlags.UPDATING)) {
+      this._priority = this._parent?.priority ?? updater.getCurrentPriority();
+      this._flags |= BlockFlags.UPDATING;
+      updater.enqueueRenderable(this);
+    }
+
+    this._flags &= ~BlockFlags.UNMOUNTING;
   }
 
   unbind(updater: Updater): void {
