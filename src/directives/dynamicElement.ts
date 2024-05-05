@@ -4,36 +4,36 @@ import {
   Directive,
   Part,
   PartType,
-  SpreadBinding,
-  SpreadProps,
   createBinding,
   directiveTag,
   updateBinding,
 } from '../binding.js';
 import type { Effect, Updater } from '../updater.js';
 
-export function dynamicElement<TChildNodeValue>(
+export function dynamicElement<TElementValue, TChildNodeValue>(
   type: string,
-  props: SpreadProps,
+  elementValue: TElementValue,
   childNodeValue: TChildNodeValue,
-): DynamicElementDirective<TChildNodeValue> {
-  return new DynamicElementDirective(type, props, childNodeValue);
+): DynamicElementDirective<TElementValue, TChildNodeValue> {
+  return new DynamicElementDirective(type, elementValue, childNodeValue);
 }
 
-export class DynamicElementDirective<TChildNodeValue> implements Directive {
+export class DynamicElementDirective<TElementValue, TChildNodeValue>
+  implements Directive
+{
   private readonly _type: string;
 
-  private readonly _props: SpreadProps;
+  private readonly _elementValue: TElementValue;
 
   private readonly _childNodeValue: TChildNodeValue;
 
   constructor(
     type: string,
-    props: SpreadProps,
+    elementValue: TElementValue,
     childNodeValue: TChildNodeValue,
   ) {
     this._type = type;
-    this._props = props;
+    this._elementValue = elementValue;
     this._childNodeValue = childNodeValue;
   }
 
@@ -41,8 +41,8 @@ export class DynamicElementDirective<TChildNodeValue> implements Directive {
     return this._type;
   }
 
-  get props(): SpreadProps {
-    return this._props;
+  get elementValue(): TElementValue {
+    return this._elementValue;
   }
 
   get childNodeValue(): TChildNodeValue {
@@ -52,14 +52,18 @@ export class DynamicElementDirective<TChildNodeValue> implements Directive {
   [directiveTag](
     part: Part,
     updater: Updater,
-  ): DynamicElementBinding<TChildNodeValue> {
+  ): DynamicElementBinding<TElementValue, TChildNodeValue> {
     if (part.type !== PartType.ChildNode) {
       throw new Error('ElementDirective must be used in ChildNodePart.');
     }
 
     const element = document.createElement(this.type);
     const elementPart = { type: PartType.Element, node: element } as const;
-    const elementBinding = new SpreadBinding(this.props, elementPart);
+    const elementBinding = createBinding(
+      this._elementValue,
+      elementPart,
+      updater,
+    );
     const childNodeMarker = document.createComment('');
     const childNodePart = {
       type: PartType.ChildNode,
@@ -70,8 +74,6 @@ export class DynamicElementDirective<TChildNodeValue> implements Directive {
       childNodePart,
       updater,
     );
-
-    elementBinding.bind(updater);
 
     element.appendChild(childNodeMarker);
 
@@ -96,22 +98,24 @@ const DynamicElementBindingFlags = {
   MOUNTED: 1 << 3,
 };
 
-export class DynamicElementBinding<TChildNodeValue>
-  implements Binding<DynamicElementDirective<TChildNodeValue>>, Effect
+export class DynamicElementBinding<TElementValue, TChildNodeValue>
+  implements
+    Binding<DynamicElementDirective<TElementValue, TChildNodeValue>>,
+    Effect
 {
   private readonly _part: ChildNodePart;
 
-  private _directive: DynamicElementDirective<TChildNodeValue>;
+  private _directive: DynamicElementDirective<TElementValue, TChildNodeValue>;
 
-  private _elementBinding: SpreadBinding;
+  private _elementBinding: Binding<TElementValue>;
 
   private _childNodeBinding: Binding<TChildNodeValue>;
 
   private _flags = DynamicElementBindingFlags.NONE;
 
   constructor(
-    directive: DynamicElementDirective<TChildNodeValue>,
-    elementBinding: SpreadBinding,
+    directive: DynamicElementDirective<TElementValue, TChildNodeValue>,
+    elementBinding: Binding<TElementValue>,
     childNodeBinding: Binding<TChildNodeValue>,
     part: ChildNodePart,
   ) {
@@ -135,16 +139,19 @@ export class DynamicElementBinding<TChildNodeValue>
     return this._part.node;
   }
 
-  get value(): DynamicElementDirective<TChildNodeValue> {
+  get value(): DynamicElementDirective<TElementValue, TChildNodeValue> {
     return this._directive;
   }
 
-  set value(newDirective: DynamicElementDirective<TChildNodeValue>) {
+  set value(newDirective: DynamicElementDirective<
+    TElementValue,
+    TChildNodeValue
+  >) {
     this._directive = newDirective;
   }
 
   bind(updater: Updater): void {
-    const { type, props, childNodeValue } = this._directive;
+    const { type, elementValue, childNodeValue } = this._directive;
     const element = this._elementBinding.part.node;
 
     if (element.nodeName !== type.toUpperCase()) {
@@ -154,14 +161,12 @@ export class DynamicElementBinding<TChildNodeValue>
       } as const;
 
       this._elementBinding.disconnect();
-
-      this._elementBinding = new SpreadBinding(props, elementPart);
-      this._elementBinding.bind(updater);
+      this._elementBinding = createBinding(elementValue, elementPart, updater);
 
       this._requestMutation(updater);
       this._flags |= DynamicElementBindingFlags.REPARENTING;
     } else {
-      updateBinding(this._elementBinding, props, updater);
+      updateBinding(this._elementBinding, elementValue, updater);
 
       if (!(this._flags & DynamicElementBindingFlags.MOUNTED)) {
         this._requestMutation(updater);
@@ -216,8 +221,6 @@ export class DynamicElementBinding<TChildNodeValue>
   }
 
   init(updater: Updater): void {
-    this._spreadBinding.bind(updater);
-    this._childNodeBinding.bind(updater);
     this._requestMutation(updater);
   }
 
