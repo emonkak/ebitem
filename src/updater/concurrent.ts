@@ -1,7 +1,13 @@
 import { Scheduler, createAdaptedScheduler } from '../scheduler.js';
 import type { AbstractScope } from '../scope.js';
 import { AtomSignal } from '../signal.js';
-import { Effect, Renderable, Updater, shouldSkipRender } from '../updater.js';
+import {
+  Effect,
+  Renderable,
+  Updater,
+  flushEffects,
+  shouldSkipRender,
+} from '../updater.js';
 
 export interface ConcurrentUpdaterOptions {
   scheduler?: Scheduler;
@@ -198,12 +204,6 @@ function createPipeline<TContext>(): Pipeline<TContext> {
     pendingMutationEffects: [],
     pendingPassiveEffects: [],
   };
-}
-
-function flushEffects(effects: Effect[]): void {
-  for (let i = 0, l = effects.length; i < l; i++) {
-    effects[i]!.commit();
-  }
 }
 
 function isContinuousEvent(event: Event): boolean {

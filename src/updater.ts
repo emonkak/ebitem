@@ -37,3 +37,9 @@ export function shouldSkipRender<TContext>(
   }
   return false;
 }
+
+export function flushEffects(effects: Effect[]): void {
+  for (let i = 0, l = effects.length; i < l; i++) {
+    effects[i]!.commit();
+  }
+}

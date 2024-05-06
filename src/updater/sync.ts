@@ -1,5 +1,11 @@
 import type { AbstractScope } from '../scope.js';
-import { Effect, Renderable, Updater, shouldSkipRender } from '../updater.js';
+import {
+  Effect,
+  Renderable,
+  Updater,
+  flushEffects,
+  shouldSkipRender,
+} from '../updater.js';
 
 export class SyncUpdater<TContext> implements Updater<TContext> {
   private readonly _scope: AbstractScope<TContext>;
@@ -117,11 +123,5 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
 
   private _hasRenderable(): boolean {
     return this._pendingRenderables.length > 0;
-  }
-}
-
-function flushEffects(effects: Effect[]): void {
-  for (let i = 0, l = effects.length; i < l; i++) {
-    effects[i]!.commit();
   }
 }
