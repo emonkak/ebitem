@@ -68,12 +68,13 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
   }
 
   scheduleUpdate(): void {
-    if (this._currentComponent === null) {
-      const pipeline = this._currentPipeline;
-      this._scheduleRenderPipelines(pipeline);
-      this._scheduleBlockingEffects(pipeline);
-      this._schedulePassiveEffects(pipeline);
+    if (this._currentComponent !== null) {
+      return;
     }
+    const pipeline = this._currentPipeline;
+    this._scheduleRenderPipelines(pipeline);
+    this._scheduleBlockingEffects(pipeline);
+    this._schedulePassiveEffects(pipeline);
   }
 
   isUpdating(): boolean {
