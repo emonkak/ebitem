@@ -81,17 +81,14 @@ export class ListBinding<TItem, TValue, TKey>
 {
   private readonly _part: ChildNodePart;
 
-  private _directive: ListDirective<TItem, TValue, TKey>;
+  private _value: ListDirective<TItem, TValue, TKey>;
 
   private _bindings: ListItemBinding<TValue>[] = [];
 
   private _keys: TKey[] = [];
 
-  constructor(
-    directive: ListDirective<TItem, TValue, TKey>,
-    part: ChildNodePart,
-  ) {
-    this._directive = directive;
+  constructor(value: ListDirective<TItem, TValue, TKey>, part: ChildNodePart) {
+    this._value = value;
     this._part = part;
   }
 
@@ -108,11 +105,11 @@ export class ListBinding<TItem, TValue, TKey>
   }
 
   get value(): ListDirective<TItem, TValue, TKey> {
-    return this._directive;
+    return this._value;
   }
 
-  set value(newDirective: ListDirective<TItem, TValue, TKey>) {
-    this._directive = newDirective;
+  set value(newValue: ListDirective<TItem, TValue, TKey>) {
+    this._value = newValue;
   }
 
   bind(updater: Updater): void {
@@ -138,7 +135,7 @@ export class ListBinding<TItem, TValue, TKey>
   }
 
   private _initializeItems(updater: Updater): void {
-    const { items, keySelector, valueSelector } = this._directive;
+    const { items, keySelector, valueSelector } = this._value;
     const bindings = new Array<ListItemBinding<TValue>>(items.length);
     const keys = items.map(keySelector);
     const values = items.map(valueSelector);
@@ -152,7 +149,7 @@ export class ListBinding<TItem, TValue, TKey>
   }
 
   private _reconcileItems(updater: Updater): void {
-    const { items, keySelector, valueSelector } = this._directive;
+    const { items, keySelector, valueSelector } = this._value;
     const oldBindings: (ListItemBinding<TValue> | undefined)[] = this._bindings;
     const oldKeys = this._keys;
     const newBindings = new Array<ListItemBinding<TValue>>(items.length);

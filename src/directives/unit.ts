@@ -16,10 +16,10 @@ export const unit: UnitDirective = Object.create(UnitDirective.prototype);
 export class UnitBinding implements Binding<UnitDirective> {
   private readonly _part: Part;
 
-  private _directive: UnitDirective;
+  private _value: UnitDirective;
 
-  constructor(directive: UnitDirective, part: Part) {
-    this._directive = directive;
+  constructor(value: UnitDirective, part: Part) {
+    this._value = value;
     this._part = part;
   }
 
@@ -36,11 +36,11 @@ export class UnitBinding implements Binding<UnitDirective> {
   }
 
   get value(): UnitDirective {
-    return this._directive;
+    return this._value;
   }
 
-  set value(newDirective: UnitDirective) {
-    this._directive = newDirective;
+  set value(newValue: UnitDirective) {
+    this._value = newValue;
   }
 
   bind(_updater: Updater): void {}

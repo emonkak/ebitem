@@ -73,7 +73,7 @@ export class BlockBinding<TProps, TContext>
 
   private readonly _parent: Renderable<TContext> | null;
 
-  private _directive: BlockDirective<TProps, TContext>;
+  private _value: BlockDirective<TProps, TContext>;
 
   private _memoizedType: BlockType<TProps, TContext> | null = null;
 
@@ -93,11 +93,11 @@ export class BlockBinding<TProps, TContext>
   private _flags = BlockFlags.NONE;
 
   constructor(
-    directive: BlockDirective<TProps, TContext>,
+    value: BlockDirective<TProps, TContext>,
     part: ChildNodePart,
     parent: Renderable<TContext> | null = null,
   ) {
-    this._directive = directive;
+    this._value = value;
     this._part = part;
     this._parent = parent;
   }
@@ -129,11 +129,11 @@ export class BlockBinding<TProps, TContext>
   }
 
   get value(): BlockDirective<TProps, TContext> {
-    return this._directive;
+    return this._value;
   }
 
-  set value(directive: BlockDirective<TProps, TContext>) {
-    this._directive = directive;
+  set value(newValue: BlockDirective<TProps, TContext>) {
+    this._value = newValue;
   }
 
   requestUpdate(updater: Updater, priority: TaskPriority): void {
@@ -170,7 +170,7 @@ export class BlockBinding<TProps, TContext>
   }
 
   render(updater: Updater<TContext>, scope: AbstractScope<TContext>): void {
-    const { type, props } = this._directive;
+    const { type, props } = this._value;
 
     if (this._memoizedType !== null && type !== this._memoizedType) {
       this._cleanHooks();
@@ -218,7 +218,7 @@ export class BlockBinding<TProps, TContext>
       this._requestMutation(updater);
     }
 
-    this._memoizedType = this._directive.type;
+    this._memoizedType = this._value.type;
     this._memoizedTemplate = template;
     this._flags &= ~BlockFlags.UPDATING;
   }

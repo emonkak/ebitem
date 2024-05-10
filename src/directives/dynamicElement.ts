@@ -105,7 +105,7 @@ export class DynamicElementBinding<TElementValue, TChildNodeValue>
 {
   private readonly _part: ChildNodePart;
 
-  private _directive: DynamicElementDirective<TElementValue, TChildNodeValue>;
+  private _value: DynamicElementDirective<TElementValue, TChildNodeValue>;
 
   private _elementBinding: Binding<TElementValue>;
 
@@ -114,12 +114,12 @@ export class DynamicElementBinding<TElementValue, TChildNodeValue>
   private _flags = DynamicElementBindingFlags.NONE;
 
   constructor(
-    directive: DynamicElementDirective<TElementValue, TChildNodeValue>,
+    value: DynamicElementDirective<TElementValue, TChildNodeValue>,
     elementBinding: Binding<TElementValue>,
     childNodeBinding: Binding<TChildNodeValue>,
     part: ChildNodePart,
   ) {
-    this._directive = directive;
+    this._value = value;
     this._elementBinding = elementBinding;
     this._childNodeBinding = childNodeBinding;
     this._part = part;
@@ -140,14 +140,11 @@ export class DynamicElementBinding<TElementValue, TChildNodeValue>
   }
 
   get value(): DynamicElementDirective<TElementValue, TChildNodeValue> {
-    return this._directive;
+    return this._value;
   }
 
-  set value(newDirective: DynamicElementDirective<
-    TElementValue,
-    TChildNodeValue
-  >) {
-    this._directive = newDirective;
+  set value(newValue: DynamicElementDirective<TElementValue, TChildNodeValue>) {
+    this._value = newValue;
   }
 
   init(updater: Updater): void {
@@ -155,13 +152,13 @@ export class DynamicElementBinding<TElementValue, TChildNodeValue>
   }
 
   bind(updater: Updater): void {
-    const { type, elementValue, childNodeValue } = this._directive;
+    const { type, elementValue, childNodeValue } = this._value;
     const element = this._elementBinding.part.node;
 
     if (element.nodeName !== type.toUpperCase()) {
       const elementPart = {
         type: PartType.Element,
-        node: document.createElement(this._directive.type),
+        node: document.createElement(this._value.type),
       } as const;
 
       this._elementBinding.disconnect();

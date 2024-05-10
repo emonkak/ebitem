@@ -39,14 +39,14 @@ export class UnsafeHTMLDirective implements Directive {
 export class UnsafeHTMLBinding implements Binding<UnsafeHTMLDirective> {
   private readonly _part: ChildNodePart;
 
-  private _directive: UnsafeHTMLDirective;
+  private _value: UnsafeHTMLDirective;
 
   private _childNodes: ChildNode[] = [];
 
   private _dirty = false;
 
-  constructor(directive: UnsafeHTMLDirective, part: ChildNodePart) {
-    this._directive = directive;
+  constructor(_value: UnsafeHTMLDirective, part: ChildNodePart) {
+    this._value = _value;
     this._part = part;
   }
 
@@ -63,11 +63,11 @@ export class UnsafeHTMLBinding implements Binding<UnsafeHTMLDirective> {
   }
 
   get value(): UnsafeHTMLDirective {
-    return this._directive;
+    return this._value;
   }
 
   set value(newValue: UnsafeHTMLDirective) {
-    this._directive = newValue;
+    this._value = newValue;
   }
 
   bind(updater: Updater): void {
@@ -78,7 +78,7 @@ export class UnsafeHTMLBinding implements Binding<UnsafeHTMLDirective> {
   }
 
   unbind(updater: Updater): void {
-    this._directive = new UnsafeHTMLDirective('');
+    this._value = new UnsafeHTMLDirective('');
 
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
@@ -93,7 +93,7 @@ export class UnsafeHTMLBinding implements Binding<UnsafeHTMLDirective> {
       this._childNodes[i]!.remove();
     }
 
-    const { unsafeContent } = this._directive;
+    const { unsafeContent } = this._value;
 
     if (unsafeContent !== '') {
       const template = document.createElement('template');

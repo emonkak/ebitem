@@ -47,12 +47,12 @@ export class StyleDirective implements Directive {
 export class StyleBinding implements Binding<StyleDirective>, Effect {
   private readonly _part: AttributePart;
 
-  private _directive: StyleDirective;
+  private _value: StyleDirective;
 
   private _dirty = false;
 
-  constructor(directive: StyleDirective, part: AttributePart) {
-    this._directive = directive;
+  constructor(value: StyleDirective, part: AttributePart) {
+    this._value = value;
     this._part = part;
   }
 
@@ -69,11 +69,11 @@ export class StyleBinding implements Binding<StyleDirective>, Effect {
   }
 
   get value(): StyleDirective {
-    return this._directive;
+    return this._value;
   }
 
   set value(newValue: StyleDirective) {
-    this._directive = newValue;
+    this._value = newValue;
   }
 
   bind(updater: Updater): void {
@@ -84,7 +84,7 @@ export class StyleBinding implements Binding<StyleDirective>, Effect {
   }
 
   unbind(updater: Updater): void {
-    this._directive = new StyleDirective({});
+    this._value = new StyleDirective({});
 
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
@@ -99,7 +99,7 @@ export class StyleBinding implements Binding<StyleDirective>, Effect {
       | HTMLElement
       | MathMLElement
       | SVGElement;
-    const { styleMap } = this._directive;
+    const { styleMap } = this._value;
 
     for (const property in styleMap) {
       const value = styleMap[property as StyleProperty]!;

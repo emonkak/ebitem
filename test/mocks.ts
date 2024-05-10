@@ -10,10 +10,10 @@ export class MockDirective implements Directive {
 export class MockBinding implements Binding<MockDirective> {
   private readonly _part: Part;
 
-  private _directive: MockDirective;
+  private _value: MockDirective;
 
-  constructor(directive: MockDirective, part: Part) {
-    this._directive = directive;
+  constructor(value: MockDirective, part: Part) {
+    this._value = value;
     this._part = part;
   }
 
@@ -30,11 +30,11 @@ export class MockBinding implements Binding<MockDirective> {
   }
 
   set value(newValue: MockDirective) {
-    this._directive = newValue;
+    this._value = newValue;
   }
 
   get value(): MockDirective {
-    return this._directive;
+    return this._value;
   }
 
   bind(_updater: Updater): void {}

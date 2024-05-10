@@ -56,7 +56,7 @@ export class TemplateBinding
 
   private readonly _parent: Renderable | null;
 
-  private _directive: TemplateDirective;
+  private _value: TemplateDirective;
 
   private _memoizedRoot: AbstractTemplateRoot | null = null;
 
@@ -69,11 +69,11 @@ export class TemplateBinding
   private _flags = TemplateFlags.NONE;
 
   constructor(
-    directive: TemplateDirective,
+    value: TemplateDirective,
     part: ChildNodePart,
     parent: Renderable | null = null,
   ) {
-    this._directive = directive;
+    this._value = value;
     this._part = part;
     this._parent = parent;
   }
@@ -91,7 +91,7 @@ export class TemplateBinding
   }
 
   get value(): TemplateDirective {
-    return this._directive;
+    return this._value;
   }
 
   get parent(): Renderable | null {
@@ -109,8 +109,8 @@ export class TemplateBinding
     );
   }
 
-  set value(newDirective: TemplateDirective) {
-    this._directive = newDirective;
+  set value(newValue: TemplateDirective) {
+    this._value = newValue;
   }
 
   requestUpdate(updater: Updater, priority: TaskPriority): void {
@@ -147,7 +147,7 @@ export class TemplateBinding
   }
 
   render(updater: Updater, _scope: AbstractScope): void {
-    const { template, values } = this._directive;
+    const { template, values } = this._value;
 
     if (this._pendingRoot !== null && this._template !== template) {
       this._pendingRoot.disconnect();

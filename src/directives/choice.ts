@@ -47,7 +47,7 @@ export class ChoiceBinding<TKey, TValue>
 {
   private readonly _part: Part;
 
-  private _directive: ChoiceDirective<TKey, TValue>;
+  private _value: ChoiceDirective<TKey, TValue>;
 
   private _currentKey: TKey | null = null;
 
@@ -55,8 +55,8 @@ export class ChoiceBinding<TKey, TValue>
 
   private _cachedBindings: Map<TKey, Binding<TValue>> = new Map();
 
-  constructor(directive: ChoiceDirective<TKey, TValue>, part: Part) {
-    this._directive = directive;
+  constructor(value: ChoiceDirective<TKey, TValue>, part: Part) {
+    this._value = value;
     this._part = part;
   }
 
@@ -73,15 +73,15 @@ export class ChoiceBinding<TKey, TValue>
   }
 
   get value(): ChoiceDirective<TKey, TValue> {
-    return this._directive;
+    return this._value;
   }
 
-  set value(directive: ChoiceDirective<TKey, TValue>) {
-    this._directive = directive;
+  set value(newValue: ChoiceDirective<TKey, TValue>) {
+    this._value = newValue;
   }
 
   bind(updater: Updater): void {
-    const { factory, key: newKey } = this._directive;
+    const { key: newKey, factory } = this._value;
     const newValue = factory(newKey);
 
     if (this._currentBinding !== null) {

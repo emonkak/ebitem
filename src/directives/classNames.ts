@@ -34,7 +34,7 @@ export class ClassNamesDirective implements Directive {
       );
     }
 
-    const binding = new ClassNamesBinding(part, this);
+    const binding = new ClassNamesBinding(this, part);
 
     binding.bind(updater);
 
@@ -45,13 +45,13 @@ export class ClassNamesDirective implements Directive {
 export class ClassNamesBinding implements Effect, Binding<ClassNamesDirective> {
   private readonly _part: AttributePart;
 
-  private _directive: ClassNamesDirective;
+  private _value: ClassNamesDirective;
 
   private _dirty = false;
 
-  constructor(part: AttributePart, directive: ClassNamesDirective) {
+  constructor(value: ClassNamesDirective, part: AttributePart) {
+    this._value = value;
     this._part = part;
-    this._directive = directive;
   }
 
   get part(): AttributePart {
@@ -67,11 +67,11 @@ export class ClassNamesBinding implements Effect, Binding<ClassNamesDirective> {
   }
 
   get value(): ClassNamesDirective {
-    return this._directive;
+    return this._value;
   }
 
   set value(newValue: ClassNamesDirective) {
-    this._directive = newValue;
+    this._value = newValue;
   }
 
   bind(updater: Updater): void {
@@ -82,7 +82,7 @@ export class ClassNamesBinding implements Effect, Binding<ClassNamesDirective> {
   }
 
   unbind(updater: Updater): void {
-    this._directive = new ClassNamesDirective([]);
+    this._value = new ClassNamesDirective([]);
 
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
@@ -94,7 +94,7 @@ export class ClassNamesBinding implements Effect, Binding<ClassNamesDirective> {
 
   commit(): void {
     const { classList } = this._part.node;
-    const { classSpecifiers } = this._directive;
+    const { classSpecifiers } = this._value;
     const addedClasses: string[] = [];
 
     for (let i = 0, l = classSpecifiers.length; i < l; i++) {

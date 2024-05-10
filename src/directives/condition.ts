@@ -79,7 +79,7 @@ export class ConditionBinding<TTrue, TFalse>
 {
   private readonly _part: Part;
 
-  private _directive: ConditionDirective<TTrue, TFalse>;
+  private _value: ConditionDirective<TTrue, TFalse>;
 
   private _currentCondition: boolean | null = null;
 
@@ -89,8 +89,8 @@ export class ConditionBinding<TTrue, TFalse>
 
   private _falseBinding: Binding<TFalse> | null = null;
 
-  constructor(directive: ConditionDirective<TTrue, TFalse>, part: Part) {
-    this._directive = directive;
+  constructor(value: ConditionDirective<TTrue, TFalse>, part: Part) {
+    this._value = value;
     this._part = part;
   }
 
@@ -107,15 +107,15 @@ export class ConditionBinding<TTrue, TFalse>
   }
 
   get value(): ConditionDirective<TTrue, TFalse> {
-    return this._directive;
+    return this._value;
   }
 
-  set value(newDirective: ConditionDirective<TTrue, TFalse>) {
-    this._directive = newDirective;
+  set value(newValue: ConditionDirective<TTrue, TFalse>) {
+    this._value = newValue;
   }
 
   bind(updater: Updater): void {
-    const { condition: newCondition, trueCase, falseCase } = this._directive;
+    const { condition: newCondition, trueCase, falseCase } = this._value;
 
     if (newCondition) {
       const newValue = typeof trueCase === 'function' ? trueCase() : trueCase;
