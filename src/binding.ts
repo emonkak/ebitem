@@ -478,7 +478,7 @@ export function createBinding<TValue, TContext>(
   }
 }
 
-export function mountBinding<TValue, TContext>(
+export function mountValue<TValue, TContext>(
   value: TValue,
   container: ChildNode,
   updater: Updater<TContext>,

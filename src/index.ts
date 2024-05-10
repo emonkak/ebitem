@@ -2,7 +2,7 @@ export {
   type Binding,
   type Directive,
   directiveTag,
-  mountBinding,
+  mountValue,
 } from './binding.js';
 export {
   type Cleanup,
