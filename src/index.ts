@@ -41,5 +41,5 @@ export {
 export {
   type ConcurrentUpdaterOptions,
   ConcurrentUpdater,
-} from './updater/concurrent.js';
-export { SyncUpdater } from './updater/sync.js';
+} from './updater/concurrentUpdater.js';
+export { SyncUpdater } from './updater/syncUpdater.js';
