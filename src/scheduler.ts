@@ -3,7 +3,7 @@ export interface Scheduler {
   requestCallback<T>(
     callback: () => T | PromiseLike<T>,
     options?: Pick<SchedulerPostTaskOptions, 'priority'>,
-  ): Promise<T>;
+  ): void;
   shouldYieldToMain(elapsedTime: number): boolean;
   yieldToMain(options?: Pick<SchedulerYieldOptions, 'priority'>): Promise<void>;
 }
@@ -35,23 +35,14 @@ export function createAdaptedScheduler(): Scheduler {
     requestCallback = (callback, options) => {
       switch (options?.priority) {
         case 'user-blocking':
-          return new Promise((resolve, reject) => {
-            queueMicrotask(() => {
-              invokeCallback(callback, resolve, reject);
-            });
-          });
+          queueMicrotask(callback);
+          break;
         case 'background':
-          return new Promise((resolve, reject) => {
-            requestIdleCallback(() => {
-              invokeCallback(callback, resolve, reject);
-            });
-          });
+          requestIdleCallback(callback);
+          break;
         default:
-          return new Promise((resolve, reject) => {
-            setTimeout(() => {
-              invokeCallback(callback, resolve, reject);
-            });
-          });
+          setTimeout(callback);
+          break;
       }
     };
   }
@@ -108,25 +99,4 @@ function getPriorityNumber(priority: TaskPriority): number {
     case 'background':
       return 2;
   }
-}
-
-function invokeCallback<T>(
-  callback: () => T | PromiseLike<T>,
-  resolve: (value: T) => void,
-  reject: (reason?: any) => void,
-): void {
-  try {
-    const result = callback();
-    if (isPromiseLike(result)) {
-      result.then(resolve, reject);
-    } else {
-      resolve(result);
-    }
-  } catch (error) {
-    reject(error);
-  }
-}
-
-function isPromiseLike(value: unknown): value is PromiseLike<unknown> {
-  return value !== null && typeof value === 'object' && 'then' in value;
 }

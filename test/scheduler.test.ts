@@ -67,16 +67,13 @@ describe('requestCallback()', () => {
     });
 
     it('should schedule the callback', () => {
-      const result = {};
-      const callback = () => Promise.resolve(result);
+      const callback = () => {};
       const options = { priority: 'user-blocking' } as const;
       const postTaskSpy = vi.spyOn(globalThis.scheduler, 'postTask');
       const scheduler = createAdaptedScheduler();
-      expect(scheduler.requestCallback(callback, options)).resolves.toBe(
-        result,
-      );
-      expect(postTaskSpy).toHaveBeenCalledWith(callback, options);
+      scheduler.requestCallback(callback, options);
       expect(postTaskSpy).toHaveBeenCalledOnce();
+      expect(postTaskSpy).toHaveBeenCalledWith(callback, options);
     });
   });
 
@@ -90,20 +87,18 @@ describe('requestCallback()', () => {
     });
 
     it('should schedule the callback with "user-blocking" priority by queueMicrotask()', () => {
-      const result = {};
-      const callback = () => Promise.resolve(result);
+      const callback = () => {};
       const queueMicrotaskSpy = vi
         .spyOn(globalThis, 'queueMicrotask')
         .mockImplementation((callback) => {
           callback();
         });
       const scheduler = createAdaptedScheduler();
-      expect(
-        scheduler.requestCallback(callback, {
-          priority: 'user-blocking',
-        }),
-      ).resolves.toBe(result);
-      expect(queueMicrotaskSpy).toHaveBeenCalledOnce();
+      scheduler.requestCallback(callback, {
+        priority: 'user-blocking',
+      }),
+        expect(queueMicrotaskSpy).toHaveBeenCalledOnce();
+      expect(queueMicrotaskSpy).toHaveBeenCalledWith(callback);
     });
   });
 
@@ -114,8 +109,7 @@ describe('requestCallback()', () => {
     });
 
     it('should schedule the callback without priority', () => {
-      const result = {};
-      const callback = () => Promise.resolve(result);
+      const callback = () => {};
       const setTimeoutSpy = vi
         .spyOn(globalThis, 'setTimeout')
         .mockImplementation((callback) => {
@@ -123,13 +117,13 @@ describe('requestCallback()', () => {
           return 0 as any;
         });
       const scheduler = createAdaptedScheduler();
-      expect(scheduler.requestCallback(callback)).resolves.toBe(result);
+      scheduler.requestCallback(callback);
       expect(setTimeoutSpy).toHaveBeenCalledOnce();
+      expect(setTimeoutSpy).toHaveBeenCalledWith(callback);
     });
 
     it('should schedule the callback with "user-visible" priority', () => {
-      const result = {};
-      const callback = () => Promise.resolve(result);
+      const callback = () => {};
       const setTimeoutSpy = vi
         .spyOn(globalThis, 'setTimeout')
         .mockImplementation((callback) => {
@@ -137,17 +131,15 @@ describe('requestCallback()', () => {
           return 0 as any;
         });
       const scheduler = createAdaptedScheduler();
-      expect(
-        scheduler.requestCallback(callback, {
-          priority: 'user-visible',
-        }),
-      ).resolves.toBe(result);
+      scheduler.requestCallback(callback, {
+        priority: 'user-visible',
+      });
       expect(setTimeoutSpy).toHaveBeenCalledOnce();
+      expect(setTimeoutSpy).toHaveBeenCalledWith(callback);
     });
 
     it('should schedule the callback with "background" priority', () => {
-      const result = {};
-      const callback = () => Promise.resolve(result);
+      const callback = () => {};
       const setTimeoutSpy = vi
         .spyOn(globalThis, 'setTimeout')
         .mockImplementation((callback) => {
@@ -155,12 +147,11 @@ describe('requestCallback()', () => {
           return 0 as any;
         });
       const scheduler = createAdaptedScheduler();
-      expect(
-        scheduler.requestCallback(callback, {
-          priority: 'background',
-        }),
-      ).resolves.toBe(result);
+      scheduler.requestCallback(callback, {
+        priority: 'background',
+      });
       expect(setTimeoutSpy).toHaveBeenCalledOnce();
+      expect(setTimeoutSpy).toHaveBeenCalledWith(callback);
     });
   });
 
@@ -178,17 +169,15 @@ describe('requestCallback()', () => {
     });
 
     it('should schedule the callback with "background" priority', () => {
-      const result = {};
-      const callback = () => Promise.resolve(result);
+      const callback = () => {};
       const requestIdleCallbackSpy = vi.spyOn(
         globalThis,
         'requestIdleCallback',
       );
       const scheduler = createAdaptedScheduler();
-      expect(
-        scheduler.requestCallback(callback, { priority: 'background' }),
-      ).resolves.toBe(result);
+      scheduler.requestCallback(callback, { priority: 'background' });
       expect(requestIdleCallbackSpy).toHaveBeenCalledOnce();
+      expect(requestIdleCallbackSpy).toHaveBeenCalledWith(callback);
     });
   });
 });
