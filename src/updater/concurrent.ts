@@ -148,8 +148,11 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
       const component = pendingComponents[i]!;
       this._scheduler.requestCallback(
         async () => {
-          await this._beginRenderPipeline(component);
-          this._taskCount.value--;
+          try {
+            await this._beginRenderPipeline(component);
+          } finally {
+            this._taskCount.value--;
+          }
         },
         {
           priority: component.priority,
@@ -168,9 +171,12 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
 
       this._scheduler.requestCallback(
         () => {
-          flushEffects(pendingMutationEffects);
-          flushEffects(pendingLayoutEffects);
-          this._taskCount.value--;
+          try {
+            flushEffects(pendingMutationEffects);
+            flushEffects(pendingLayoutEffects);
+          } finally {
+            this._taskCount.value--;
+          }
         },
         { priority: 'user-blocking' },
       );
@@ -186,8 +192,11 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
 
       this._scheduler.requestCallback(
         () => {
-          flushEffects(pendingPassiveEffects);
-          this._taskCount.value--;
+          try {
+            flushEffects(pendingPassiveEffects);
+          } finally {
+            this._taskCount.value--;
+          }
         },
         { priority: 'background' },
       );
