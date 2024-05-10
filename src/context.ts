@@ -1,5 +1,6 @@
 import { TemplateDirective } from './directives/template.js';
 import type { AbstractScope } from './scope.js';
+import { ValueTemplate } from './template/valueTemplate.js';
 import type { Component, Effect, Updater } from './updater.js';
 
 export type Hook = EffectHook | MemoHook<any> | ReducerHook<any, any>;
@@ -295,6 +296,11 @@ export class Context {
       [subscribe, priority],
     );
     return getSnapshot();
+  }
+
+  values(...values: unknown[]): TemplateDirective {
+    const template = ValueTemplate.instance;
+    return new TemplateDirective(template, values);
   }
 }
 

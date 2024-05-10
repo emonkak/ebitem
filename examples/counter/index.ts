@@ -99,6 +99,7 @@ function App(_props: {}, context: Context): TemplateDirective {
       r: 50,
       fill: 'red',
     })} /></svg>
+    <${block(SingleValue, { value: 'Hello' })} />
   `;
 }
 
@@ -176,6 +177,13 @@ function Counter({ count }: CounterProps, context: Context): TemplateDirective {
       )} />
     </h1>
   `;
+}
+
+function SingleValue(
+  { value }: { value: unknown },
+  context: Context,
+): TemplateDirective {
+  return context.values(value);
 }
 
 function shuffle<T>(elements: T[]): T[] {

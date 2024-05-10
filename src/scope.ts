@@ -1,5 +1,6 @@
 import { Context, Hook } from './context.js';
-import { AbstractTemplate, Template, getMarker } from './template.js';
+import type { Template } from './template.js';
+import { TaggedTemplate, getMarker } from './template/taggedTemplate.js';
 import type { Component, Updater } from './updater.js';
 
 export type Namespace = { [key: PropertyKey]: unknown };
@@ -22,12 +23,9 @@ export interface AbstractScope<TContext = unknown> {
   createHTMLTemplate(
     tokens: ReadonlyArray<string>,
     values: unknown[],
-  ): AbstractTemplate;
+  ): Template;
 
-  createSVGTemplate(
-    tokens: ReadonlyArray<string>,
-    values: unknown[],
-  ): AbstractTemplate;
+  createSVGTemplate(tokens: ReadonlyArray<string>, values: unknown[]): Template;
 }
 
 export class Scope implements AbstractScope<Context> {
@@ -74,11 +72,11 @@ export class Scope implements AbstractScope<Context> {
   createHTMLTemplate(
     tokens: TemplateStringsArray,
     _values: unknown[],
-  ): AbstractTemplate {
+  ): Template {
     let template = this._cachedTemplates.get(tokens);
 
     if (template === undefined) {
-      template = Template.parseHTML(tokens, this._marker);
+      template = TaggedTemplate.parseHTML(tokens, this._marker);
       this._cachedTemplates.set(tokens, template);
     }
 
@@ -88,11 +86,11 @@ export class Scope implements AbstractScope<Context> {
   createSVGTemplate(
     tokens: TemplateStringsArray,
     _values: unknown[],
-  ): AbstractTemplate {
+  ): Template {
     let template = this._cachedTemplates.get(tokens);
 
     if (template === undefined) {
-      template = Template.parseSVG(tokens, this._marker);
+      template = TaggedTemplate.parseSVG(tokens, this._marker);
       this._cachedTemplates.set(tokens, template);
     }
 

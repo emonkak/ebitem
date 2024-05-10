@@ -537,7 +537,7 @@ export function updateBinding<TValue, TContext>(
   }
 }
 
-function isDirective(value: unknown): value is Directive<unknown> {
+export function isDirective(value: unknown): value is Directive<unknown> {
   return value !== null && typeof value === 'object' && directiveTag in value;
 }
 

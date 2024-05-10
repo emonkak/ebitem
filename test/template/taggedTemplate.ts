@@ -9,20 +9,20 @@ import {
   PropertyBinding,
   SpreadBinding,
   directiveTag,
-} from '../src/binding.js';
-import { Scope } from '../src/scope.js';
+} from '../../src/binding.js';
+import { Scope } from '../../src/scope.js';
 import {
-  Template,
-  TemplateRoot,
+  TaggedTemplate,
+  TaggedTemplateRoot,
   getMarker,
   isValidMarker,
-} from '../src/template.js';
-import { SyncUpdater } from '../src/updater/sync.js';
-import { MockBinding, MockDirective } from './mocks.js';
+} from '../../src/template/taggedTemplate.js';
+import { SyncUpdater } from '../../src/updater/syncUpdater.js';
+import { MockBinding, MockDirective } from '../mocks.js';
 
 const MARKER = getMarker();
 
-describe('Template', () => {
+describe('TaggedTemplate', () => {
   describe('.parseHTML()', () => {
     it('should parse holes inside attributes', () => {
       const template = html`
@@ -185,10 +185,10 @@ describe('Template', () => {
 
     it('should throw an error if passed a marker in an invalid format', () => {
       expect(() => {
-        Template.parseHTML([], 'INVALID_MARKER');
+        TaggedTemplate.parseHTML([], 'INVALID_MARKER');
       }).toThrow('The marker is in an invalid format:');
       expect(() => {
-        Template.parseHTML([], MARKER.toUpperCase());
+        TaggedTemplate.parseHTML([], MARKER.toUpperCase());
       }).toThrow('The marker is in an invalid format:');
     });
 
@@ -292,10 +292,10 @@ describe('Template', () => {
 
     it('should throw an error when it is passed a marker in an invalid format', () => {
       expect(() => {
-        Template.parseSVG([], 'INVALID_MARKER');
+        TaggedTemplate.parseSVG([], 'INVALID_MARKER');
       }).toThrow('The marker is in an invalid format:');
       expect(() => {
-        Template.parseSVG([], MARKER.toUpperCase());
+        TaggedTemplate.parseSVG([], MARKER.toUpperCase());
       }).toThrow('The marker is in an invalid format:');
     });
   });
@@ -319,7 +319,7 @@ describe('Template', () => {
       const updater = new SyncUpdater(new Scope());
       const root = template.hydrate(values, updater);
 
-      expect(root).toBeInstanceOf(TemplateRoot);
+      expect(root).toBeInstanceOf(TaggedTemplateRoot);
       expect(root.bindings).toHaveLength(values.length);
       expect(root.childNodes).toHaveLength(1);
 
@@ -362,6 +362,8 @@ describe('Template', () => {
           <input type="text" class="qux"><span></span>
         </div>`.trim(),
       );
+      expect(root.childNodes[0]).toBe(root.startNode);
+      expect(root.childNodes[0]).toBe(root.endNode);
     });
 
     it('should throw an error if the number of holes and values do not match', () => {
@@ -377,7 +379,7 @@ describe('Template', () => {
   });
 });
 
-describe('TemplateRoot', () => {
+describe('TaggedTemplateRoot', () => {
   describe('.mount()', () => {
     it('should mount child nodes on the part', () => {
       const template = html`
@@ -410,7 +412,7 @@ describe('TemplateRoot', () => {
     });
   });
 
-  describe('.update()', () => {
+  describe('.bindValues()', () => {
     it('should update bindings with new values', () => {
       const template = html`
         <p>Count: ${0}</p>
@@ -425,7 +427,7 @@ describe('TemplateRoot', () => {
         '<p>Count: 0</p>',
       );
 
-      root.update([1], updater);
+      root.bindValues([1], updater);
 
       updater.flush();
 
@@ -479,10 +481,16 @@ describe('getMarker()', () => {
   });
 });
 
-function html(tokens: TemplateStringsArray, ..._values: unknown[]): Template {
-  return Template.parseHTML(tokens, MARKER);
+function html(
+  tokens: TemplateStringsArray,
+  ..._values: unknown[]
+): TaggedTemplate {
+  return TaggedTemplate.parseHTML(tokens, MARKER);
 }
 
-function svg(tokens: TemplateStringsArray, ..._values: unknown[]): Template {
-  return Template.parseSVG(tokens, MARKER);
+function svg(
+  tokens: TemplateStringsArray,
+  ..._values: unknown[]
+): TaggedTemplate {
+  return TaggedTemplate.parseSVG(tokens, MARKER);
 }

@@ -8,7 +8,7 @@ import {
 } from '../binding.js';
 import { isHigherPriority } from '../scheduler.js';
 import type { AbstractScope } from '../scope.js';
-import type { AbstractTemplate, AbstractTemplateRoot } from '../template.js';
+import type { Template, TemplateRoot } from '../template.js';
 import type { Component, Effect, Updater } from '../updater.js';
 
 const TemplateFlags = {
@@ -19,16 +19,16 @@ const TemplateFlags = {
 };
 
 export class TemplateDirective implements Directive {
-  private readonly _template: AbstractTemplate;
+  private readonly _template: Template;
 
   private readonly _values: unknown[];
 
-  constructor(template: AbstractTemplate, values: unknown[]) {
+  constructor(template: Template, values: unknown[]) {
     this._template = template;
     this._values = values;
   }
 
-  get template(): AbstractTemplate {
+  get template(): Template {
     return this._template;
   }
 
@@ -58,11 +58,11 @@ export class TemplateBinding
 
   private _value: TemplateDirective;
 
-  private _memoizedRoot: AbstractTemplateRoot | null = null;
+  private _memoizedRoot: TemplateRoot | null = null;
 
-  private _pendingRoot: AbstractTemplateRoot | null = null;
+  private _pendingRoot: TemplateRoot | null = null;
 
-  private _template: AbstractTemplate | null = null;
+  private _template: Template | null = null;
 
   private _priority: TaskPriority = 'user-blocking';
 
@@ -83,7 +83,7 @@ export class TemplateBinding
   }
 
   get startNode(): ChildNode {
-    return this._memoizedRoot?.childNodes[0] ?? this._part.node;
+    return this._memoizedRoot?.startNode ?? this._part.node;
   }
 
   get endNode(): ChildNode {
@@ -138,10 +138,15 @@ export class TemplateBinding
   }
 
   unbind(updater: Updater): void {
-    this.disconnect();
+    this._pendingRoot?.unbindValues(updater);
+
+    if (this._memoizedRoot !== this._pendingRoot) {
+      this._memoizedRoot?.unbindValues(updater);
+    }
 
     this._requestMutation(updater);
 
+    this._pendingRoot = null;
     this._flags |= TemplateFlags.UNMOUNTING;
     this._flags &= ~TemplateFlags.UPDATING;
   }
@@ -149,16 +154,18 @@ export class TemplateBinding
   render(updater: Updater, _scope: AbstractScope): void {
     const { template, values } = this._value;
 
-    if (this._pendingRoot !== null && this._template !== template) {
-      this._pendingRoot.disconnect();
-      this._pendingRoot = null;
+    if (this._pendingRoot !== null) {
+      if (this._template === template) {
+        this._pendingRoot.bindValues(values, updater);
+      } else {
+        this._pendingRoot.unbindValues(updater);
+        this._pendingRoot = null;
+      }
     }
 
-    if (this._pendingRoot !== null) {
-      this._pendingRoot.update(values, updater);
-    } else {
-      this._pendingRoot = template.hydrate(values, updater);
+    if (this._pendingRoot === null) {
       this._requestMutation(updater);
+      this._pendingRoot = template.hydrate(values, updater);
     }
 
     this._template = template;

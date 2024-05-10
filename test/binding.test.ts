@@ -13,7 +13,7 @@ import {
   updateBinding,
 } from '../src/binding.js';
 import { Scope } from '../src/scope.js';
-import { SyncUpdater } from '../src/updater/sync.js';
+import { SyncUpdater } from '../src/updater/syncUpdater.js';
 import { MockBinding, MockDirective } from './mocks.js';
 
 describe('AttributeBinding', () => {
