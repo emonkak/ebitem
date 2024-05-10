@@ -19,6 +19,6 @@ export {
 } from './directives/dynamicElement.js';
 export { type StyleMap, StyleDirective, style } from './directives/style.js';
 export { TemplateDirective } from './directives/template.js';
-export { UnitDirective, unit } from './directives/unit.js';
+export { UnitDirective } from './directives/unit.js';
 export { UnsafeHTMLDirective, unsafeHTML } from './directives/unsafeHTML.js';
 export { UnsafeSVGDirective, unsafeSVG } from './directives/unsafeSVG.js';

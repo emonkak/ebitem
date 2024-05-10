@@ -2,16 +2,14 @@ import { Binding, Directive, Part, directiveTag } from '../binding.js';
 import type { Updater } from '../updater.js';
 
 export class UnitDirective implements Directive {
-  constructor() {
-    throw new Error('UnitDirective constructor cannot be called directly.');
-  }
+  static instance: UnitDirective = new UnitDirective();
+
+  private constructor() {}
 
   [directiveTag](part: Part, _updater: Updater): UnitBinding {
     return new UnitBinding(this, part);
   }
 }
-
-export const unit: UnitDirective = Object.create(UnitDirective.prototype);
 
 export class UnitBinding implements Binding<UnitDirective> {
   private readonly _part: Part;

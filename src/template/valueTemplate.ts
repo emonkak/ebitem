@@ -11,11 +11,9 @@ import { Template, TemplateRoot } from '../template.js';
 import { Updater } from '../updater.js';
 
 export class ValueTemplate implements Template {
-  static instance: ValueTemplate = Object.create(ValueTemplate.prototype);
+  static instance: ValueTemplate = new ValueTemplate();
 
-  constructor() {
-    throw new Error('ValueTemplate constructor cannot be called directly.');
-  }
+  private constructor() {}
 
   hydrate(values: unknown[], updater: Updater<unknown>): ValueTemplateRoot {
     const part = {

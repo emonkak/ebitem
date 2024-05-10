@@ -7,7 +7,7 @@ import {
   updateBinding,
 } from '../binding.js';
 import type { Updater } from '../updater.js';
-import { UnitDirective, unit } from './unit.js';
+import { UnitDirective } from './unit.js';
 
 type FunctionOrValue<T> = (() => T) | T extends Function ? never : T;
 
@@ -23,14 +23,14 @@ export function when<TTrue>(
   condition: boolean,
   trueCase: FunctionOrValue<TTrue>,
 ): ConditionDirective<TTrue, UnitDirective> {
-  return new ConditionDirective(condition, trueCase, unit);
+  return new ConditionDirective(condition, trueCase, UnitDirective.instance);
 }
 
 export function unless<TFalse>(
   condition: boolean,
   falseCase: FunctionOrValue<TFalse>,
 ): ConditionDirective<UnitDirective, TFalse> {
-  return new ConditionDirective(condition, unit, falseCase);
+  return new ConditionDirective(condition, UnitDirective.instance, falseCase);
 }
 
 export class ConditionDirective<TTrue, TFalse> implements Directive {
