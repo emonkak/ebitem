@@ -35,7 +35,7 @@ export {
 } from './template.js';
 export {
   type Effect,
-  type Renderable,
+  type Component,
   type Updater,
 } from './updater.js';
 export {

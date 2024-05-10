@@ -1,20 +1,20 @@
 import { Context, Hook } from './context.js';
 import { AbstractTemplate, Template, getMarker } from './template.js';
-import type { Renderable, Updater } from './updater.js';
+import type { Component, Updater } from './updater.js';
 
 export type Namespace = { [key: PropertyKey]: unknown };
 
 export interface AbstractScope<TContext = unknown> {
-  getVariable(key: PropertyKey, renderable: Renderable<TContext>): unknown;
+  getVariable(key: PropertyKey, component: Component<TContext>): unknown;
 
   setVariable(
     key: PropertyKey,
     value: unknown,
-    renderable: Renderable<TContext>,
+    component: Component<TContext>,
   ): void;
 
   createContext(
-    renderable: Renderable<TContext>,
+    component: Component<TContext>,
     hooks: Hook[],
     updater: Updater<TContext>,
   ): TContext;
@@ -35,7 +35,7 @@ export class Scope implements AbstractScope<Context> {
 
   private readonly _marker: string;
 
-  private readonly _namespaces: WeakMap<Renderable<Context>, Namespace> =
+  private readonly _namespaces: WeakMap<Component<Context>, Namespace> =
     new WeakMap();
 
   private readonly _cachedTemplates: WeakMap<TemplateStringsArray, Template> =
@@ -46,31 +46,29 @@ export class Scope implements AbstractScope<Context> {
     this._marker = getMarker();
   }
 
-  getVariable(key: PropertyKey, renderable: Renderable<Context>): unknown {
-    return (
-      this._namespaces.get(renderable)?.[key] ?? this._globalNamespace[key]
-    );
+  getVariable(key: PropertyKey, component: Component<Context>): unknown {
+    return this._namespaces.get(component)?.[key] ?? this._globalNamespace[key];
   }
 
   setVariable(
     key: PropertyKey,
     value: unknown,
-    renderable: Renderable<Context>,
+    component: Component<Context>,
   ): void {
-    const namespace = this._namespaces.get(renderable);
+    const namespace = this._namespaces.get(component);
     if (namespace !== undefined) {
       namespace[key] = value;
     } else {
-      this._namespaces.set(renderable, { [key]: value });
+      this._namespaces.set(component, { [key]: value });
     }
   }
 
   createContext(
-    renderable: Renderable<Context>,
+    component: Component<Context>,
     hooks: Hook[],
     updater: Updater<Context>,
   ): Context {
-    return new Context(renderable, hooks, updater, this);
+    return new Context(component, hooks, updater, this);
   }
 
   createHTMLTemplate(

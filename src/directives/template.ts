@@ -9,7 +9,7 @@ import {
 import { isHigherPriority } from '../scheduler.js';
 import type { AbstractScope } from '../scope.js';
 import type { AbstractTemplate, AbstractTemplateRoot } from '../template.js';
-import type { Effect, Renderable, Updater } from '../updater.js';
+import type { Component, Effect, Updater } from '../updater.js';
 
 const TemplateFlags = {
   NONE: 0,
@@ -41,7 +41,7 @@ export class TemplateDirective implements Directive {
       throw new Error('TemplateDirective must be used in ChildNodePart.');
     }
 
-    const binding = new TemplateBinding(this, part, updater.currentRenderable);
+    const binding = new TemplateBinding(this, part, updater.currentComponent);
 
     binding.bind(updater);
 
@@ -50,11 +50,11 @@ export class TemplateDirective implements Directive {
 }
 
 export class TemplateBinding
-  implements Binding<TemplateDirective>, Effect, Renderable
+  implements Binding<TemplateDirective>, Effect, Component
 {
   private readonly _part: ChildNodePart;
 
-  private readonly _parent: Renderable | null;
+  private readonly _parent: Component | null;
 
   private _value: TemplateDirective;
 
@@ -71,7 +71,7 @@ export class TemplateBinding
   constructor(
     value: TemplateDirective,
     part: ChildNodePart,
-    parent: Renderable | null = null,
+    parent: Component | null = null,
   ) {
     this._value = value;
     this._part = part;
@@ -94,7 +94,7 @@ export class TemplateBinding
     return this._value;
   }
 
-  get parent(): Renderable | null {
+  get parent(): Component | null {
     return this._parent;
   }
 
@@ -117,11 +117,11 @@ export class TemplateBinding
     if (!(this._flags & TemplateFlags.UPDATING)) {
       this._priority = priority;
       this._flags |= TemplateFlags.UPDATING;
-      updater.enqueueRenderable(this);
+      updater.enqueueComponent(this);
       updater.scheduleUpdate();
     } else if (isHigherPriority(priority, this._priority)) {
       this._priority = priority;
-      updater.enqueueRenderable(this);
+      updater.enqueueComponent(this);
     }
 
     this._flags &= ~TemplateFlags.UNMOUNTING;
@@ -131,7 +131,7 @@ export class TemplateBinding
     if (!(this._flags & TemplateFlags.UPDATING)) {
       this._priority = this._parent?.priority ?? updater.getCurrentPriority();
       this._flags |= TemplateFlags.UPDATING;
-      updater.enqueueRenderable(this);
+      updater.enqueueComponent(this);
     }
 
     this._flags &= ~TemplateFlags.UNMOUNTING;

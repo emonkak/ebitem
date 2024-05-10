@@ -10,7 +10,7 @@ import { Hook, HookType } from '../context.js';
 import { isHigherPriority } from '../scheduler.js';
 import type { AbstractScope } from '../scope.js';
 import type { AbstractTemplate, AbstractTemplateRoot } from '../template.js';
-import type { Effect, Renderable, Updater } from '../updater.js';
+import type { Component, Effect, Updater } from '../updater.js';
 import type { TemplateDirective } from './template.js';
 
 export type BlockType<TProps, TContext> = (
@@ -58,7 +58,7 @@ export class BlockDirective<TProps, TContext> implements Directive<TContext> {
       throw new Error('BlockDirective must be used in ChildNodePart.');
     }
 
-    const binding = new BlockBinding(this, part, updater.currentRenderable);
+    const binding = new BlockBinding(this, part, updater.currentComponent);
 
     binding.bind(updater);
 
@@ -67,11 +67,14 @@ export class BlockDirective<TProps, TContext> implements Directive<TContext> {
 }
 
 export class BlockBinding<TProps, TContext>
-  implements Binding<BlockDirective<TProps, TContext>>, Effect, Renderable
+  implements
+    Binding<BlockDirective<TProps, TContext>>,
+    Effect,
+    Component<TContext>
 {
   private readonly _part: ChildNodePart;
 
-  private readonly _parent: Renderable<TContext> | null;
+  private readonly _parent: Component<TContext> | null;
 
   private _value: BlockDirective<TProps, TContext>;
 
@@ -95,7 +98,7 @@ export class BlockBinding<TProps, TContext>
   constructor(
     value: BlockDirective<TProps, TContext>,
     part: ChildNodePart,
-    parent: Renderable<TContext> | null = null,
+    parent: Component<TContext> | null = null,
   ) {
     this._value = value;
     this._part = part;
@@ -114,7 +117,7 @@ export class BlockBinding<TProps, TContext>
     return this._part.node;
   }
 
-  get parent(): Renderable<TContext> | null {
+  get parent(): Component<TContext> | null {
     return this._parent;
   }
 
@@ -140,11 +143,11 @@ export class BlockBinding<TProps, TContext>
     if (!(this._flags & BlockFlags.UPDATING)) {
       this._priority = priority;
       this._flags |= BlockFlags.UPDATING;
-      updater.enqueueRenderable(this);
+      updater.enqueueComponent(this);
       updater.scheduleUpdate();
     } else if (isHigherPriority(priority, this._priority)) {
       this._priority = priority;
-      updater.enqueueRenderable(this);
+      updater.enqueueComponent(this);
     }
 
     this._flags &= ~BlockFlags.UNMOUNTING;
@@ -154,7 +157,7 @@ export class BlockBinding<TProps, TContext>
     if (!(this._flags & BlockFlags.UPDATING)) {
       this._priority = this._parent?.priority ?? updater.getCurrentPriority();
       this._flags |= BlockFlags.UPDATING;
-      updater.enqueueRenderable(this);
+      updater.enqueueComponent(this);
     }
 
     this._flags &= ~BlockFlags.UNMOUNTING;

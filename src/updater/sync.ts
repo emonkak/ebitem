@@ -1,7 +1,7 @@
 import type { AbstractScope } from '../scope.js';
 import {
+  Component,
   Effect,
-  Renderable,
   Updater,
   flushEffects,
   shouldSkipRender,
@@ -10,9 +10,9 @@ import {
 export class SyncUpdater<TContext> implements Updater<TContext> {
   private readonly _scope: AbstractScope<TContext>;
 
-  private _currentRenderble: Renderable<TContext> | null = null;
+  private _currentComponent: Component<TContext> | null = null;
 
-  private _pendingRenderables: Renderable<TContext>[] = [];
+  private _pendingComponents: Component<TContext>[] = [];
 
   private _pendingMutationEffects: Effect[] = [];
 
@@ -26,16 +26,16 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
     this._scope = scope;
   }
 
-  get currentRenderable(): Renderable<TContext> | null {
-    return this._currentRenderble;
+  get currentComponent(): Component<TContext> | null {
+    return this._currentComponent;
   }
 
   getCurrentPriority(): TaskPriority {
     return 'user-blocking';
   }
 
-  enqueueRenderable(renderable: Renderable<TContext>): void {
-    this._pendingRenderables.push(renderable);
+  enqueueComponent(component: Component<TContext>): void {
+    this._pendingComponents.push(component);
   }
 
   enqueueLayoutEffect(effect: Effect): void {
@@ -67,19 +67,19 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
     this._isUpdating = true;
     try {
       do {
-        while (this._hasRenderable()) {
-          this._pendingRenderables = [];
+        while (this._hasComponent()) {
+          this._pendingComponents = [];
 
-          for (let i = 0, l = this._pendingRenderables.length; i < l; i++) {
-            const renderable = this._pendingRenderables[i]!;
-            if (shouldSkipRender(renderable)) {
+          for (let i = 0, l = this._pendingComponents.length; i < l; i++) {
+            const component = this._pendingComponents[i]!;
+            if (shouldSkipRender(component)) {
               continue;
             }
-            this._currentRenderble = renderable;
+            this._currentComponent = component;
             try {
-              renderable.render(this, this._scope);
+              component.render(this, this._scope);
             } finally {
-              this._currentRenderble = null;
+              this._currentComponent = null;
             }
           }
         }
@@ -101,7 +101,7 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
           flushEffects(passiveEffects);
         }
       } while (
-        this._hasRenderable() ||
+        this._hasComponent() ||
         this._hasBlockingEffect() ||
         this._hasPassiveEffect()
       );
@@ -121,7 +121,7 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
     return this._pendingPassiveEffects.length > 0;
   }
 
-  private _hasRenderable(): boolean {
-    return this._pendingRenderables.length > 0;
+  private _hasComponent(): boolean {
+    return this._pendingComponents.length > 0;
   }
 }

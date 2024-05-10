@@ -1,19 +1,19 @@
 import type { AbstractScope } from './scope.js';
 
 export interface Updater<TContext = unknown> {
-  get currentRenderable(): Renderable<TContext> | null;
+  get currentComponent(): Component<TContext> | null;
   getCurrentPriority(): TaskPriority;
   isUpdating(): boolean;
-  enqueueRenderable(renderable: Renderable<TContext>): void;
+  enqueueComponent(component: Component<TContext>): void;
   enqueueLayoutEffect(effect: Effect): void;
   enqueueMutationEffect(effect: Effect): void;
   enqueuePassiveEffect(effect: Effect): void;
   scheduleUpdate(): void;
 }
 
-export interface Renderable<TContext = unknown> {
+export interface Component<TContext = unknown> {
   get dirty(): boolean;
-  get parent(): Renderable<TContext> | null;
+  get parent(): Component<TContext> | null;
   get priority(): TaskPriority;
   requestUpdate(updater: Updater<TContext>, priority: TaskPriority): void;
   render(updater: Updater<TContext>, scope: AbstractScope<TContext>): void;
@@ -24,12 +24,12 @@ export interface Effect {
 }
 
 export function shouldSkipRender<TContext>(
-  renderable: Renderable<TContext>,
+  component: Component<TContext>,
 ): boolean {
-  if (!renderable.dirty) {
+  if (!component.dirty) {
     return true;
   }
-  let parent: Renderable<TContext> | null = renderable;
+  let parent: Component<TContext> | null = component;
   while ((parent = parent.parent) !== null) {
     if (parent.dirty) {
       return true;

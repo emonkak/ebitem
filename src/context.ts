@@ -1,6 +1,6 @@
 import { TemplateDirective } from './directives/template.js';
 import type { AbstractScope } from './scope.js';
-import type { Effect, Renderable, Updater } from './updater.js';
+import type { Component, Effect, Updater } from './updater.js';
 
 export type Hook = EffectHook | MemoHook<any> | ReducerHook<any, any>;
 
@@ -61,7 +61,7 @@ export enum HookType {
 export const usableTag = Symbol('Usable');
 
 export class Context {
-  private readonly _renderable: Renderable<Context>;
+  private readonly _component: Component<Context>;
 
   private readonly _hooks: Hook[];
 
@@ -72,25 +72,25 @@ export class Context {
   private _hookIndex = 0;
 
   constructor(
-    renderable: Renderable<Context>,
+    component: Component<Context>,
     hooks: Hook[],
     updater: Updater<Context>,
     scope: AbstractScope<Context>,
   ) {
-    this._renderable = renderable;
+    this._component = component;
     this._hooks = hooks;
     this._updater = updater;
     this._scope = scope;
   }
 
   getContextValue<T>(key: PropertyKey): T | undefined {
-    let renderable: Renderable<Context> | null = this._renderable;
+    let component: Component<Context> | null = this._component;
     do {
-      const value = this._scope.getVariable(key, renderable);
+      const value = this._scope.getVariable(key, component);
       if (value !== undefined) {
         return value as T;
       }
-    } while ((renderable = renderable.parent));
+    } while ((component = component.parent));
     return undefined;
   }
 
@@ -100,14 +100,14 @@ export class Context {
   }
 
   requestUpdate(): void {
-    this._renderable.requestUpdate(
+    this._component.requestUpdate(
       this._updater,
       this._updater.getCurrentPriority(),
     );
   }
 
   setContextValue(key: PropertyKey, value: unknown): void {
-    this._scope.setVariable(key, value, this._renderable);
+    this._scope.setVariable(key, value, this._component);
   }
 
   svg(tokens: ReadonlyArray<string>, ...values: unknown[]): TemplateDirective {
@@ -249,7 +249,7 @@ export class Context {
           const nextState = reducer(newHook.state, action);
           if (!Object.is(newHook.state, nextState)) {
             newHook.state = nextState;
-            this._renderable.requestUpdate(
+            this._component.requestUpdate(
               this._updater,
               priority ?? this._updater.getCurrentPriority(),
             );
@@ -287,7 +287,7 @@ export class Context {
     this.useEffect(
       () =>
         subscribe(() => {
-          this._renderable.requestUpdate(
+          this._component.requestUpdate(
             this._updater,
             priority ?? this._updater.getCurrentPriority(),
           );

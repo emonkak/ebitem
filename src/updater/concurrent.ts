@@ -2,8 +2,8 @@ import { Scheduler, createAdaptedScheduler } from '../scheduler.js';
 import type { AbstractScope } from '../scope.js';
 import { AtomSignal } from '../signal.js';
 import {
+  Component,
   Effect,
-  Renderable,
   Updater,
   flushEffects,
   shouldSkipRender,
@@ -14,7 +14,7 @@ export interface ConcurrentUpdaterOptions {
 }
 
 interface Pipeline<TContext> {
-  pendingRenderables: Renderable<TContext>[];
+  pendingComponents: Component<TContext>[];
   pendingLayoutEffects: Effect[];
   pendingMutationEffects: Effect[];
   pendingPassiveEffects: Effect[];
@@ -27,7 +27,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
 
   private readonly _taskCount = new AtomSignal(0);
 
-  private _currentRenderble: Renderable | null = null;
+  private _currentComponent: Component | null = null;
 
   private _currentPipeline: Pipeline<TContext> = createPipeline();
 
@@ -39,8 +39,8 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
     this._scheduler = scheduler;
   }
 
-  get currentRenderable(): Renderable<TContext> | null {
-    return this._currentRenderble;
+  get currentComponent(): Component<TContext> | null {
+    return this._currentComponent;
   }
 
   getCurrentPriority(): TaskPriority {
@@ -51,8 +51,8 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
     }
   }
 
-  enqueueRenderable(renderable: Renderable<TContext>): void {
-    this._currentPipeline.pendingRenderables.push(renderable);
+  enqueueComponent(component: Component<TContext>): void {
+    this._currentPipeline.pendingComponents.push(component);
   }
 
   enqueueLayoutEffect(effect: Effect): void {
@@ -68,7 +68,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
   }
 
   scheduleUpdate(): void {
-    if (this._currentRenderble === null) {
+    if (this._currentComponent === null) {
       const pipeline = this._currentPipeline;
       this._scheduleRenderPipelines(pipeline);
       this._scheduleBlockingEffects(pipeline);
@@ -96,19 +96,17 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
     }
   }
 
-  private async _beginRenderPipeline(
-    rootRenderable: Renderable,
-  ): Promise<void> {
+  private async _beginRenderPipeline(rootComponent: Component): Promise<void> {
     const pipeline = createPipeline();
     const previousPipeline = this._currentPipeline;
 
-    let pendingRenderables = [rootRenderable];
+    let pendingComponents = [rootComponent];
     let startTime = this._scheduler.getCurrentTime();
 
     do {
-      for (let i = 0, l = pendingRenderables.length; i < l; i++) {
-        const renderable = pendingRenderables[i]!;
-        if (shouldSkipRender(renderable)) {
+      for (let i = 0, l = pendingComponents.length; i < l; i++) {
+        const component = pendingComponents[i]!;
+        if (shouldSkipRender(component)) {
           continue;
         }
 
@@ -118,42 +116,42 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
           )
         ) {
           await this._scheduler.yieldToMain({
-            priority: renderable.priority,
+            priority: component.priority,
           });
           startTime = this._scheduler.getCurrentTime();
         }
 
-        this._currentRenderble = renderable;
+        this._currentComponent = component;
         this._currentPipeline = pipeline;
         try {
-          renderable.render(this, this._scope);
+          component.render(this, this._scope);
         } finally {
-          this._currentRenderble = null;
+          this._currentComponent = null;
           this._currentPipeline = previousPipeline;
         }
       }
 
-      pendingRenderables = pipeline.pendingRenderables;
-      pipeline.pendingRenderables = [];
-    } while (pendingRenderables.length > 0);
+      pendingComponents = pipeline.pendingComponents;
+      pipeline.pendingComponents = [];
+    } while (pendingComponents.length > 0);
 
     this._scheduleBlockingEffects(pipeline);
     this._schedulePassiveEffects(pipeline);
   }
 
   private _scheduleRenderPipelines(pipeline: Pipeline<TContext>): void {
-    const { pendingRenderables } = pipeline;
-    pipeline.pendingRenderables = [];
+    const { pendingComponents } = pipeline;
+    pipeline.pendingComponents = [];
 
-    for (let i = 0, l = pendingRenderables.length; i < l; i++) {
-      const renderable = pendingRenderables[i]!;
+    for (let i = 0, l = pendingComponents.length; i < l; i++) {
+      const component = pendingComponents[i]!;
       this._scheduler.requestCallback(
         async () => {
-          await this._beginRenderPipeline(renderable);
+          await this._beginRenderPipeline(component);
           this._taskCount.value--;
         },
         {
-          priority: renderable.priority,
+          priority: component.priority,
         },
       );
       this._taskCount.value++;
@@ -199,7 +197,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
 
 function createPipeline<TContext>(): Pipeline<TContext> {
   return {
-    pendingRenderables: [],
+    pendingComponents: [],
     pendingLayoutEffects: [],
     pendingMutationEffects: [],
     pendingPassiveEffects: [],
