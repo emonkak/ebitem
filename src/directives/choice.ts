@@ -34,43 +34,42 @@ export class ChoiceDirective<TKey, TValue> implements Directive {
   }
 
   [directiveTag](part: Part, updater: Updater): ChoiceBinding<TKey, TValue> {
-    const factory = this._factory;
-    const value = factory(this._key);
-    const initialBinding = createBinding(value, part, updater);
-    return new ChoiceBinding(this, initialBinding);
+    const binding = new ChoiceBinding(this, part);
+
+    binding.bind(updater);
+
+    return binding;
   }
 }
 
 export class ChoiceBinding<TKey, TValue>
   implements Binding<ChoiceDirective<TKey, TValue>>
 {
-  private _currentBinding: Binding<TValue>;
-
-  private _currentKey: TKey;
+  private readonly _part: Part;
 
   private _directive: ChoiceDirective<TKey, TValue>;
 
+  private _currentKey: TKey | null = null;
+
+  private _currentBinding: Binding<TValue> | null = null;
+
   private _cachedBindings: Map<TKey, Binding<TValue>> = new Map();
 
-  constructor(
-    directive: ChoiceDirective<TKey, TValue>,
-    initialBinding: Binding<TValue>,
-  ) {
+  constructor(directive: ChoiceDirective<TKey, TValue>, part: Part) {
     this._directive = directive;
-    this._currentBinding = initialBinding;
-    this._currentKey = directive.key;
+    this._part = part;
   }
 
   get part(): Part {
-    return this._currentBinding.part;
+    return this._part;
   }
 
   get startNode(): ChildNode {
-    return this._currentBinding.startNode;
+    return this._currentBinding?.startNode ?? this._part.node;
   }
 
   get endNode(): ChildNode {
-    return this._currentBinding.endNode;
+    return this._currentBinding?.endNode ?? this._part.node;
   }
 
   get value(): ChoiceDirective<TKey, TValue> {
@@ -82,48 +81,64 @@ export class ChoiceBinding<TKey, TValue>
   }
 
   bind(updater: Updater): void {
-    const factory = this._directive.factory;
-    const oldKey = this._currentKey;
-    const newKey = this._directive.key;
+    const { factory, key: newKey } = this._directive;
     const newValue = factory(newKey);
 
-    if (Object.is(oldKey, newKey)) {
-      updateBinding(this._currentBinding, newValue, updater);
-    } else {
-      this._currentBinding.unbind(updater);
-      this._cachedBindings.set(oldKey, this._currentBinding);
-
-      const cachedBinding = this._cachedBindings.get(newKey);
-
-      if (cachedBinding !== undefined) {
-        this._currentBinding.value = newValue;
-        this._currentBinding.bind(updater);
+    if (this._currentBinding !== null) {
+      if (Object.is(this._currentKey, newKey)) {
+        updateBinding(this._currentBinding, newValue, updater);
       } else {
-        this._currentBinding = createBinding(
+        this._currentBinding.unbind(updater);
+        // Remenber the old binding for future updates.
+        this._cachedBindings.set(
+          this._currentKey as TKey,
+          this._currentBinding,
+        );
+        this._currentBinding = this._getBindingFromCache(
+          newKey,
           newValue,
-          this._currentBinding.part,
           updater,
         );
       }
-      this._currentKey = newKey;
+    } else {
+      this._currentBinding = this._getBindingFromCache(
+        newKey,
+        newValue,
+        updater,
+      );
     }
+
+    this._currentKey = newKey;
   }
 
   unbind(updater: Updater): void {
-    this._currentBinding.unbind(updater);
-
-    for (const [key, binding] of this._cachedBindings) {
-      if (key !== this._directive.key) {
-        binding.disconnect();
-      }
+    if (this._currentBinding !== null) {
+      this._currentKey = null;
+      this._currentBinding?.unbind(updater);
+      this._currentBinding = null;
     }
   }
 
   disconnect(): void {
-    for (const [key, binding] of this._cachedBindings) {
-      if (key !== this._directive.key) {
-        binding.disconnect();
-      }
+    if (this._currentBinding !== null) {
+      this._currentKey = null;
+      this._currentBinding?.disconnect();
+      this._currentBinding = null;
+    }
+  }
+
+  private _getBindingFromCache(
+    newKey: TKey,
+    newValue: TValue,
+    updater: Updater,
+  ): Binding<TValue> {
+    const cachedBinding = this._cachedBindings.get(newKey);
+    if (cachedBinding !== undefined) {
+      cachedBinding.value = newValue;
+      cachedBinding.bind(updater);
+      return cachedBinding;
+    } else {
+      return createBinding(newValue, this._part, updater);
     }
   }
 }

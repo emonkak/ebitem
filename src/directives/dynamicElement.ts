@@ -150,6 +150,10 @@ export class DynamicElementBinding<TElementValue, TChildNodeValue>
     this._directive = newDirective;
   }
 
+  init(updater: Updater): void {
+    this._requestMutation(updater);
+  }
+
   bind(updater: Updater): void {
     const { type, elementValue, childNodeValue } = this._directive;
     const element = this._elementBinding.part.node;
@@ -218,10 +222,6 @@ export class DynamicElementBinding<TElementValue, TChildNodeValue>
       DynamicElementBindingFlags.UNMOUNTING |
       DynamicElementBindingFlags.REPARENTING
     );
-  }
-
-  init(updater: Updater): void {
-    this._requestMutation(updater);
   }
 
   private _requestMutation(updater: Updater) {

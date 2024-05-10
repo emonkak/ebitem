@@ -81,15 +81,16 @@ export class ConditionBinding<TTrue, TFalse>
 
   private _directive: ConditionDirective<TTrue, TFalse>;
 
+  private _currentCondition: boolean | null = null;
+
+  private _currentBinding: Binding<TTrue> | Binding<TFalse> | null = null;
+
   private _trueBinding: Binding<TTrue> | null = null;
 
   private _falseBinding: Binding<TFalse> | null = null;
 
-  private _condition;
-
   constructor(directive: ConditionDirective<TTrue, TFalse>, part: Part) {
     this._directive = directive;
-    this._condition = directive.condition;
     this._part = part;
   }
 
@@ -98,14 +99,11 @@ export class ConditionBinding<TTrue, TFalse>
   }
 
   get startNode(): ChildNode {
-    const binding = this._directive.condition
-      ? this._trueBinding
-      : this._falseBinding;
-    return binding?.startNode ?? this._part.node;
+    return this._currentBinding?.startNode ?? this._part.node;
   }
 
   get endNode(): ChildNode {
-    return this._part.node;
+    return this._currentBinding?.endNode ?? this._part.node;
   }
 
   get value(): ConditionDirective<TTrue, TFalse> {
@@ -117,63 +115,78 @@ export class ConditionBinding<TTrue, TFalse>
   }
 
   bind(updater: Updater): void {
-    const { condition, trueCase, falseCase } = this._directive;
+    const { condition: newCondition, trueCase, falseCase } = this._directive;
 
-    if (condition) {
+    if (newCondition) {
       const newValue = typeof trueCase === 'function' ? trueCase() : trueCase;
-      if (this._condition !== condition) {
-        this._falseBinding?.unbind(updater);
-      }
-      if (this._trueBinding !== null) {
-        if (this._condition !== condition) {
-          this._trueBinding.value = newValue;
-          this._trueBinding.bind(updater);
+      if (this._currentBinding !== null) {
+        if (Object.is(this._currentCondition, newCondition)) {
+          updateBinding(this._currentBinding, newValue, updater);
         } else {
-          updateBinding(this._trueBinding, newValue, updater);
+          this._currentBinding.unbind(updater);
+          // Remenber the old binding for future updates.
+          this._falseBinding = this._currentBinding as Binding<TFalse>;
+          this._currentBinding = this._getTrueBinding(newValue, updater);
         }
       } else {
-        this._trueBinding = createBinding(newValue, this._part, updater);
+        this._currentBinding = this._getTrueBinding(newValue, updater);
       }
     } else {
       const newValue =
         typeof falseCase === 'function' ? falseCase() : falseCase;
-      if (this._condition !== condition) {
-        this._trueBinding?.unbind(updater);
-      }
-      if (this._falseBinding !== null) {
-        if (this._condition !== condition) {
-          this._falseBinding.value = newValue;
-          this._falseBinding.bind(updater);
+      if (this._currentBinding !== null) {
+        if (Object.is(this._currentCondition, newCondition)) {
+          updateBinding(this._currentBinding, newValue, updater);
         } else {
-          updateBinding(this._falseBinding, newValue, updater);
+          this._currentBinding.unbind(updater);
+          // Remenber the old binding for future updates.
+          this._trueBinding = this._currentBinding as Binding<TTrue>;
+          this._currentBinding = this._getFalseBinding(newValue, updater);
         }
       } else {
-        this._falseBinding = createBinding(newValue, this._part, updater);
+        this._currentBinding = this._getFalseBinding(newValue, updater);
       }
     }
 
-    this._condition = condition;
+    this._currentCondition = newCondition;
   }
 
   unbind(updater: Updater): void {
-    const { condition } = this._directive;
-
-    if (condition) {
-      this._trueBinding?.unbind(updater);
-      this._falseBinding?.disconnect();
-    } else {
-      this._falseBinding?.unbind(updater);
-      this._trueBinding?.disconnect();
+    if (this._currentBinding !== null) {
+      this._currentCondition = null;
+      this._currentBinding?.unbind(updater);
+      this._currentBinding = null;
     }
   }
 
   disconnect(): void {
-    const { condition } = this._directive;
+    if (this._currentBinding !== null) {
+      this._currentCondition = null;
+      this._currentBinding?.disconnect();
+      this._currentBinding = null;
+    }
+  }
 
-    if (condition) {
-      this._falseBinding?.disconnect();
+  private _getTrueBinding(newValue: TTrue, updater: Updater): Binding<TTrue> {
+    if (this._trueBinding !== null) {
+      this._trueBinding.value = newValue;
+      this._trueBinding.bind(updater);
+      return this._trueBinding;
     } else {
-      this._trueBinding?.disconnect();
+      return createBinding(newValue, this._part, updater);
+    }
+  }
+
+  private _getFalseBinding(
+    newValue: TFalse,
+    updater: Updater,
+  ): Binding<TFalse> {
+    if (this._falseBinding !== null) {
+      this._falseBinding.value = newValue;
+      this._falseBinding.bind(updater);
+      return this._falseBinding;
+    } else {
+      return createBinding(newValue, this._part, updater);
     }
   }
 }

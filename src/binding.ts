@@ -517,7 +517,7 @@ export function updateBinding<TValue, TContext>(
             typeOf(binding.value) +
             '", but got "' +
             typeOf(newValue) +
-            '". Consider using condition() directive instead.',
+            '". Consider using choice() or condition() directive instead.',
         );
       }
     } else {
@@ -525,7 +525,7 @@ export function updateBinding<TValue, TContext>(
         throw new Error(
           'The new value should not be a directive, but got "' +
             typeOf(newValue) +
-            '". Consider using condition() directive instead.',
+            '". Consider using choice() or condition() directive instead.',
         );
       }
     }
