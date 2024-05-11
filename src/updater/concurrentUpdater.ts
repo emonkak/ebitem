@@ -1,4 +1,8 @@
-import { Scheduler, createAdaptedScheduler } from '../scheduler.js';
+import {
+  Scheduler,
+  TaskPriority,
+  createDefaultScheduler,
+} from '../scheduler.js';
 import type { Scope } from '../scope.js';
 import { AtomSignal } from '../signal.js';
 import {
@@ -33,7 +37,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
 
   constructor(
     scope: Scope<TContext>,
-    { scheduler = createAdaptedScheduler() }: ConcurrentUpdaterOptions = {},
+    { scheduler = createDefaultScheduler() }: ConcurrentUpdaterOptions = {},
   ) {
     this._scope = scope;
     this._scheduler = scheduler;

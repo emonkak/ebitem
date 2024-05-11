@@ -2,17 +2,28 @@ export interface Scheduler {
   getCurrentTime(): number;
   requestCallback<T>(
     callback: () => T | PromiseLike<T>,
-    options?: Pick<SchedulerPostTaskOptions, 'priority'>,
+    options?: RequestCallbackOptions,
   ): void;
   shouldYieldToMain(elapsedTime: number): boolean;
-  yieldToMain(options?: Pick<SchedulerYieldOptions, 'priority'>): Promise<void>;
+  yieldToMain(options?: YieldToMainOptions): Promise<void>;
 }
+
+export interface RequestCallbackOptions {
+  priority: TaskPriority;
+}
+
+export interface YieldToMainOptions {
+  priority: TaskPriority | 'inherit';
+}
+
+// Reexport TaskPriority in Scheduler API.
+export type TaskPriority = 'user-blocking' | 'user-visible' | 'background';
 
 const FRAME_YIELD_INTERVAL = 5;
 const CONTINUOUS_INPUT_INTERVAL = 50;
 const MAX_YIELD_INTERVAL = 300;
 
-export function createAdaptedScheduler(): Scheduler {
+export function createDefaultScheduler(): Scheduler {
   let getCurrentTime: Scheduler['getCurrentTime'];
   let requestCallback: Scheduler['requestCallback'];
   let shouldYieldToMain: Scheduler['shouldYieldToMain'];

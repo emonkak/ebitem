@@ -6,7 +6,7 @@ import {
   PartType,
   directiveTag,
 } from '../binding.js';
-import { isHigherPriority } from '../scheduler.js';
+import { TaskPriority, isHigherPriority } from '../scheduler.js';
 import type { Scope } from '../scope.js';
 import type { Template, TemplateRoot } from '../template.js';
 import type { Component, Effect, Updater } from '../updater.js';

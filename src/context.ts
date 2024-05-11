@@ -1,4 +1,5 @@
 import { TemplateDirective } from './directives/template.js';
+import type { TaskPriority } from './scheduler.js';
 import type { Scope } from './scope.js';
 import { ValueTemplate } from './template/valueTemplate.js';
 import type { Component, Effect, Updater } from './updater.js';

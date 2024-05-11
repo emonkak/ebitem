@@ -1,3 +1,4 @@
+import type { TaskPriority } from './scheduler.js';
 import type { Scope } from './scope.js';
 
 export interface Updater<TContext = unknown> {

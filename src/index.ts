@@ -21,7 +21,7 @@ export {
 } from './context.js';
 export {
   type Scheduler,
-  createAdaptedScheduler,
+  createDefaultScheduler,
 } from './scheduler.js';
 export {
   type Scope,
