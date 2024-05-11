@@ -143,14 +143,14 @@ export class BlockBinding<TProps, TContext>
   }
 
   requestUpdate(updater: Updater, priority: TaskPriority): void {
-    if (!(this._flags & BlockFlags.UPDATING)) {
+    if (
+      !(this._flags & BlockFlags.UPDATING) ||
+      isHigherPriority(priority, this._priority)
+    ) {
       this._priority = priority;
       this._flags |= BlockFlags.UPDATING;
       updater.enqueueComponent(this);
       updater.scheduleUpdate();
-    } else if (isHigherPriority(priority, this._priority)) {
-      this._priority = priority;
-      updater.enqueueComponent(this);
     }
 
     this._flags &= ~BlockFlags.UNMOUNTING;

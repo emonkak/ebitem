@@ -118,14 +118,14 @@ export class TemplateBinding
   }
 
   requestUpdate(updater: Updater, priority: TaskPriority): void {
-    if (!(this._flags & TemplateFlags.UPDATING)) {
+    if (
+      !(this._flags & TemplateFlags.UPDATING) ||
+      isHigherPriority(priority, this._priority)
+    ) {
       this._priority = priority;
       this._flags |= TemplateFlags.UPDATING;
       updater.enqueueComponent(this);
       updater.scheduleUpdate();
-    } else if (isHigherPriority(priority, this._priority)) {
-      this._priority = priority;
-      updater.enqueueComponent(this);
     }
 
     this._flags &= ~TemplateFlags.UNMOUNTING;
