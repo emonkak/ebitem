@@ -19,6 +19,10 @@ export interface YieldToMainOptions {
 // Reexport TaskPriority in Scheduler API.
 export type TaskPriority = 'user-blocking' | 'user-visible' | 'background';
 
+export const HIGHEST_PRIORITY: TaskPriority = 'user-blocking';
+
+export const LOWEST_PRIORITY: TaskPriority = 'background';
+
 const FRAME_YIELD_INTERVAL = 5;
 const CONTINUOUS_INPUT_INTERVAL = 50;
 const MAX_YIELD_INTERVAL = 300;

@@ -7,7 +7,11 @@ import {
   directiveTag,
 } from '../binding.js';
 import { Hook, HookType } from '../context.js';
-import { TaskPriority, isHigherPriority } from '../scheduler.js';
+import {
+  LOWEST_PRIORITY,
+  TaskPriority,
+  isHigherPriority,
+} from '../scheduler.js';
 import type { Scope } from '../scope.js';
 import type { Template, TemplateRoot } from '../template.js';
 import type { Component, Effect, Updater } from '../updater.js';
@@ -90,7 +94,7 @@ export class BlockBinding<TProps, TContext>
 
   private _hooks: Hook[] = [];
 
-  private _priority: TaskPriority = 'user-visible';
+  private _priority: TaskPriority = LOWEST_PRIORITY;
 
   private _flags = BlockFlags.NONE;
 
@@ -234,6 +238,7 @@ export class BlockBinding<TProps, TContext>
 
     this._memoizedType = this._value.type;
     this._memoizedTemplate = template;
+    this._priority = LOWEST_PRIORITY;
     this._flags &= ~BlockFlags.UPDATING;
   }
 

@@ -1,4 +1,4 @@
-import type { TaskPriority } from '../scheduler.js';
+import { HIGHEST_PRIORITY, TaskPriority } from '../scheduler.js';
 import type { Scope } from '../scope.js';
 import {
   Component,
@@ -32,7 +32,7 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
   }
 
   getCurrentPriority(): TaskPriority {
-    return 'user-blocking';
+    return HIGHEST_PRIORITY;
   }
 
   enqueueComponent(component: Component<TContext>): void {
