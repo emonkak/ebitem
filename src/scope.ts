@@ -5,7 +5,7 @@ import type { Component, Updater } from './updater.js';
 
 export type Namespace = { [key: PropertyKey]: unknown };
 
-export interface AbstractScope<TContext = unknown> {
+export interface Scope<TContext = unknown> {
   getVariable(key: PropertyKey, component: Component<TContext>): unknown;
 
   setVariable(
@@ -28,7 +28,7 @@ export interface AbstractScope<TContext = unknown> {
   createSVGTemplate(tokens: ReadonlyArray<string>, values: unknown[]): Template;
 }
 
-export class Scope implements AbstractScope<Context> {
+export class DefaultScope implements Scope<Context> {
   private readonly _globalNamespace: Namespace;
 
   private readonly _marker: string;

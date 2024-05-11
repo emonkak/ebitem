@@ -1,5 +1,5 @@
 import { Scheduler, createAdaptedScheduler } from '../scheduler.js';
-import type { AbstractScope } from '../scope.js';
+import type { Scope } from '../scope.js';
 import { AtomSignal } from '../signal.js';
 import {
   Component,
@@ -21,7 +21,7 @@ interface Pipeline<TContext> {
 }
 
 export class ConcurrentUpdater<TContext> implements Updater<TContext> {
-  private readonly _scope: AbstractScope<TContext>;
+  private readonly _scope: Scope<TContext>;
 
   private readonly _scheduler: Scheduler;
 
@@ -32,7 +32,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
   private _currentPipeline: Pipeline<TContext> = createPipeline();
 
   constructor(
-    scope: AbstractScope<TContext>,
+    scope: Scope<TContext>,
     { scheduler = createAdaptedScheduler() }: ConcurrentUpdaterOptions = {},
   ) {
     this._scope = scope;

@@ -24,9 +24,9 @@ export {
   createAdaptedScheduler,
 } from './scheduler.js';
 export {
-  type AbstractScope,
+  type Scope,
   type Namespace,
-  Scope,
+  DefaultScope,
 } from './scope.js';
 export {
   type Template,

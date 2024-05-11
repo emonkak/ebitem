@@ -10,7 +10,7 @@ import {
   SpreadBinding,
   directiveTag,
 } from '../../src/binding.js';
-import { Scope } from '../../src/scope.js';
+import { DefaultScope } from '../../src/scope.js';
 import {
   TaggedTemplate,
   TaggedTemplateRoot,
@@ -316,7 +316,7 @@ describe('TaggedTemplate', () => {
         { class: 'qux' },
         new MockDirective(),
       ];
-      const updater = new SyncUpdater(new Scope());
+      const updater = new SyncUpdater(new DefaultScope());
       const root = template.hydrate(values, updater);
 
       expect(root).toBeInstanceOf(TaggedTemplateRoot);
@@ -371,7 +371,7 @@ describe('TaggedTemplate', () => {
         <div class=${0} class=${1}></div>
       `;
       const values = ['foo', 'bar'];
-      const updater = new SyncUpdater(new Scope());
+      const updater = new SyncUpdater(new DefaultScope());
       expect(() => {
         template.hydrate(values, updater);
       }).toThrow('There may be multiple holes indicating the same attribute.');
@@ -386,7 +386,7 @@ describe('TaggedTemplateRoot', () => {
         <p>Hello, ${0}!</p>
       `;
       const values = ['World'];
-      const updater = new SyncUpdater(new Scope());
+      const updater = new SyncUpdater(new DefaultScope());
       const root = template.hydrate(values, updater);
 
       updater.flush();
@@ -418,7 +418,7 @@ describe('TaggedTemplateRoot', () => {
         <p>Count: ${0}</p>
       `;
       const values = [0];
-      const updater = new SyncUpdater(new Scope());
+      const updater = new SyncUpdater(new DefaultScope());
       const root = template.hydrate(values, updater);
 
       updater.flush();
@@ -454,7 +454,7 @@ describe('TaggedTemplateRoot', () => {
           },
         }),
       ];
-      const updater = new SyncUpdater(new Scope());
+      const updater = new SyncUpdater(new DefaultScope());
       const root = template.hydrate(values, updater);
 
       expect(disconnects).toBe(0);

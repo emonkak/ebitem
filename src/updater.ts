@@ -1,4 +1,4 @@
-import type { AbstractScope } from './scope.js';
+import type { Scope } from './scope.js';
 
 export interface Updater<TContext = unknown> {
   get currentComponent(): Component<TContext> | null;
@@ -16,7 +16,7 @@ export interface Component<TContext = unknown> {
   get parent(): Component<TContext> | null;
   get priority(): TaskPriority;
   requestUpdate(updater: Updater<TContext>, priority: TaskPriority): void;
-  render(updater: Updater<TContext>, scope: AbstractScope<TContext>): void;
+  render(updater: Updater<TContext>, scope: Scope<TContext>): void;
 }
 
 export interface Effect {

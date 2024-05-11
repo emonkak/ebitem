@@ -7,7 +7,7 @@ import {
   directiveTag,
 } from '../binding.js';
 import { isHigherPriority } from '../scheduler.js';
-import type { AbstractScope } from '../scope.js';
+import type { Scope } from '../scope.js';
 import type { Template, TemplateRoot } from '../template.js';
 import type { Component, Effect, Updater } from '../updater.js';
 
@@ -151,7 +151,7 @@ export class TemplateBinding
     this._flags &= ~TemplateFlags.UPDATING;
   }
 
-  render(updater: Updater, _scope: AbstractScope): void {
+  render(updater: Updater, _scope: Scope): void {
     const { template, values } = this._value;
 
     if (this._pendingRoot !== null) {

@@ -1,5 +1,5 @@
 import { TemplateDirective } from './directives/template.js';
-import type { AbstractScope } from './scope.js';
+import type { Scope } from './scope.js';
 import { ValueTemplate } from './template/valueTemplate.js';
 import type { Component, Effect, Updater } from './updater.js';
 
@@ -68,7 +68,7 @@ export class Context {
 
   private readonly _updater: Updater<Context>;
 
-  private readonly _scope: AbstractScope<Context>;
+  private readonly _scope: Scope<Context>;
 
   private _hookIndex = 0;
 
@@ -76,7 +76,7 @@ export class Context {
     component: Component<Context>,
     hooks: Hook[],
     updater: Updater<Context>,
-    scope: AbstractScope<Context>,
+    scope: Scope<Context>,
   ) {
     this._component = component;
     this._hooks = hooks;

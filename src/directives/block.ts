@@ -8,7 +8,7 @@ import {
 } from '../binding.js';
 import { Hook, HookType } from '../context.js';
 import { isHigherPriority } from '../scheduler.js';
-import type { AbstractScope } from '../scope.js';
+import type { Scope } from '../scope.js';
 import type { Template, TemplateRoot } from '../template.js';
 import type { Component, Effect, Updater } from '../updater.js';
 import type { TemplateDirective } from './template.js';
@@ -177,7 +177,7 @@ export class BlockBinding<TProps, TContext>
     this._flags &= ~BlockFlags.UPDATING;
   }
 
-  render(updater: Updater<TContext>, scope: AbstractScope<TContext>): void {
+  render(updater: Updater<TContext>, scope: Scope<TContext>): void {
     const { type, props } = this._value;
 
     if (this._memoizedType !== null && type !== this._memoizedType) {

@@ -1,4 +1,9 @@
-import { ConcurrentUpdater, Context, Scope, mountValue } from '@emonkak/ebitem';
+import {
+  ConcurrentUpdater,
+  Context,
+  DefaultScope,
+  mountValue,
+} from '@emonkak/ebitem';
 import {
   TemplateDirective,
   block,
@@ -200,6 +205,6 @@ function shuffle<T>(elements: T[]): T[] {
   return elements;
 }
 
-const updater = new ConcurrentUpdater(new Scope());
+const updater = new ConcurrentUpdater(new DefaultScope());
 
 mountValue(block(App, {}), document.body, updater);

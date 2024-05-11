@@ -1,4 +1,4 @@
-import type { AbstractScope } from '../scope.js';
+import type { Scope } from '../scope.js';
 import {
   Component,
   Effect,
@@ -8,7 +8,7 @@ import {
 } from '../updater.js';
 
 export class SyncUpdater<TContext> implements Updater<TContext> {
-  private readonly _scope: AbstractScope<TContext>;
+  private readonly _scope: Scope<TContext>;
 
   private _currentComponent: Component<TContext> | null = null;
 
@@ -22,7 +22,7 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
 
   private _isUpdating = false;
 
-  constructor(scope: AbstractScope<TContext>) {
+  constructor(scope: Scope<TContext>) {
     this._scope = scope;
   }
 
