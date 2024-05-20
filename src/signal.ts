@@ -4,6 +4,7 @@ import {
   Part,
   directiveTag,
   initializeBinding,
+  updateBinding,
 } from './binding.js';
 import { Context, UsableObject, usableTag } from './context.js';
 import { LinkedList } from './linkedList.js';
@@ -51,37 +52,35 @@ export abstract class Signal<T> implements Directive, UsableObject<void> {
   }
 
   [directiveTag](part: Part, updater: Updater): SignalBinding<T> {
-    const valueBinding = initializeBinding(this.value, part, updater);
-    const binding = new SignalBinding(this, valueBinding);
+    const binding = initializeBinding(this.value, part, updater);
 
-    binding.init(updater);
-
-    return binding;
+    return new SignalBinding(this, binding, updater);
   }
 }
 
 export class SignalBinding<T> implements Binding<Signal<T>> {
-  private readonly _valueBinding: Binding<T>;
+  private readonly _binding: Binding<T>;
 
   private _signal: Signal<T>;
 
-  private _subscription: Subscription | null = null;
+  private _subscription: Subscription | null;
 
-  constructor(signal: Signal<T>, binding: Binding<T>) {
+  constructor(signal: Signal<T>, binding: Binding<T>, updater: Updater) {
     this._signal = signal;
-    this._valueBinding = binding;
+    this._binding = binding;
+    this._subscription = this._subscribeSignal(signal, updater);
   }
 
   get part(): Part {
-    return this._valueBinding.part;
+    return this._binding.part;
   }
 
   get startNode(): ChildNode {
-    return this._valueBinding.startNode;
+    return this._binding.startNode;
   }
 
   get endNode(): ChildNode {
-    return this._valueBinding.endNode;
+    return this._binding.endNode;
   }
 
   get value(): Signal<T> {
@@ -92,36 +91,28 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
     this._signal = newSignal;
   }
 
-  init(updater: Updater): void {
-    this._subscription ??= this._trackSignal(updater);
-  }
-
   bind(updater: Updater): void {
-    this._valueBinding.value = this._signal.value;
-    this._valueBinding.bind(updater);
-    this._subscription ??= this._trackSignal(updater);
+    updateBinding(this._binding, this._signal.value, updater);
+    this._subscription?.();
+    this._subscription = this._subscribeSignal(this._signal, updater);
   }
 
   unbind(updater: Updater): void {
-    this._valueBinding.unbind(updater);
-    if (this._subscription !== null) {
-      this._subscription();
-      this._subscription = null;
-    }
+    this._binding.unbind(updater);
+    this._subscription?.();
+    this._subscription = null;
   }
 
   disconnect(): void {
-    this._valueBinding.disconnect();
-    if (this._subscription !== null) {
-      this._subscription();
-      this._subscription = null;
-    }
+    this._binding.disconnect();
+    this._subscription?.();
+    this._subscription = null;
   }
 
-  private _trackSignal(updater: Updater): Subscription {
-    return this._signal.subscribe(() => {
-      this._valueBinding.value = this._signal.value;
-      this._valueBinding.bind(updater);
+  private _subscribeSignal(signal: Signal<T>, updater: Updater): Subscription {
+    return signal.subscribe(() => {
+      this._binding.value = signal.value;
+      this._binding.bind(updater);
       updater.scheduleUpdate();
     });
   }
