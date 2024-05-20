@@ -1,8 +1,8 @@
-import { PartType } from './binding.js';
-import { TemplateDirective } from './directives/template.js';
 import type { TaskPriority } from './scheduler.js';
 import type { Scope } from './scope.js';
+import { TemplateDirective } from './template.js';
 import { ChildNodeTemplate, TextTemplate } from './template/singleTemplate.js';
+import { SlotData, SlotTemplate } from './template/slotTemplate.js';
 import type { Component, Effect, Updater } from './updater.js';
 
 export type Hook = EffectHook | MemoHook<any> | ReducerHook<any, any>;
@@ -117,6 +117,15 @@ export class Context {
 
   setContextValue(key: PropertyKey, value: unknown): void {
     this._scope.setVariable(key, value, this._component);
+  }
+
+  slot<TElementValue, TChildNodeValue>(
+    type: string,
+    elementValue: TElementValue,
+    childNodeValue: TChildNodeValue,
+  ): TemplateDirective<SlotData<TElementValue, TChildNodeValue>> {
+    const template = new SlotTemplate<TElementValue, TChildNodeValue>(type);
+    return new TemplateDirective(template, { elementValue, childNodeValue });
   }
 
   svg(

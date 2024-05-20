@@ -10,7 +10,6 @@ import {
   choice,
   classNames,
   condition,
-  dynamicElement,
   list,
   ref,
   style,
@@ -92,7 +91,7 @@ function App(_props: {}, context: Context) {
       </p>
       <${context.html`<div>Hello World!</div>`} />
       <${unsafeHTML('<div style="color: red">Hello World!</div>')} />
-      <${dynamicElement(
+      <${context.slot(
         'article',
         { style: style({ color: 'blue' }) },
         context.html`<span>Hello World!</span>`,
@@ -169,7 +168,7 @@ function Counter({ count }: CounterProps, context: Context) {
       <span class="count-choose">${choice(count.value % 2, (count) =>
         count === 0 ? '(Even)' : '(Odd)',
       )}</span>
-      <${dynamicElement(
+      <${context.slot(
         count.value % 2 === 0 ? 'strong' : 'em',
         { style: style({ color: 'blue' }) },
         context.html`<span>Hello World!</span>`,
