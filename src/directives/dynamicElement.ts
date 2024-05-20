@@ -57,36 +57,7 @@ export class DynamicElementDirective<TElementValue, TChildNodeValue>
       throw new Error('ElementDirective must be used in ChildNodePart.');
     }
 
-    const element = document.createElement(this.type);
-    const elementPart = { type: PartType.Element, node: element } as const;
-    const elementBinding = createBinding(
-      this._elementValue,
-      elementPart,
-      updater,
-    );
-    const childNodeMarker = document.createComment('');
-    const childNodePart = {
-      type: PartType.ChildNode,
-      node: childNodeMarker,
-    } as const;
-    const childNodeBinding = createBinding(
-      this.childNodeValue,
-      childNodePart,
-      updater,
-    );
-
-    element.appendChild(childNodeMarker);
-
-    const binding = new DynamicElementBinding(
-      this,
-      elementBinding,
-      childNodeBinding,
-      part,
-    );
-
-    binding.init(updater);
-
-    return binding;
+    return new DynamicElementBinding(this, part, updater);
   }
 }
 
@@ -115,14 +86,30 @@ export class DynamicElementBinding<TElementValue, TChildNodeValue>
 
   constructor(
     value: DynamicElementDirective<TElementValue, TChildNodeValue>,
-    elementBinding: Binding<TElementValue>,
-    childNodeBinding: Binding<TChildNodeValue>,
     part: ChildNodePart,
+    updater: Updater,
   ) {
+    const { type, elementValue, childNodeValue } = value;
+    const element = document.createElement(type);
+    const elementPart = { type: PartType.Element, node: element } as const;
+    const childNodeMarker = document.createComment('');
+    const childNodePart = {
+      type: PartType.ChildNode,
+      node: childNodeMarker,
+    } as const;
+
+    element.appendChild(childNodeMarker);
+
     this._value = value;
-    this._elementBinding = elementBinding;
-    this._childNodeBinding = childNodeBinding;
+    this._elementBinding = createBinding(elementValue, elementPart, updater);
+    this._childNodeBinding = createBinding(
+      childNodeValue,
+      childNodePart,
+      updater,
+    );
     this._part = part;
+
+    this._requestMutation(updater);
   }
 
   get part(): ChildNodePart {
@@ -147,21 +134,17 @@ export class DynamicElementBinding<TElementValue, TChildNodeValue>
     this._value = newValue;
   }
 
-  init(updater: Updater): void {
-    this._requestMutation(updater);
-  }
-
   bind(updater: Updater): void {
     const { type, elementValue, childNodeValue } = this._value;
     const element = this._elementBinding.part.node;
 
     if (element.nodeName !== type.toUpperCase()) {
+      this._elementBinding.disconnect();
+
       const elementPart = {
         type: PartType.Element,
         node: document.createElement(this._value.type),
       } as const;
-
-      this._elementBinding.disconnect();
       this._elementBinding = createBinding(elementValue, elementPart, updater);
 
       this._requestMutation(updater);
