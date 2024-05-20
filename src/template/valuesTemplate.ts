@@ -10,12 +10,12 @@ import {
 import { Template, TemplateRoot } from '../template.js';
 import { Updater } from '../updater.js';
 
-export class ValueTemplate implements Template {
-  static instance: ValueTemplate = new ValueTemplate();
+export class ValuesTemplate implements Template {
+  static instance: ValuesTemplate = new ValuesTemplate();
 
   private constructor() {}
 
-  hydrate(values: unknown[], updater: Updater<unknown>): ValueTemplateRoot {
+  hydrate(values: unknown[], updater: Updater<unknown>): ValuesTemplateRoot {
     const part = {
       type: PartType.ChildNode,
       node: document.createComment(''),
@@ -37,11 +37,11 @@ export class ValueTemplate implements Template {
         return binding;
       }
     });
-    return new ValueTemplateRoot(bindings, part);
+    return new ValuesTemplateRoot(bindings, part);
   }
 }
 
-export class ValueTemplateRoot implements TemplateRoot {
+export class ValuesTemplateRoot implements TemplateRoot {
   private readonly _part: ChildNodePart;
 
   private _bindings: Binding<unknown>[];
@@ -62,7 +62,7 @@ export class ValueTemplateRoot implements TemplateRoot {
   bindValues(newValues: unknown[], updater: Updater<unknown>): void {
     if (newValues.length !== this._bindings.length) {
       throw new Error(
-        `The number of new values must be ${this._bindings.length}, but got ${newValues.length}.`,
+        `The number of values must be ${this._bindings.length}, but got ${newValues.length}.`,
       );
     }
 

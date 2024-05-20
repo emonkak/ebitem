@@ -37,9 +37,9 @@ export {
   TaggedTemplateRoot,
 } from './template/taggedTemplate.js';
 export {
-  ValueTemplate,
-  ValueTemplateRoot,
-} from './template/valueTemplate.js';
+  ValuesTemplate,
+  ValuesTemplateRoot,
+} from './template/valuesTemplate.js';
 export {
   type Effect,
   type Component,
