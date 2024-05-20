@@ -2,8 +2,8 @@ import {
   Binding,
   Directive,
   Part,
-  createBinding,
   directiveTag,
+  initializeBinding,
   updateBinding,
 } from '../binding.js';
 import type { Updater } from '../updater.js';
@@ -138,7 +138,7 @@ export class ChoiceBinding<TKey, TValue>
       cachedBinding.bind(updater);
       return cachedBinding;
     } else {
-      return createBinding(newValue, this._part, updater);
+      return initializeBinding(newValue, this._part, updater);
     }
   }
 }

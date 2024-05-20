@@ -2,7 +2,7 @@ import {
   Binding,
   ChildNodePart,
   PartType,
-  createBinding,
+  initializeBinding,
   updateBinding,
 } from '../binding.js';
 import { Template, TemplateRoot } from '../template.js';
@@ -35,8 +35,12 @@ export class SlotTemplate<TElementValue, TChildNodeValue>
       type: PartType.ChildNode,
       node: document.createComment(''),
     } as const;
-    const elementBinding = createBinding(elementValue, elementPart, updater);
-    const childNodeBinding = createBinding(
+    const elementBinding = initializeBinding(
+      elementValue,
+      elementPart,
+      updater,
+    );
+    const childNodeBinding = initializeBinding(
       childNodeValue,
       childNodePart,
       updater,

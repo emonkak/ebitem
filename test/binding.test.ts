@@ -8,8 +8,8 @@ import {
   PartType,
   PropertyBinding,
   SpreadBinding,
-  createBinding,
   directiveTag,
+  initializeBinding,
   updateBinding,
 } from '../src/binding.js';
 import { DefaultScope } from '../src/scope.js';
@@ -1026,7 +1026,7 @@ describe('SpreadBinding', () => {
   });
 });
 
-describe('createBinding()', () => {
+describe('initializeBinding()', () => {
   it('should perform the value if it is a directive', () => {
     const part = {
       type: PartType.Node,
@@ -1035,7 +1035,7 @@ describe('createBinding()', () => {
     const directive = new MockDirective();
     const directiveSpy = vi.spyOn(directive, directiveTag);
     const updater = new SyncUpdater(new DefaultScope());
-    const binding = createBinding(directive, part, updater);
+    const binding = initializeBinding(directive, part, updater);
 
     expect(binding).toBeInstanceOf(MockBinding);
     expect(directiveSpy).toHaveBeenCalledOnce();
@@ -1050,7 +1050,7 @@ describe('createBinding()', () => {
       name: 'class',
     } as const;
     const updater = new SyncUpdater(new DefaultScope());
-    const binding = createBinding('foo', part, updater);
+    const binding = initializeBinding('foo', part, updater);
 
     updater.flush();
 
@@ -1068,7 +1068,7 @@ describe('createBinding()', () => {
     } as const;
     const event = new CustomEvent('hello');
     const updater = new SyncUpdater(new DefaultScope());
-    const binding = createBinding(listener, part, updater);
+    const binding = initializeBinding(listener, part, updater);
 
     updater.flush();
 
@@ -1087,7 +1087,7 @@ describe('createBinding()', () => {
       name: 'className',
     } as const;
     const updater = new SyncUpdater(new DefaultScope());
-    const binding = createBinding('foo', part, updater);
+    const binding = initializeBinding('foo', part, updater);
 
     updater.flush();
 
@@ -1102,7 +1102,7 @@ describe('createBinding()', () => {
       node,
     } as const;
     const updater = new SyncUpdater(new DefaultScope());
-    const binding = createBinding('foo', part, updater);
+    const binding = initializeBinding('foo', part, updater);
 
     updater.flush();
 
@@ -1117,7 +1117,7 @@ describe('createBinding()', () => {
       node,
     } as const;
     const updater = new SyncUpdater(new DefaultScope());
-    const binding = createBinding('foo', part, updater);
+    const binding = initializeBinding('foo', part, updater);
 
     updater.flush();
 
@@ -1132,7 +1132,7 @@ describe('createBinding()', () => {
       node: element,
     } as const;
     const updater = new SyncUpdater(new DefaultScope());
-    const binding = createBinding(
+    const binding = initializeBinding(
       {
         class: 'foo',
         title: 'bar',

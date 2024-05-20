@@ -410,7 +410,7 @@ export class SpreadBinding implements Binding<unknown> {
     return this._part.node;
   }
 
-  get value(): SpreadProps {
+  get value(): unknown {
     return this._props;
   }
 
@@ -435,7 +435,7 @@ export class SpreadBinding implements Binding<unknown> {
         updateBinding(binding, value, updater);
       } else {
         const part = resolveSpreadPart(name, this._part.node);
-        binding = createBinding(value, part, updater);
+        binding = initializeBinding(value, part, updater);
       }
 
       this._bindings.set(name, binding);
@@ -464,7 +464,7 @@ export class SpreadBinding implements Binding<unknown> {
   }
 }
 
-export function createBinding<TValue, TContext>(
+export function initializeBinding<TValue, TContext>(
   value: TValue,
   part: Part,
   updater: Updater<TContext>,
@@ -476,6 +476,10 @@ export function createBinding<TValue, TContext>(
     binding.bind(updater);
     return binding;
   }
+}
+
+export function isDirective(value: unknown): value is Directive<unknown> {
+  return value !== null && typeof value === 'object' && directiveTag in value;
 }
 
 export function mountValue<TValue, TContext>(
@@ -494,7 +498,7 @@ export function mountValue<TValue, TContext>(
     },
   });
 
-  const binding = createBinding(value, part, updater);
+  const binding = initializeBinding(value, part, updater);
 
   if (!updater.isUpdating()) {
     updater.scheduleUpdate();
@@ -535,10 +539,6 @@ export function updateBinding<TValue, TContext>(
     binding.value = newValue;
     binding.bind(updater);
   }
-}
-
-export function isDirective(value: unknown): value is Directive<unknown> {
-  return value !== null && typeof value === 'object' && directiveTag in value;
 }
 
 function isEventListener(

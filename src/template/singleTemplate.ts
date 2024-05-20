@@ -2,7 +2,7 @@ import {
   Binding,
   ChildNodePart,
   PartType,
-  createBinding,
+  initializeBinding,
   updateBinding,
 } from '../binding.js';
 import { Template, TemplateRoot } from '../template.js';
@@ -24,7 +24,7 @@ export class ChildNodeTemplate<T> implements Template<T> {
       type: PartType.ChildNode,
       node: document.createComment(''),
     } as const;
-    const binding = createBinding(data, part, updater);
+    const binding = initializeBinding(data, part, updater);
     return new SingleTemplateRoot(binding);
   }
 
@@ -49,7 +49,7 @@ export class TextTemplate<T> implements Template<T> {
       type: PartType.Node,
       node: document.createTextNode(''),
     } as const;
-    const binding = createBinding(data, part, updater);
+    const binding = initializeBinding(data, part, updater);
     return new SingleTemplateRoot(binding);
   }
 

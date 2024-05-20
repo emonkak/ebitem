@@ -3,7 +3,7 @@ import {
   ChildNodePart,
   Part,
   PartType,
-  createBinding,
+  initializeBinding,
   updateBinding,
 } from '../binding.js';
 import type { Template, TemplateRoot } from '../template.js';
@@ -178,7 +178,11 @@ export class TaggedTemplate implements Template<unknown[]> {
               break;
           }
 
-          bindings[holeIndex] = createBinding(data[holeIndex], part, updater);
+          bindings[holeIndex] = initializeBinding(
+            data[holeIndex],
+            part,
+            updater,
+          );
           holeIndex++;
 
           if (holeIndex >= holes.length) {

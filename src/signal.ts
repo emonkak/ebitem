@@ -2,8 +2,8 @@ import {
   Binding,
   Directive,
   Part,
-  createBinding,
   directiveTag,
+  initializeBinding,
 } from './binding.js';
 import { Context, UsableObject, usableTag } from './context.js';
 import { LinkedList } from './linkedList.js';
@@ -51,7 +51,7 @@ export abstract class Signal<T> implements Directive, UsableObject<void> {
   }
 
   [directiveTag](part: Part, updater: Updater): SignalBinding<T> {
-    const valueBinding = createBinding(this.value, part, updater);
+    const valueBinding = initializeBinding(this.value, part, updater);
     const binding = new SignalBinding(this, valueBinding);
 
     binding.init(updater);

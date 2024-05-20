@@ -4,8 +4,8 @@ import {
   Directive,
   Part,
   PartType,
-  createBinding,
   directiveTag,
+  initializeBinding,
   updateBinding,
 } from '../binding.js';
 import type { Effect, Updater } from '../updater.js';
@@ -348,7 +348,7 @@ function mountItem<T>(value: T, listPart: Part, updater: Updater): Binding<T> {
 
   updater.enqueueMutationEffect(new MountPart(part, listPart));
 
-  return createBinding(value, part, updater);
+  return initializeBinding(value, part, updater);
 }
 
 function moveNodes(

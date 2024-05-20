@@ -2,8 +2,8 @@ import {
   Binding,
   Directive,
   Part,
-  createBinding,
   directiveTag,
+  initializeBinding,
   updateBinding,
 } from '../binding.js';
 import type { Updater } from '../updater.js';
@@ -173,7 +173,7 @@ export class ConditionBinding<TTrue, TFalse>
       this._trueBinding.bind(updater);
       return this._trueBinding;
     } else {
-      return createBinding(newValue, this._part, updater);
+      return initializeBinding(newValue, this._part, updater);
     }
   }
 
@@ -186,7 +186,7 @@ export class ConditionBinding<TTrue, TFalse>
       this._falseBinding.bind(updater);
       return this._falseBinding;
     } else {
-      return createBinding(newValue, this._part, updater);
+      return initializeBinding(newValue, this._part, updater);
     }
   }
 }
