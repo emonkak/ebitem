@@ -22,10 +22,13 @@ export interface Scope<TContext = unknown> {
 
   createHTMLTemplate(
     tokens: ReadonlyArray<string>,
-    values: unknown[],
-  ): Template;
+    data: unknown[],
+  ): Template<unknown[]>;
 
-  createSVGTemplate(tokens: ReadonlyArray<string>, values: unknown[]): Template;
+  createSVGTemplate(
+    tokens: ReadonlyArray<string>,
+    data: unknown[],
+  ): Template<unknown[]>;
 }
 
 export class DefaultScope implements Scope<Context> {
@@ -36,8 +39,10 @@ export class DefaultScope implements Scope<Context> {
   private readonly _namespaces: WeakMap<Component<Context>, Namespace> =
     new WeakMap();
 
-  private readonly _cachedTemplates: WeakMap<TemplateStringsArray, Template> =
-    new WeakMap();
+  private readonly _cachedTemplates: WeakMap<
+    TemplateStringsArray,
+    Template<unknown>
+  > = new WeakMap();
 
   constructor(globalNamespace: Namespace = {}) {
     this._globalNamespace = globalNamespace;
@@ -71,8 +76,8 @@ export class DefaultScope implements Scope<Context> {
 
   createHTMLTemplate(
     tokens: TemplateStringsArray,
-    _values: unknown[],
-  ): Template {
+    _data: unknown[],
+  ): Template<unknown[]> {
     let template = this._cachedTemplates.get(tokens);
 
     if (template === undefined) {
@@ -85,8 +90,8 @@ export class DefaultScope implements Scope<Context> {
 
   createSVGTemplate(
     tokens: TemplateStringsArray,
-    _values: unknown[],
-  ): Template {
+    _data: unknown[],
+  ): Template<unknown[]> {
     let template = this._cachedTemplates.get(tokens);
 
     if (template === undefined) {

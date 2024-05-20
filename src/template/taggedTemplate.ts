@@ -58,7 +58,7 @@ export interface PropertyHole {
 const MARKER_REGEXP =
   /^\?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\?$/;
 
-export class TaggedTemplate implements Template {
+export class TaggedTemplate implements Template<unknown[]> {
   static parseHTML(
     tokens: ReadonlyArray<string>,
     marker: string,
@@ -107,12 +107,12 @@ export class TaggedTemplate implements Template {
     return this._holes;
   }
 
-  hydrate(values: unknown[], updater: Updater): TaggedTemplateRoot {
+  hydrate(data: unknown[], updater: Updater): TaggedTemplateRoot {
     const holes = this._holes;
 
-    if (holes.length !== values.length) {
+    if (holes.length !== data.length) {
       throw new Error(
-        `The number of holes was ${holes.length}, but the number of values was ${values.length}. There may be multiple holes indicating the same attribute.`,
+        `The number of holes was ${holes.length}, but the number of data was ${data.length}. There may be multiple holes indicating the same attribute.`,
       );
     }
 
@@ -178,7 +178,7 @@ export class TaggedTemplate implements Template {
               break;
           }
 
-          bindings[holeIndex] = createBinding(values[holeIndex], part, updater);
+          bindings[holeIndex] = createBinding(data[holeIndex], part, updater);
           holeIndex++;
 
           if (holeIndex >= holes.length) {
@@ -194,9 +194,17 @@ export class TaggedTemplate implements Template {
 
     return new TaggedTemplateRoot(bindings, [...rootNode.childNodes]);
   }
+
+  sameTemplate(other: Template<unknown[]>): boolean {
+    return (
+      other instanceof TaggedTemplate &&
+      other._element === this._element &&
+      other._holes === this._holes
+    );
+  }
 }
 
-export class TaggedTemplateRoot implements TemplateRoot {
+export class TaggedTemplateRoot implements TemplateRoot<unknown[]> {
   private readonly _bindings: Binding<unknown>[];
 
   private readonly _childNodes: ChildNode[];
@@ -224,19 +232,19 @@ export class TaggedTemplateRoot implements TemplateRoot {
     return this._bindings;
   }
 
-  bindValues(newValues: unknown[], updater: Updater): void {
-    if (newValues.length !== this._bindings.length) {
+  bindData(newData: unknown[], updater: Updater): void {
+    if (newData.length !== this._bindings.length) {
       throw new Error(
-        `The number of new values must be ${this._bindings.length}, but got ${newValues.length}.`,
+        `The number of new data must be ${this._bindings.length}, but got ${newData.length}.`,
       );
     }
 
     for (let i = 0, l = this._bindings.length; i < l; i++) {
-      updateBinding(this._bindings[i]!, newValues[i]!, updater);
+      updateBinding(this._bindings[i]!, newData[i]!, updater);
     }
   }
 
-  unbindValues(updater: Updater): void {
+  unbindData(updater: Updater): void {
     const rootNode = this._startNode.parentNode;
 
     for (let i = 0, l = this._bindings.length; i < l; i++) {

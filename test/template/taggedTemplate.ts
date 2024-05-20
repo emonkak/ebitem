@@ -412,7 +412,7 @@ describe('TaggedTemplateRoot', () => {
     });
   });
 
-  describe('.bindValues()', () => {
+  describe('.bindData()', () => {
     it('should update bindings with new values', () => {
       const template = html`
         <p>Count: ${0}</p>
@@ -427,7 +427,7 @@ describe('TaggedTemplateRoot', () => {
         '<p>Count: 0</p>',
       );
 
-      root.bindValues([1], updater);
+      root.bindData([1], updater);
 
       updater.flush();
 

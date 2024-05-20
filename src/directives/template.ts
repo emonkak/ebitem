@@ -22,25 +22,28 @@ const TemplateFlags = {
   UNMOUNTING: 1 << 2,
 };
 
-export class TemplateDirective implements Directive {
-  private readonly _template: Template;
+export class TemplateDirective<TData> implements Directive {
+  private readonly _template: Template<TData>;
 
-  private readonly _values: unknown[];
+  private readonly _data: TData;
 
-  constructor(template: Template, values: unknown[]) {
+  constructor(template: Template<TData>, data: TData) {
     this._template = template;
-    this._values = values;
+    this._data = data;
   }
 
-  get template(): Template {
+  get template(): Template<TData> {
     return this._template;
   }
 
-  get values(): unknown[] {
-    return this._values;
+  get data(): TData {
+    return this._data;
   }
 
-  [directiveTag](part: Part, updater: Updater): Binding<TemplateDirective> {
+  [directiveTag](
+    part: Part,
+    updater: Updater,
+  ): Binding<TemplateDirective<TData>> {
     if (part.type !== PartType.ChildNode) {
       throw new Error('TemplateDirective must be used in ChildNodePart.');
     }
@@ -53,27 +56,27 @@ export class TemplateDirective implements Directive {
   }
 }
 
-export class TemplateBinding
-  implements Binding<TemplateDirective>, Effect, Component
+export class TemplateBinding<TData>
+  implements Binding<TemplateDirective<TData>>, Effect, Component
 {
   private readonly _part: ChildNodePart;
 
   private readonly _parent: Component | null;
 
-  private _value: TemplateDirective;
+  private _value: TemplateDirective<TData>;
 
-  private _memoizedRoot: TemplateRoot | null = null;
+  private _memoizedRoot: TemplateRoot<TData> | null = null;
 
-  private _pendingRoot: TemplateRoot | null = null;
+  private _pendingRoot: TemplateRoot<TData> | null = null;
 
-  private _template: Template | null = null;
+  private _template: Template<TData> | null = null;
 
   private _priority: TaskPriority = LOWEST_PRIORITY;
 
   private _flags = TemplateFlags.NONE;
 
   constructor(
-    value: TemplateDirective,
+    value: TemplateDirective<TData>,
     part: ChildNodePart,
     parent: Component | null = null,
   ) {
@@ -94,7 +97,7 @@ export class TemplateBinding
     return this._part.node;
   }
 
-  get value(): TemplateDirective {
+  get value(): TemplateDirective<TData> {
     return this._value;
   }
 
@@ -113,7 +116,7 @@ export class TemplateBinding
     );
   }
 
-  set value(newValue: TemplateDirective) {
+  set value(newValue: TemplateDirective<TData>) {
     this._value = newValue;
   }
 
@@ -142,10 +145,10 @@ export class TemplateBinding
   }
 
   unbind(updater: Updater): void {
-    this._pendingRoot?.unbindValues(updater);
+    this._pendingRoot?.unbindData(updater);
 
     if (this._memoizedRoot !== this._pendingRoot) {
-      this._memoizedRoot?.unbindValues(updater);
+      this._memoizedRoot?.unbindData(updater);
     }
 
     this._requestMutation(updater);
@@ -156,20 +159,20 @@ export class TemplateBinding
   }
 
   render(updater: Updater, _scope: Scope): void {
-    const { template, values } = this._value;
+    const { template, data } = this._value;
 
     if (this._pendingRoot !== null) {
-      if (this._template === template) {
-        this._pendingRoot.bindValues(values, updater);
+      if (this._template && this._template.sameTemplate(template)) {
+        this._pendingRoot.bindData(data, updater);
       } else {
-        this._pendingRoot.unbindValues(updater);
+        this._pendingRoot.unbindData(updater);
         this._pendingRoot = null;
       }
     }
 
     if (this._pendingRoot === null) {
       this._requestMutation(updater);
-      this._pendingRoot = template.hydrate(values, updater);
+      this._pendingRoot = template.hydrate(data, updater);
     }
 
     this._template = template;
@@ -199,7 +202,7 @@ export class TemplateBinding
     this._pendingRoot = null;
   }
 
-  private _requestMutation(updater: Updater) {
+  private _requestMutation(updater: Updater): void {
     if (!(this._flags & TemplateFlags.MUTATING)) {
       updater.enqueueMutationEffect(this);
       this._flags |= TemplateFlags.MUTATING;

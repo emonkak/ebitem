@@ -22,7 +22,7 @@ import { AtomSignal, Signal } from '@emonkak/ebitem/signal.js';
 
 const counterSignal = new AtomSignal(0);
 
-function App(_props: {}, context: Context): TemplateDirective {
+function App(_props: {}, context: Context) {
   const [items, setItems] = context.useState([
     'foo',
     'bar',
@@ -104,7 +104,7 @@ function App(_props: {}, context: Context): TemplateDirective {
       r: 50,
       fill: 'red',
     })} /></svg>
-    <${block(SingleValue, { value: 'Hello' })} />
+    <${block(SingleText<string>, { value: 'Hello' })} />
   `;
 }
 
@@ -115,10 +115,7 @@ interface CircleProps {
   fill: string;
 }
 
-function Circle(
-  { cx, cy, r, fill }: CircleProps,
-  context: Context,
-): TemplateDirective {
+function Circle({ cx, cy, r, fill }: CircleProps, context: Context) {
   return context.svg`
     <circle cx=${cx} cy=${cy} r=${r} fill=${fill} />
   `;
@@ -131,10 +128,7 @@ interface ItemProps {
   onDelete: () => void;
 }
 
-function Item(
-  { title, onUp, onDown, onDelete }: ItemProps,
-  context: Context,
-): TemplateDirective {
+function Item({ title, onUp, onDown, onDelete }: ItemProps, context: Context) {
   const state = context.getContextValue('state');
 
   return context.html`
@@ -151,7 +145,7 @@ interface CounterProps {
   count: Signal<number>;
 }
 
-function Counter({ count }: CounterProps, context: Context): TemplateDirective {
+function Counter({ count }: CounterProps, context: Context) {
   const countLabelRef = context.useRef<Element | null>(null);
 
   context.use(count);
@@ -184,11 +178,11 @@ function Counter({ count }: CounterProps, context: Context): TemplateDirective {
   `;
 }
 
-function SingleValue(
-  { value }: { value: unknown },
+function SingleText<T>(
+  { value }: { value: T },
   context: Context,
-): TemplateDirective {
-  return context.values(value);
+): TemplateDirective<T> {
+  return context.text(value);
 }
 
 function shuffle<T>(elements: T[]): T[] {

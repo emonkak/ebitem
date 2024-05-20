@@ -37,9 +37,10 @@ export {
   TaggedTemplateRoot,
 } from './template/taggedTemplate.js';
 export {
-  ValuesTemplate,
-  ValuesTemplateRoot,
-} from './template/valuesTemplate.js';
+  ChildNodeTemplate,
+  SingleTemplateRoot,
+  TextTemplate,
+} from './template/singleTemplate.js';
 export {
   type Effect,
   type Component,

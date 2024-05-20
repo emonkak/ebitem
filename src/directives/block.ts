@@ -17,10 +17,10 @@ import type { Template, TemplateRoot } from '../template.js';
 import type { Component, Effect, Updater } from '../updater.js';
 import type { TemplateDirective } from './template.js';
 
-export type BlockType<TProps, TContext> = (
+export type BlockType<TProps, TContext, TData> = (
   props: TProps,
   context: TContext,
-) => TemplateDirective;
+) => TemplateDirective<TData>;
 
 const BlockFlags = {
   NONE: 0,
@@ -29,24 +29,26 @@ const BlockFlags = {
   UNMOUNTING: 1 << 2,
 };
 
-export function block<TProps, TContext>(
-  type: BlockType<TProps, TContext>,
+export function block<TProps, TContext, TData>(
+  type: BlockType<TProps, TContext, TData>,
   props: TProps,
-): BlockDirective<TProps, TContext> {
+): BlockDirective<TProps, TContext, TData> {
   return new BlockDirective(type, props);
 }
 
-export class BlockDirective<TProps, TContext> implements Directive<TContext> {
-  private readonly _type: BlockType<TProps, TContext>;
+export class BlockDirective<TProps, TContext, TData>
+  implements Directive<TContext>
+{
+  private readonly _type: BlockType<TProps, TContext, TData>;
 
   private readonly _props: TProps;
 
-  constructor(type: BlockType<TProps, TContext>, props: TProps) {
+  constructor(type: BlockType<TProps, TContext, TData>, props: TProps) {
     this._type = type;
     this._props = props;
   }
 
-  get type(): BlockType<TProps, TContext> {
+  get type(): BlockType<TProps, TContext, TData> {
     return this._type;
   }
 
@@ -57,7 +59,7 @@ export class BlockDirective<TProps, TContext> implements Directive<TContext> {
   [directiveTag](
     part: Part,
     updater: Updater<TContext>,
-  ): BlockBinding<TProps, TContext> {
+  ): BlockBinding<TProps, TContext, TData> {
     if (part.type !== PartType.ChildNode) {
       throw new Error('BlockDirective must be used in ChildNodePart.');
     }
@@ -70,9 +72,9 @@ export class BlockDirective<TProps, TContext> implements Directive<TContext> {
   }
 }
 
-export class BlockBinding<TProps, TContext>
+export class BlockBinding<TProps, TContext, TData>
   implements
-    Binding<BlockDirective<TProps, TContext>>,
+    Binding<BlockDirective<TProps, TContext, TData>>,
     Effect,
     Component<TContext>
 {
@@ -80,17 +82,18 @@ export class BlockBinding<TProps, TContext>
 
   private readonly _parent: Component<TContext> | null;
 
-  private _value: BlockDirective<TProps, TContext>;
+  private _value: BlockDirective<TProps, TContext, TData>;
 
-  private _memoizedType: BlockType<TProps, TContext> | null = null;
+  private _memoizedType: BlockType<TProps, TContext, TData> | null = null;
 
-  private _memoizedTemplate: Template | null = null;
+  private _memoizedTemplate: Template<TData> | null = null;
 
-  private _pendingRoot: TemplateRoot | null = null;
+  private _pendingRoot: TemplateRoot<TData> | null = null;
 
-  private _memoizedRoot: TemplateRoot | null = null;
+  private _memoizedRoot: TemplateRoot<TData> | null = null;
 
-  private _cachedRoots: WeakMap<Template, TemplateRoot> | null = null;
+  private _cachedRoots: WeakMap<Template<TData>, TemplateRoot<TData>> | null =
+    null;
 
   private _hooks: Hook[] = [];
 
@@ -99,7 +102,7 @@ export class BlockBinding<TProps, TContext>
   private _flags = BlockFlags.NONE;
 
   constructor(
-    value: BlockDirective<TProps, TContext>,
+    value: BlockDirective<TProps, TContext, TData>,
     part: ChildNodePart,
     parent: Component<TContext> | null = null,
   ) {
@@ -134,11 +137,11 @@ export class BlockBinding<TProps, TContext>
     );
   }
 
-  get value(): BlockDirective<TProps, TContext> {
+  get value(): BlockDirective<TProps, TContext, TData> {
     return this._value;
   }
 
-  set value(newValue: BlockDirective<TProps, TContext>) {
+  set value(newValue: BlockDirective<TProps, TContext, TData>) {
     this._value = newValue;
   }
 
@@ -167,10 +170,10 @@ export class BlockBinding<TProps, TContext>
   }
 
   unbind(updater: Updater): void {
-    this._pendingRoot?.unbindValues(updater);
+    this._pendingRoot?.unbindData(updater);
 
     if (this._memoizedRoot !== this._pendingRoot) {
-      this._memoizedRoot?.unbindValues(updater);
+      this._memoizedRoot?.unbindData(updater);
     }
 
     this._cleanHooks();
@@ -190,7 +193,7 @@ export class BlockBinding<TProps, TContext>
 
     const previousNumberOfHooks = this._hooks.length;
     const context = scope.createContext(this, this._hooks, updater);
-    const { template, values } = type(props, context);
+    const { template, data } = type(props, context);
 
     if (this._pendingRoot !== null) {
       if (this._hooks.length !== previousNumberOfHooks) {
@@ -200,8 +203,8 @@ export class BlockBinding<TProps, TContext>
       }
 
       if (this._memoizedTemplate !== template) {
-        // First, unbind values of the current root.
-        this._pendingRoot.unbindValues(updater);
+        // First, unbind data of the current root.
+        this._pendingRoot.unbindData(updater);
 
         // We need to mount child nodes before hydration.
         this._requestMutation(updater);
@@ -211,15 +214,15 @@ export class BlockBinding<TProps, TContext>
         if (this._cachedRoots !== null) {
           nextRoot = this._cachedRoots.get(template);
           if (nextRoot !== undefined) {
-            nextRoot.bindValues(values, updater);
+            nextRoot.bindData(data, updater);
           } else {
-            nextRoot = template.hydrate(values, updater);
+            nextRoot = template.hydrate(data, updater);
           }
         } else {
           // It is rare that different templates are returned, so we defer
           // creating root caches.
           this._cachedRoots = new WeakMap();
-          nextRoot = template.hydrate(values, updater);
+          nextRoot = template.hydrate(data, updater);
         }
 
         // Remember the previous root for future renderings.
@@ -227,13 +230,13 @@ export class BlockBinding<TProps, TContext>
 
         this._pendingRoot = nextRoot;
       } else {
-        this._pendingRoot.bindValues(values, updater);
+        this._pendingRoot.bindData(data, updater);
       }
     } else {
       // Child nodes must be mounted before hydration.
       this._requestMutation(updater);
 
-      this._pendingRoot = template.hydrate(values, updater);
+      this._pendingRoot = template.hydrate(data, updater);
     }
 
     this._memoizedType = this._value.type;

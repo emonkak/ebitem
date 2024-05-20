@@ -1,7 +1,8 @@
+import { PartType } from './binding.js';
 import { TemplateDirective } from './directives/template.js';
 import type { TaskPriority } from './scheduler.js';
 import type { Scope } from './scope.js';
-import { ValueTemplate } from './template/valueTemplate.js';
+import { ChildNodeTemplate, TextTemplate } from './template/singleTemplate.js';
 import type { Component, Effect, Updater } from './updater.js';
 
 export type Hook = EffectHook | MemoHook<any> | ReducerHook<any, any>;
@@ -83,6 +84,11 @@ export class Context {
     this._scope = scope;
   }
 
+  childNode<T>(value: T): TemplateDirective<T> {
+    const template = ChildNodeTemplate.instance;
+    return new TemplateDirective(template, value);
+  }
+
   getContextValue<T>(key: PropertyKey): T | undefined {
     let component: Component<Context> | null = this._component;
     do {
@@ -94,9 +100,12 @@ export class Context {
     return undefined;
   }
 
-  html(tokens: ReadonlyArray<string>, ...values: unknown[]): TemplateDirective {
-    const template = this._scope.createHTMLTemplate(tokens, values);
-    return new TemplateDirective(template, values);
+  html(
+    tokens: ReadonlyArray<string>,
+    ...data: unknown[]
+  ): TemplateDirective<unknown[]> {
+    const template = this._scope.createHTMLTemplate(tokens, data);
+    return new TemplateDirective(template, data);
   }
 
   requestUpdate(): void {
@@ -110,9 +119,17 @@ export class Context {
     this._scope.setVariable(key, value, this._component);
   }
 
-  svg(tokens: ReadonlyArray<string>, ...values: unknown[]): TemplateDirective {
-    const template = this._scope.createSVGTemplate(tokens, values);
-    return new TemplateDirective(template, values);
+  svg(
+    tokens: ReadonlyArray<string>,
+    ...data: unknown[]
+  ): TemplateDirective<unknown[]> {
+    const template = this._scope.createSVGTemplate(tokens, data);
+    return new TemplateDirective(template, data);
+  }
+
+  text<T>(value: T): TemplateDirective<T> {
+    const template = TextTemplate.instance;
+    return new TemplateDirective(template, value);
   }
 
   use<TResult>(usable: Usable<TResult>): TResult {
@@ -311,11 +328,6 @@ export class Context {
       [subscribe, priority],
     );
     return getSnapshot();
-  }
-
-  values(...values: unknown[]): TemplateDirective {
-    const template = ValueTemplate.instance;
-    return new TemplateDirective(template, values);
   }
 }
 
