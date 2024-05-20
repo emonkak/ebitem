@@ -44,15 +44,13 @@ export interface RefObject<T> {
   current: T;
 }
 
-export type InitialState<TState> = (() => TState) | TState extends Function
-  ? never
-  : TState;
+export type InitialState<TState> = TState extends Function
+  ? () => TState
+  : (() => TState) | TState;
 
-export type NewState<TState> =
-  | ((prevState: TState) => TState)
-  | TState extends Function
-  ? never
-  : TState;
+export type NewState<TState> = TState extends Function
+  ? (prevState: TState) => TState
+  : ((prevState: TState) => TState) | TState;
 
 export enum HookType {
   Effect,
@@ -128,6 +126,19 @@ export class Context {
     dependencies: unknown[],
   ): TCallback {
     return this.useMemo(() => callback, dependencies);
+  }
+
+  useDeferredValue<TValue>(value: TValue, initialValue?: TValue): TValue {
+    const [deferredValue, setDeferredValue] = this.useState<TValue>(
+      (() => initialValue ?? value) as InitialState<TValue>,
+      'background',
+    );
+
+    this.useEffect(() => {
+      setDeferredValue((() => value) as NewState<TValue>);
+    }, [value]);
+
+    return deferredValue;
   }
 
   useEffect(callback: EffectCallback, dependencies?: unknown[]): void {
@@ -234,7 +245,8 @@ export class Context {
   useReducer<TState, TAction>(
     reducer: (state: TState, action: TAction) => TState,
     initialState: InitialState<TState>,
-  ): [TState, (action: TAction, priority?: TaskPriority) => void] {
+    priority?: TaskPriority,
+  ): [TState, (action: TAction) => void] {
     let currentHook = this._hooks[this._hookIndex];
 
     if (currentHook !== undefined) {
@@ -247,7 +259,7 @@ export class Context {
         type: HookType.Reducer,
         state:
           typeof initialState === 'function' ? initialState() : initialState,
-        dispatch: (action: TAction, priority?: TaskPriority) => {
+        dispatch: (action: TAction) => {
           const nextState = reducer(newHook.state, action);
           if (!Object.is(newHook.state, nextState)) {
             newHook.state = nextState;
@@ -273,11 +285,13 @@ export class Context {
 
   useState<TState>(
     initialState: InitialState<TState>,
-  ): [TState, (newState: NewState<TState>, priority?: TaskPriority) => void] {
+    priority?: TaskPriority,
+  ): [TState, (newState: NewState<TState>) => void] {
     return this.useReducer(
       (state, action) =>
         typeof action === 'function' ? action(state) : action,
       initialState,
+      priority,
     );
   }
 
@@ -347,7 +361,7 @@ function ensureHookType<TExpectedHook extends Hook>(
 ): asserts hook is TExpectedHook {
   if (hook.type !== expectedType) {
     throw new Error(
-      `Invalid hook type. Expected "${expectedType}" but got "${hook.type}".`,
+      `Unexpected hook type. Expected "${expectedType}" but got "${hook.type}".`,
     );
   }
 }
