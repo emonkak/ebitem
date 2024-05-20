@@ -4,7 +4,11 @@ import type { Updater } from '../updater.js';
 export class UnitDirective implements Directive {
   static instance: UnitDirective = new UnitDirective();
 
-  private constructor() {}
+  private constructor() {
+    if (UnitDirective.instance !== undefined) {
+      throw new Error('UnitDirective constructor cannot be called directly.');
+    }
+  }
 
   [directiveTag](part: Part, _updater: Updater): UnitBinding {
     return new UnitBinding(this, part);
