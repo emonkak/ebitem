@@ -14,7 +14,6 @@ export {
 export { ListDirective, list } from './directives/list.js';
 export { RefDirective, ref } from './directives/ref.js';
 export { type StyleMap, StyleDirective, style } from './directives/style.js';
-export { TemplateDirective } from './directives/template.js';
 export { UnitDirective } from './directives/unit.js';
 export { UnsafeHTMLDirective, unsafeHTML } from './directives/unsafeHTML.js';
 export { UnsafeSVGDirective, unsafeSVG } from './directives/unsafeSVG.js';

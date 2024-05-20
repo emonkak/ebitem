@@ -13,9 +13,8 @@ import {
   isHigherPriority,
 } from '../scheduler.js';
 import type { Scope } from '../scope.js';
-import type { Template, TemplateRoot } from '../template.js';
+import type { Template, TemplateDirective, TemplateRoot } from '../template.js';
 import type { Component, Effect, Updater } from '../updater.js';
-import type { TemplateDirective } from './template.js';
 
 export type BlockType<TProps, TContext, TData> = (
   props: TProps,

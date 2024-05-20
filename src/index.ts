@@ -31,6 +31,8 @@ export {
 export {
   type Template,
   type TemplateRoot,
+  TemplateBinding,
+  TemplateDirective,
 } from './template.js';
 export {
   TaggedTemplate,

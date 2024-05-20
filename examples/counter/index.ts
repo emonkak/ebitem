@@ -2,10 +2,10 @@ import {
   ConcurrentUpdater,
   Context,
   DefaultScope,
+  TemplateDirective,
   mountValue,
 } from '@emonkak/ebitem';
 import {
-  TemplateDirective,
   block,
   choice,
   classNames,
