@@ -39,7 +39,9 @@ const TemplateFlags = {
   UNMOUNTING: 1 << 2,
 };
 
-export class TemplateDirective<TData, TContext> implements Directive<TContext> {
+export class TemplateDirective<TData, TContext = unknown>
+  implements Directive<TContext>
+{
   private readonly _template: Template<TData, TContext>;
 
   private readonly _data: TData;

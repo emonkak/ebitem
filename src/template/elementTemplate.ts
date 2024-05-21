@@ -8,13 +8,13 @@ import {
 import { Template, TemplateRoot } from '../template.js';
 import { Updater } from '../updater.js';
 
-export interface SlotData<TElementValue, TChildNodeValue> {
+export interface ElementData<TElementValue, TChildNodeValue> {
   elementValue: TElementValue;
   childNodeValue: TChildNodeValue;
 }
 
-export class SlotTemplate<TElementValue, TChildNodeValue>
-  implements Template<SlotData<TElementValue, TChildNodeValue>>
+export class ElementTemplate<TElementValue, TChildNodeValue>
+  implements Template<ElementData<TElementValue, TChildNodeValue>>
 {
   private readonly _type: string;
 
@@ -23,9 +23,9 @@ export class SlotTemplate<TElementValue, TChildNodeValue>
   }
 
   hydrate(
-    data: SlotData<TElementValue, TChildNodeValue>,
+    data: ElementData<TElementValue, TChildNodeValue>,
     updater: Updater<unknown>,
-  ): SlotTemplateRoot<TElementValue, TChildNodeValue> {
+  ): ElementTemplateRoot<TElementValue, TChildNodeValue> {
     const { elementValue, childNodeValue } = data;
     const elementPart = {
       type: PartType.Element,
@@ -45,18 +45,18 @@ export class SlotTemplate<TElementValue, TChildNodeValue>
       childNodePart,
       updater,
     );
-    return new SlotTemplateRoot(elementBinding, childNodeBinding);
+    return new ElementTemplateRoot(elementBinding, childNodeBinding);
   }
 
   sameTemplate(
-    other: Template<SlotData<TElementValue, TChildNodeValue>>,
+    other: Template<ElementData<TElementValue, TChildNodeValue>>,
   ): boolean {
-    return other instanceof SlotTemplate && other._type === this._type;
+    return other instanceof ElementTemplate && other._type === this._type;
   }
 }
 
-export class SlotTemplateRoot<TElementValue, TChildNodeValue>
-  implements TemplateRoot<SlotData<TElementValue, TChildNodeValue>>
+export class ElementTemplateRoot<TElementValue, TChildNodeValue>
+  implements TemplateRoot<ElementData<TElementValue, TChildNodeValue>>
 {
   private readonly _elementBinding: Binding<TElementValue>;
 
@@ -79,7 +79,7 @@ export class SlotTemplateRoot<TElementValue, TChildNodeValue>
   }
 
   bindData(
-    newData: SlotData<TElementValue, TChildNodeValue>,
+    newData: ElementData<TElementValue, TChildNodeValue>,
     updater: Updater<unknown>,
   ): void {
     updateBinding(this._elementBinding, newData.elementValue, updater);

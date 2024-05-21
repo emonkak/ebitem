@@ -91,7 +91,7 @@ function App(_props: {}, context: Context) {
       </p>
       <${context.html`<div>Hello World!</div>`} />
       <${unsafeHTML('<div style="color: red">Hello World!</div>')} />
-      <${context.slot(
+      <${context.element(
         'article',
         { style: style({ color: 'blue' }) },
         context.html`<span>Hello World!</span>`,
@@ -168,7 +168,7 @@ function Counter({ count }: CounterProps, context: Context) {
       <span class="count-choose">${choice(count.value % 2, (count) =>
         count === 0 ? '(Even)' : '(Odd)',
       )}</span>
-      <${context.slot(
+      <${context.element(
         count.value % 2 === 0 ? 'strong' : 'em',
         { style: style({ color: 'blue' }) },
         context.html`<span>Hello World!</span>`,
@@ -180,7 +180,7 @@ function Counter({ count }: CounterProps, context: Context) {
 function SingleText<T>(
   { value }: { value: T },
   context: Context,
-): TemplateDirective<T> {
+): TemplateDirective<T, Context> {
   return context.text(value);
 }
 
