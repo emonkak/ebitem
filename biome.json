@@ -1,6 +1,6 @@
 {
   "files": {
-    "ignore": [".wireit", "node_modules"]
+    "ignore": ["node_modules"]
   },
   "javascript": {
     "formatter": {
