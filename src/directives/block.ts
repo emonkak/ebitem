@@ -16,10 +16,10 @@ import type { Scope } from '../scope.js';
 import type { Template, TemplateDirective, TemplateRoot } from '../template.js';
 import type { Component, Effect, Updater } from '../updater.js';
 
-export type BlockType<TProps, TContext, TData> = (
+export type BlockType<TProps, TData, TContext> = (
   props: TProps,
   context: TContext,
-) => TemplateDirective<TData>;
+) => TemplateDirective<TData, TContext>;
 
 const BlockFlags = {
   NONE: 0,
@@ -28,26 +28,26 @@ const BlockFlags = {
   UNMOUNTING: 1 << 2,
 };
 
-export function block<TProps, TContext, TData>(
-  type: BlockType<TProps, TContext, TData>,
+export function block<TProps, TData, TContext>(
+  type: BlockType<TProps, TData, TContext>,
   props: TProps,
-): BlockDirective<TProps, TContext, TData> {
+): BlockDirective<TProps, TData, TContext> {
   return new BlockDirective(type, props);
 }
 
-export class BlockDirective<TProps, TContext, TData>
+export class BlockDirective<TProps, TData, TContext>
   implements Directive<TContext>
 {
-  private readonly _type: BlockType<TProps, TContext, TData>;
+  private readonly _type: BlockType<TProps, TData, TContext>;
 
   private readonly _props: TProps;
 
-  constructor(type: BlockType<TProps, TContext, TData>, props: TProps) {
+  constructor(type: BlockType<TProps, TData, TContext>, props: TProps) {
     this._type = type;
     this._props = props;
   }
 
-  get type(): BlockType<TProps, TContext, TData> {
+  get type(): BlockType<TProps, TData, TContext> {
     return this._type;
   }
 
@@ -58,7 +58,7 @@ export class BlockDirective<TProps, TContext, TData>
   [directiveTag](
     part: Part,
     updater: Updater<TContext>,
-  ): BlockBinding<TProps, TContext, TData> {
+  ): BlockBinding<TProps, TData, TContext> {
     if (part.type !== PartType.ChildNode) {
       throw new Error('BlockDirective must be used in ChildNodePart.');
     }
@@ -71,9 +71,9 @@ export class BlockDirective<TProps, TContext, TData>
   }
 }
 
-export class BlockBinding<TProps, TContext, TData>
+export class BlockBinding<TProps, TData, TContext>
   implements
-    Binding<BlockDirective<TProps, TContext, TData>>,
+    Binding<BlockDirective<TProps, TData, TContext>, TContext>,
     Effect,
     Component<TContext>
 {
@@ -81,18 +81,20 @@ export class BlockBinding<TProps, TContext, TData>
 
   private readonly _parent: Component<TContext> | null;
 
-  private _value: BlockDirective<TProps, TContext, TData>;
+  private _value: BlockDirective<TProps, TData, TContext>;
 
-  private _memoizedType: BlockType<TProps, TContext, TData> | null = null;
+  private _memoizedType: BlockType<TProps, TData, TContext> | null = null;
 
-  private _memoizedTemplate: Template<TData> | null = null;
+  private _memoizedTemplate: Template<TData, TContext> | null = null;
 
-  private _pendingRoot: TemplateRoot<TData> | null = null;
+  private _pendingRoot: TemplateRoot<TData, TContext> | null = null;
 
-  private _memoizedRoot: TemplateRoot<TData> | null = null;
+  private _memoizedRoot: TemplateRoot<TData, TContext> | null = null;
 
-  private _cachedRoots: WeakMap<Template<TData>, TemplateRoot<TData>> | null =
-    null;
+  private _cachedRoots: WeakMap<
+    Template<TData, TContext>,
+    TemplateRoot<TData, TContext>
+  > | null = null;
 
   private _hooks: Hook[] = [];
 
@@ -101,7 +103,7 @@ export class BlockBinding<TProps, TContext, TData>
   private _flags = BlockFlags.NONE;
 
   constructor(
-    value: BlockDirective<TProps, TContext, TData>,
+    value: BlockDirective<TProps, TData, TContext>,
     part: ChildNodePart,
     parent: Component<TContext> | null = null,
   ) {
@@ -136,11 +138,11 @@ export class BlockBinding<TProps, TContext, TData>
     );
   }
 
-  get value(): BlockDirective<TProps, TContext, TData> {
+  get value(): BlockDirective<TProps, TData, TContext> {
     return this._value;
   }
 
-  set value(newValue: BlockDirective<TProps, TContext, TData>) {
+  set value(newValue: BlockDirective<TProps, TData, TContext>) {
     this._value = newValue;
   }
 
@@ -279,7 +281,7 @@ export class BlockBinding<TProps, TContext, TData>
     }
   }
 
-  private _requestMutation(updater: Updater): void {
+  private _requestMutation(updater: Updater<TContext>): void {
     if (!(this._flags & BlockFlags.MUTATING)) {
       updater.enqueueMutationEffect(this);
       this._flags |= BlockFlags.MUTATING;

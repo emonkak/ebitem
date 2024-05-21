@@ -5,7 +5,7 @@ import type { Component, Updater } from './updater.js';
 
 export type Namespace = { [key: PropertyKey]: unknown };
 
-export interface Scope<TContext = unknown> {
+export interface Scope<TContext> {
   getVariable(key: PropertyKey, component: Component<TContext>): unknown;
 
   setVariable(
@@ -23,12 +23,12 @@ export interface Scope<TContext = unknown> {
   createHTMLTemplate(
     tokens: ReadonlyArray<string>,
     data: unknown[],
-  ): Template<unknown[]>;
+  ): Template<unknown[], TContext>;
 
   createSVGTemplate(
     tokens: ReadonlyArray<string>,
     data: unknown[],
-  ): Template<unknown[]>;
+  ): Template<unknown[], TContext>;
 }
 
 export class DefaultScope implements Scope<Context> {
@@ -41,7 +41,7 @@ export class DefaultScope implements Scope<Context> {
 
   private readonly _cachedTemplates: WeakMap<
     TemplateStringsArray,
-    Template<unknown>
+    Template<unknown, Context>
   > = new WeakMap();
 
   constructor(globalNamespace: Namespace = {}) {
@@ -77,7 +77,7 @@ export class DefaultScope implements Scope<Context> {
   createHTMLTemplate(
     tokens: TemplateStringsArray,
     _data: unknown[],
-  ): Template<unknown[]> {
+  ): Template<unknown[], Context> {
     let template = this._cachedTemplates.get(tokens);
 
     if (template === undefined) {
@@ -91,7 +91,7 @@ export class DefaultScope implements Scope<Context> {
   createSVGTemplate(
     tokens: TemplateStringsArray,
     _data: unknown[],
-  ): Template<unknown[]> {
+  ): Template<unknown[], Context> {
     let template = this._cachedTemplates.get(tokens);
 
     if (template === undefined) {

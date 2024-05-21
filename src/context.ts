@@ -84,7 +84,7 @@ export class Context {
     this._scope = scope;
   }
 
-  childNode<T>(value: T): TemplateDirective<T> {
+  childNode<T>(value: T): TemplateDirective<T, Context> {
     const template = ChildNodeTemplate.instance;
     return new TemplateDirective(template, value);
   }
@@ -103,7 +103,7 @@ export class Context {
   html(
     tokens: ReadonlyArray<string>,
     ...data: unknown[]
-  ): TemplateDirective<unknown[]> {
+  ): TemplateDirective<unknown[], Context> {
     const template = this._scope.createHTMLTemplate(tokens, data);
     return new TemplateDirective(template, data);
   }
@@ -123,7 +123,7 @@ export class Context {
     type: string,
     elementValue: TElementValue,
     childNodeValue: TChildNodeValue,
-  ): TemplateDirective<SlotData<TElementValue, TChildNodeValue>> {
+  ): TemplateDirective<SlotData<TElementValue, TChildNodeValue>, Context> {
     const template = new SlotTemplate<TElementValue, TChildNodeValue>(type);
     return new TemplateDirective(template, { elementValue, childNodeValue });
   }
@@ -131,12 +131,12 @@ export class Context {
   svg(
     tokens: ReadonlyArray<string>,
     ...data: unknown[]
-  ): TemplateDirective<unknown[]> {
+  ): TemplateDirective<unknown[], Context> {
     const template = this._scope.createSVGTemplate(tokens, data);
     return new TemplateDirective(template, data);
   }
 
-  text<T>(value: T): TemplateDirective<T> {
+  text<T>(value: T): TemplateDirective<T, Context> {
     const template = TextTemplate.instance;
     return new TemplateDirective(template, value);
   }

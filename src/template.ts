@@ -14,15 +14,18 @@ import {
 import type { Scope } from './scope.js';
 import type { Component, Effect, Updater } from './updater.js';
 
-export interface Template<TData> {
-  hydrate(data: TData, updater: Updater): TemplateRoot<TData>;
-  sameTemplate(other: Template<TData>): boolean;
+export interface Template<TData, TContext = unknown> {
+  hydrate(
+    data: TData,
+    updater: Updater<TContext>,
+  ): TemplateRoot<TData, TContext>;
+  sameTemplate(other: Template<TData, TContext>): boolean;
 }
 
-export interface TemplateRoot<TData> {
+export interface TemplateRoot<TData, TContext = unknown> {
   get startNode(): ChildNode | null;
   get endNode(): ChildNode | null;
-  bindData(data: TData, updater: Updater): void;
+  bindData(data: TData, updater: Updater<TContext>): void;
   unbindData(updater: Updater): void;
   mount(part: ChildNodePart): void;
   unmount(part: ChildNodePart): void;
@@ -36,17 +39,17 @@ const TemplateFlags = {
   UNMOUNTING: 1 << 2,
 };
 
-export class TemplateDirective<TData> implements Directive {
-  private readonly _template: Template<TData>;
+export class TemplateDirective<TData, TContext> implements Directive<TContext> {
+  private readonly _template: Template<TData, TContext>;
 
   private readonly _data: TData;
 
-  constructor(template: Template<TData>, data: TData) {
+  constructor(template: Template<TData, TContext>, data: TData) {
     this._template = template;
     this._data = data;
   }
 
-  get template(): Template<TData> {
+  get template(): Template<TData, TContext> {
     return this._template;
   }
 
@@ -56,8 +59,8 @@ export class TemplateDirective<TData> implements Directive {
 
   [directiveTag](
     part: Part,
-    updater: Updater,
-  ): Binding<TemplateDirective<TData>> {
+    updater: Updater<TContext>,
+  ): Binding<TemplateDirective<TData, TContext>, TContext> {
     if (part.type !== PartType.ChildNode) {
       throw new Error('TemplateDirective must be used in ChildNodePart.');
     }
@@ -70,29 +73,32 @@ export class TemplateDirective<TData> implements Directive {
   }
 }
 
-export class TemplateBinding<TData>
-  implements Binding<TemplateDirective<TData>>, Effect, Component
+export class TemplateBinding<TData, TContext>
+  implements
+    Binding<TemplateDirective<TData, TContext>, TContext>,
+    Effect,
+    Component<TContext>
 {
   private readonly _part: ChildNodePart;
 
-  private readonly _parent: Component | null;
+  private readonly _parent: Component<TContext> | null;
 
-  private _value: TemplateDirective<TData>;
+  private _value: TemplateDirective<TData, TContext>;
 
-  private _memoizedRoot: TemplateRoot<TData> | null = null;
+  private _memoizedRoot: TemplateRoot<TData, TContext> | null = null;
 
-  private _pendingRoot: TemplateRoot<TData> | null = null;
+  private _pendingRoot: TemplateRoot<TData, TContext> | null = null;
 
-  private _template: Template<TData> | null = null;
+  private _template: Template<TData, TContext> | null = null;
 
   private _priority: TaskPriority = LOWEST_PRIORITY;
 
   private _flags = TemplateFlags.NONE;
 
   constructor(
-    value: TemplateDirective<TData>,
+    value: TemplateDirective<TData, TContext>,
     part: ChildNodePart,
-    parent: Component | null = null,
+    parent: Component<TContext> | null = null,
   ) {
     this._value = value;
     this._part = part;
@@ -111,11 +117,11 @@ export class TemplateBinding<TData>
     return this._part.node;
   }
 
-  get value(): TemplateDirective<TData> {
+  get value(): TemplateDirective<TData, TContext> {
     return this._value;
   }
 
-  get parent(): Component | null {
+  get parent(): Component<TContext> | null {
     return this._parent;
   }
 
@@ -130,11 +136,11 @@ export class TemplateBinding<TData>
     );
   }
 
-  set value(newValue: TemplateDirective<TData>) {
+  set value(newValue: TemplateDirective<TData, TContext>) {
     this._value = newValue;
   }
 
-  requestUpdate(updater: Updater, priority: TaskPriority): void {
+  requestUpdate(updater: Updater<TContext>, priority: TaskPriority): void {
     if (
       !(this._flags & TemplateFlags.UPDATING) ||
       isHigherPriority(priority, this._priority)
@@ -148,7 +154,7 @@ export class TemplateBinding<TData>
     this._flags &= ~TemplateFlags.UNMOUNTING;
   }
 
-  bind(updater: Updater): void {
+  bind(updater: Updater<TContext>): void {
     if (!(this._flags & TemplateFlags.UPDATING)) {
       this._priority = this._parent?.priority ?? updater.getCurrentPriority();
       this._flags |= TemplateFlags.UPDATING;
@@ -158,7 +164,7 @@ export class TemplateBinding<TData>
     this._flags &= ~TemplateFlags.UNMOUNTING;
   }
 
-  unbind(updater: Updater): void {
+  unbind(updater: Updater<TContext>): void {
     this._pendingRoot?.unbindData(updater);
 
     if (this._memoizedRoot !== this._pendingRoot) {
@@ -172,7 +178,7 @@ export class TemplateBinding<TData>
     this._flags &= ~TemplateFlags.UPDATING;
   }
 
-  render(updater: Updater, _scope: Scope): void {
+  render(updater: Updater<TContext>, _scope: Scope<TContext>): void {
     const { template, data } = this._value;
 
     if (this._pendingRoot !== null) {
@@ -216,7 +222,7 @@ export class TemplateBinding<TData>
     this._pendingRoot = null;
   }
 
-  private _requestMutation(updater: Updater): void {
+  private _requestMutation(updater: Updater<TContext>): void {
     if (!(this._flags & TemplateFlags.MUTATING)) {
       updater.enqueueMutationEffect(this);
       this._flags |= TemplateFlags.MUTATING;

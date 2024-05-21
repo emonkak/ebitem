@@ -31,7 +31,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
 
   private readonly _taskCount = new AtomSignal(0);
 
-  private _currentComponent: Component | null = null;
+  private _currentComponent: Component<TContext> | null = null;
 
   private _currentPipeline: Pipeline<TContext> = createPipeline();
 
@@ -101,7 +101,9 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
     }
   }
 
-  private async _beginRenderPipeline(rootComponent: Component): Promise<void> {
+  private async _beginRenderPipeline(
+    rootComponent: Component<TContext>,
+  ): Promise<void> {
     const pipeline = createPipeline();
     const previousPipeline = this._currentPipeline;
 
