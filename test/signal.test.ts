@@ -140,13 +140,13 @@ describe('ComputedSignal', () => {
     expect(signal.version).toBe(3);
   });
 
-  describe('.compose()', () => {
+  describe('.lift()', () => {
     it('should return a memoized value', () => {
       const foo = new AtomSignal(1);
       const bar = new AtomSignal(2);
       const baz = new AtomSignal(3);
 
-      const signal = ComputedSignal.compose(
+      const signal = ComputedSignal.lift(
         (foo, bar, baz) => ({ foo, bar, baz }),
         [foo, bar, baz],
       );

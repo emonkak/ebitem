@@ -30,7 +30,7 @@ export abstract class Signal<T> implements Directive, UsableObject<void> {
   map<TResult>(
     selector: (value: T) => TResult,
   ): ComputedSignal<TResult, [Signal<T>]> {
-    return ComputedSignal.compose(selector, [this as Signal<T>]);
+    return ComputedSignal.lift(selector, [this as Signal<T>]);
   }
 
   toJSON(): T {
@@ -176,7 +176,7 @@ export class ComputedSignal<
 
   private _memoizedVersion = -1; // -1 is indicated an uninitialized signal.
 
-  static compose<TResult, const TDependencies extends Signal<any>[]>(
+  static lift<TResult, const TDependencies extends Signal<any>[]>(
     factory: (...signals: UnwrapSignals<TDependencies>) => TResult,
     dependencies: TDependencies,
   ): ComputedSignal<TResult, TDependencies> {

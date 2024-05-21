@@ -32,7 +32,7 @@ class TodoStore {
 
     this.visibility = new AtomSignal(visibility);
 
-    this.visibleTodos = ComputedSignal.compose(
+    this.visibleTodos = ComputedSignal.lift(
       (todos, visibility) => {
         switch (visibility) {
           case Visibility.ALL:
@@ -50,6 +50,13 @@ class TodoStore {
   addTodo(todo: Todo): void {
     this.todos.value.push(todo);
     this.todos.forceUpdate();
+  }
+
+  getSnapshot(): TodoState {
+    return {
+      todos: this.todos.value,
+      visibility: this.visibility.value,
+    };
   }
 }
 
