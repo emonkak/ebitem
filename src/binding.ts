@@ -517,7 +517,7 @@ export function updateBinding<TValue, TContext>(
     if (isDirective(binding.value)) {
       if (!isDirective(newValue) || !samePrototype(binding.value, newValue)) {
         throw new Error(
-          'The new value should be a directive of "' +
+          'The new value should be "' +
             typeOf(binding.value) +
             '", but got "' +
             typeOf(newValue) +

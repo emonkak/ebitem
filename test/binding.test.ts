@@ -1194,21 +1194,17 @@ describe('updateBinding()', () => {
     const binding = new MockBinding(directive, part);
 
     expect(() => updateBinding(binding, null as any, updater)).toThrow(
-      'The new value should be a directive of "MockDirective", but got "null".',
+      'The new value should be "MockDirective", but got "null".',
     );
     expect(() =>
       updateBinding(binding, function foo() {} as any, updater),
-    ).toThrow(
-      'The new value should be a directive of "MockDirective", but got "foo".',
-    );
+    ).toThrow('The new value should be "MockDirective", but got "foo".');
     expect(() => updateBinding(binding, (() => {}) as any, updater)).toThrow(
-      'The new value should be a directive of "MockDirective", but got "function".',
+      'The new value should be "MockDirective", but got "function".',
     );
     expect(() =>
       updateBinding(binding, new (class {})() as any, updater),
-    ).toThrow(
-      'The new value should be a directive of "MockDirective", but got "object".',
-    );
+    ).toThrow('The new value should be "MockDirective", but got "object".');
   });
 
   it('should throw the error if the old value is a directive and the new value is a different directive', () => {
@@ -1223,9 +1219,7 @@ describe('updateBinding()', () => {
 
     expect(() =>
       updateBinding(binding, { [directiveTag]() {} } as any, updater),
-    ).toThrow(
-      'The new value should be a directive of "MockDirective", but got "Object".',
-    );
+    ).toThrow('The new value should be "MockDirective", but got "Object".');
   });
 
   it('should throw the erorr if the old value is a non-directive and the new value is a directive', () => {
