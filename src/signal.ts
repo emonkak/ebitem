@@ -112,8 +112,7 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
 
   private _subscribeSignal(signal: Signal<T>, updater: Updater): Subscription {
     return signal.subscribe(() => {
-      this._binding.value = signal.value;
-      this._binding.bind(updater);
+      updateBinding(this._binding, signal.value, updater);
       updater.scheduleUpdate();
     });
   }
