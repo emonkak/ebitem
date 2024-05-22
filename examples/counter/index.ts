@@ -81,7 +81,7 @@ function App(_props: {}, context: Context) {
 
   return context.html`
     <div ${{ class: 'root' }}>
-      <${block(Counter, { count: counterSignal })} />
+      <${block(Counter, { count$: counterSignal })} />
       <p>COUNT by Signal: <strong>${counterSignal}</strong></p>
       <ul><${itemsList}></ul>
       <p>
@@ -141,35 +141,35 @@ function Item({ title, onUp, onDown, onDelete }: ItemProps, context: Context) {
 }
 
 interface CounterProps {
-  count: Signal<number>;
+  count$: Signal<number>;
 }
 
-function Counter({ count }: CounterProps, context: Context) {
+function Counter({ count$ }: CounterProps, context: Context) {
   const countLabelRef = context.useRef<Element | null>(null);
 
-  context.use(count);
+  const count = context.use(count$);
 
   return context.html`
     <h1>
       <span class="count-label" ref=${ref(countLabelRef)}>COUNT: </span>
       <span
         class=${classNames('count-value', {
-          'is-odd': count.value % 2 !== 0,
-          'is-even': count.value % 2 === 0,
+          'is-odd': count % 2 !== 0,
+          'is-even': count % 2 === 0,
         })}
-        data-count=${count.value}>${count.value}</span>
+        data-count=${count}>${count}</span>
       <span class="count-condition">${condition(
-        count.value % 2 === 0,
+        count % 2 === 0,
         '(Even)',
         '(Odd)',
       )}</span>
-      <span class="count-even">${when(count.value % 2 === 0, '(Even)')}</span>
-      <span class="count-odd">${unless(count.value % 2 === 0, '(Odd)')}</span>
-      <span class="count-choose">${choice(count.value % 2, (count) =>
+      <span class="count-even">${when(count % 2 === 0, '(Even)')}</span>
+      <span class="count-odd">${unless(count % 2 === 0, '(Odd)')}</span>
+      <span class="count-choose">${choice(count % 2, (count) =>
         count === 0 ? '(Even)' : '(Odd)',
       )}</span>
       <${context.element(
-        count.value % 2 === 0 ? 'strong' : 'em',
+        count % 2 === 0 ? 'strong' : 'em',
         { style: style({ color: 'blue' }) },
         context.html`<span>Hello World!</span>`,
       )} />

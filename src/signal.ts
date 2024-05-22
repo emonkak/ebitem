@@ -20,7 +20,7 @@ type UnwrapSignals<T> = T extends any[]
     }
   : never;
 
-export abstract class Signal<T> implements Directive, UsableObject<void> {
+export abstract class Signal<T> implements Directive, UsableObject<T> {
   abstract get value(): T;
 
   abstract get version(): number;
@@ -41,7 +41,7 @@ export abstract class Signal<T> implements Directive, UsableObject<void> {
     return this.value;
   }
 
-  [usableTag](context: Context): void {
+  [usableTag](context: Context): T {
     context.useEffect(
       () =>
         this.subscribe(() => {
@@ -49,6 +49,7 @@ export abstract class Signal<T> implements Directive, UsableObject<void> {
         }),
       [this],
     );
+    return this.value;
   }
 
   [directiveTag](part: Part, updater: Updater): SignalBinding<T> {
