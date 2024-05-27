@@ -2,7 +2,7 @@ import type { TaskPriority } from './scheduler.js';
 import type { Scope } from './scope.js';
 import { TemplateDirective } from './template.js';
 import { ElementData, ElementTemplate } from './template/elementTemplate.js';
-import { ChildNodeTemplate, TextTemplate } from './template/singleTemplate.js';
+import { ChildNodeTemplate, TextTemplate } from './template/valueTemplate.js';
 import type { Component, Effect, Updater } from './updater.js';
 
 export type Hook = EffectHook | MemoHook<any> | ReducerHook<any, any>;
@@ -25,12 +25,14 @@ export interface ReducerHook<TState, TAction> {
   state: TState;
 }
 
-export type Usable<TResult> = UsableCallback<TResult> | UsableObject<TResult>;
+export type Usable<TResult, TContext> =
+  | UsableCallback<TResult, TContext>
+  | UsableObject<TResult, TContext>;
 
-export type UsableCallback<TResult> = (context: Context) => TResult;
+export type UsableCallback<TResult, TContext> = (context: TContext) => TResult;
 
-export interface UsableObject<TResult> {
-  [usableTag](context: Context): TResult;
+export interface UsableObject<TResult, TContext> {
+  [usableTag](context: TContext): TResult;
 }
 
 export type Cleanup = () => void;
@@ -141,7 +143,7 @@ export class Context {
     return new TemplateDirective(template, value);
   }
 
-  use<TResult>(usable: Usable<TResult>): TResult {
+  use<TResult>(usable: Usable<TResult, Context>): TResult {
     return typeof usable === 'function'
       ? usable(this)
       : usable[usableTag](this);

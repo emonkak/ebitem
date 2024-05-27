@@ -1,4 +1,4 @@
-import { HIGHEST_PRIORITY, TaskPriority } from '../scheduler.js';
+import { HIGH_PRIORITY, TaskPriority } from '../scheduler.js';
 import type { Scope } from '../scope.js';
 import {
   Component,
@@ -32,7 +32,7 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
   }
 
   getCurrentPriority(): TaskPriority {
-    return HIGHEST_PRIORITY;
+    return HIGH_PRIORITY;
   }
 
   enqueueComponent(component: Component<TContext>): void {
@@ -59,70 +59,69 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
     if (this._isUpdating) {
       return;
     }
+
+    this._isUpdating = true;
+
     queueMicrotask(() => {
-      this.flush();
+      try {
+        this.flush();
+      } finally {
+        this._isUpdating = false;
+      }
     });
   }
 
-  flush(): void {
-    this._isUpdating = true;
-    try {
-      do {
-        while (this._hasComponent()) {
-          this._pendingComponents = [];
+  waitForUpdate(): Promise<void> {
+    return new Promise(queueMicrotask);
+  }
 
-          for (let i = 0, l = this._pendingComponents.length; i < l; i++) {
-            const component = this._pendingComponents[i]!;
-            if (shouldSkipRender(component)) {
-              continue;
-            }
-            this._currentComponent = component;
-            try {
-              component.render(this, this._scope);
-            } finally {
-              this._currentComponent = null;
-            }
+  flush(): void {
+    do {
+      while (this._pendingComponents.length > 0) {
+        const pendingComponents = this._pendingComponents;
+
+        this._pendingComponents = [];
+
+        for (let i = 0, l = pendingComponents.length; i < l; i++) {
+          const pendingComponent = pendingComponents[i]!;
+          if (shouldSkipRender(pendingComponent)) {
+            continue;
+          }
+          this._currentComponent = pendingComponent;
+          try {
+            pendingComponent.render(this, this._scope);
+          } finally {
+            this._currentComponent = null;
           }
         }
+      }
 
-        if (this._hasBlockingEffect()) {
-          const mutationEffects = this._pendingMutationEffects;
-          const layoutEffects = this._pendingLayoutEffects;
-          this._pendingMutationEffects = [];
-          this._pendingLayoutEffects = [];
+      if (
+        this._pendingMutationEffects.length > 0 ||
+        this._pendingLayoutEffects.length > 0
+      ) {
+        const pendingMutationEffects = this._pendingMutationEffects;
+        const pendingLayoutEffects = this._pendingLayoutEffects;
 
-          flushEffects(mutationEffects);
-          flushEffects(layoutEffects);
-        }
+        this._pendingMutationEffects = [];
+        this._pendingLayoutEffects = [];
 
-        if (this._hasPassiveEffect()) {
-          const passiveEffects = this._pendingPassiveEffects;
-          this._pendingPassiveEffects = [];
+        flushEffects(pendingMutationEffects);
+        flushEffects(pendingLayoutEffects);
+      }
 
-          flushEffects(passiveEffects);
-        }
-      } while (
-        this._hasComponent() ||
-        this._hasBlockingEffect() ||
-        this._hasPassiveEffect()
-      );
-    } finally {
-      this._isUpdating = false;
-    }
-  }
+      if (this._pendingPassiveEffects.length > 0) {
+        const pendingPassiveEffects = this._pendingPassiveEffects;
 
-  private _hasBlockingEffect(): boolean {
-    return (
+        this._pendingPassiveEffects = [];
+
+        flushEffects(pendingPassiveEffects);
+      }
+    } while (
+      this._pendingComponents.length > 0 ||
       this._pendingMutationEffects.length > 0 ||
-      this._pendingLayoutEffects.length > 0
+      this._pendingLayoutEffects.length > 0 ||
+      this._pendingPassiveEffects.length > 0
     );
-  }
-
-  private _hasPassiveEffect(): boolean {
-    return this._pendingPassiveEffects.length > 0;
-  }
-
-  private _hasComponent(): boolean {
-    return this._pendingComponents.length > 0;
   }
 }

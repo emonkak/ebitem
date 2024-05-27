@@ -391,7 +391,7 @@ export class SpreadBinding implements Binding<unknown> {
 
   constructor(value: unknown, part: ElementPart) {
     if (!isSpreadProps(value)) {
-      throw new Error('A value of SpreadBinding must be an object.');
+      throw new Error('The value of SpreadBinding must be an object.');
     }
 
     this._props = value;
@@ -512,6 +512,10 @@ export function updateBinding<TValue, TContext>(
   newValue: TValue,
   updater: Updater<TContext>,
 ): void {
+  if (Object.is(binding.value, newValue)) {
+    return;
+  }
+
   // biome-ignore lint: use DEBUG label
   DEBUG: {
     if (isDirective(binding.value)) {
@@ -535,10 +539,8 @@ export function updateBinding<TValue, TContext>(
     }
   }
 
-  if (!Object.is(binding.value, newValue)) {
-    binding.value = newValue;
-    binding.bind(updater);
-  }
+  binding.value = newValue;
+  binding.bind(updater);
 }
 
 function isEventListener(

@@ -30,19 +30,19 @@ export {
 } from './scope.js';
 export {
   type Template,
-  type TemplateRoot,
+  type TemplateFragment,
   TemplateBinding,
   TemplateDirective,
 } from './template.js';
 export {
   TaggedTemplate,
-  TaggedTemplateRoot,
+  TaggedTemplateFragment,
 } from './template/taggedTemplate.js';
 export {
   ChildNodeTemplate,
-  SingleTemplateRoot,
+  ValueTemplateFragment,
   TextTemplate,
-} from './template/singleTemplate.js';
+} from './template/valueTemplate.js';
 export {
   type Effect,
   type Component,

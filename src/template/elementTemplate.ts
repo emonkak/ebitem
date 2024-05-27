@@ -5,7 +5,7 @@ import {
   initializeBinding,
   updateBinding,
 } from '../binding.js';
-import { Template, TemplateRoot } from '../template.js';
+import { Template, TemplateFragment } from '../template.js';
 import { Updater } from '../updater.js';
 
 export interface ElementData<TElementValue, TChildNodeValue> {
@@ -25,7 +25,7 @@ export class ElementTemplate<TElementValue, TChildNodeValue>
   hydrate(
     data: ElementData<TElementValue, TChildNodeValue>,
     updater: Updater<unknown>,
-  ): ElementTemplateRoot<TElementValue, TChildNodeValue> {
+  ): ElementTemplateFragment<TElementValue, TChildNodeValue> {
     const { elementValue, childNodeValue } = data;
     const elementPart = {
       type: PartType.Element,
@@ -45,7 +45,7 @@ export class ElementTemplate<TElementValue, TChildNodeValue>
       childNodePart,
       updater,
     );
-    return new ElementTemplateRoot(elementBinding, childNodeBinding);
+    return new ElementTemplateFragment(elementBinding, childNodeBinding);
   }
 
   sameTemplate(
@@ -55,8 +55,8 @@ export class ElementTemplate<TElementValue, TChildNodeValue>
   }
 }
 
-export class ElementTemplateRoot<TElementValue, TChildNodeValue>
-  implements TemplateRoot<ElementData<TElementValue, TChildNodeValue>>
+export class ElementTemplateFragment<TElementValue, TChildNodeValue>
+  implements TemplateFragment<ElementData<TElementValue, TChildNodeValue>>
 {
   private readonly _elementBinding: Binding<TElementValue>;
 
@@ -78,7 +78,7 @@ export class ElementTemplateRoot<TElementValue, TChildNodeValue>
     return this._elementBinding.endNode;
   }
 
-  bindData(
+  rehydrate(
     newData: ElementData<TElementValue, TChildNodeValue>,
     updater: Updater<unknown>,
   ): void {
@@ -86,7 +86,7 @@ export class ElementTemplateRoot<TElementValue, TChildNodeValue>
     updateBinding(this._childNodeBinding, newData.childNodeValue, updater);
   }
 
-  unbindData(updater: Updater): void {
+  detach(_part: ChildNodePart, updater: Updater): void {
     this._elementBinding.unbind(updater);
     this._childNodeBinding.unbind(updater);
   }

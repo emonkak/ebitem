@@ -10,6 +10,8 @@ import {
   SpreadBinding,
   directiveTag,
   initializeBinding,
+  isDirective,
+  mountValue,
   updateBinding,
 } from '../src/binding.js';
 import { DefaultScope } from '../src/scope.js';
@@ -200,8 +202,8 @@ describe('AttributeBinding', () => {
         'enqueueMutationEffect',
       );
 
-      binding.bind(updater);
-      binding.bind(updater);
+      binding.unbind(updater);
+      binding.unbind(updater);
 
       expect(enqueueMutationEffectSpy).toHaveBeenCalledOnce();
       expect(enqueueMutationEffectSpy).toHaveBeenCalledWith(binding);
@@ -820,7 +822,7 @@ describe('SpreadBinding', () => {
           node: element,
         } as const;
         new SpreadBinding(null, part);
-      }).toThrow('A value of SpreadBinding must be an object.');
+      }).toThrow('The value of SpreadBinding must be an object.');
     });
   });
 
@@ -1149,8 +1151,56 @@ describe('initializeBinding()', () => {
   });
 });
 
+describe('isDirective', () => {
+  it('should return true if the value is directive', () => {
+    expect(isDirective(null)).toBe(false);
+    expect(isDirective('')).toBe(false);
+    expect(isDirective({})).toBe(false);
+    expect(isDirective({ [directiveTag]: () => {} })).toBe(true);
+  });
+});
+
+describe('mountValue', () => {
+  it('should mount element inside the container', async () => {
+    const directive = new MockDirective();
+    const container = document.createElement('div');
+    const updater = new SyncUpdater(new DefaultScope());
+    const directiveSpy = vi.spyOn(directive, directiveTag);
+    const isUpdatingSpy = vi.spyOn(updater, 'isUpdating');
+    const scheduleUpdateSpy = vi.spyOn(updater, 'scheduleUpdate');
+
+    expect(mountValue(directive, container, updater)).toBeInstanceOf(
+      MockBinding,
+    );
+    expect(directiveSpy).toHaveBeenCalledOnce();
+    expect(isUpdatingSpy).toHaveBeenCalledOnce();
+    expect(scheduleUpdateSpy).toHaveBeenCalled();
+
+    await updater.waitForUpdate();
+
+    expect(container.innerHTML).toBe('<!---->');
+  });
+
+  it('should not schedule update if it is already running', () => {
+    const directive = new MockDirective();
+    const container = document.createElement('div');
+    const updater = new SyncUpdater(new DefaultScope());
+    const directiveSpy = vi.spyOn(directive, directiveTag);
+    const isUpdatingSpy = vi.spyOn(updater, 'isUpdating').mockReturnValue(true);
+    const scheduleUpdateSpy = vi.spyOn(updater, 'scheduleUpdate');
+
+    expect(mountValue(directive, container, updater)).toBeInstanceOf(
+      MockBinding,
+    );
+    expect(container.innerHTML).toBe('');
+    expect(directiveSpy).toHaveBeenCalledOnce();
+    expect(isUpdatingSpy).toHaveBeenCalledOnce();
+    expect(scheduleUpdateSpy).not.toHaveBeenCalled();
+  });
+});
+
 describe('updateBinding()', () => {
-  it('should update the binding if the new and old values are not the same', () => {
+  it('should update the non-directive binding if the new and old values are not the same', () => {
     const node = document.createTextNode('');
     const part = {
       type: PartType.Node,
@@ -1163,6 +1213,25 @@ describe('updateBinding()', () => {
     updateBinding(binding, 'bar', updater);
 
     expect(binding.value).toBe('bar');
+    expect(bindSpy).toHaveBeenCalledOnce();
+    expect(bindSpy).toHaveBeenCalledWith(updater);
+  });
+
+  it('should update the directive binding if the new and old values are not the same', () => {
+    const node = document.createTextNode('');
+    const part = {
+      type: PartType.Node,
+      node,
+    } as const;
+    const updater = new SyncUpdater(new DefaultScope());
+    const directive1 = new MockDirective();
+    const directive2 = new MockDirective();
+    const binding = new MockBinding(directive1, part);
+    const bindSpy = vi.spyOn(binding, 'bind');
+
+    updateBinding(binding, directive2, updater);
+
+    expect(binding.value).toBe(directive2);
     expect(bindSpy).toHaveBeenCalledOnce();
     expect(bindSpy).toHaveBeenCalledWith(updater);
   });

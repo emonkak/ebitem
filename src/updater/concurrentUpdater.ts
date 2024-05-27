@@ -1,4 +1,6 @@
 import {
+  HIGH_PRIORITY,
+  NORMAL_PRIORITY,
   Scheduler,
   TaskPriority,
   createDefaultScheduler,
@@ -49,9 +51,9 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
 
   getCurrentPriority(): TaskPriority {
     if (window.event !== undefined) {
-      return isContinuousEvent(window.event) ? 'user-visible' : 'user-blocking';
+      return isContinuousEvent(window.event) ? NORMAL_PRIORITY : HIGH_PRIORITY;
     } else {
-      return 'user-visible';
+      return NORMAL_PRIORITY;
     }
   }
 

@@ -5,7 +5,7 @@ import {
   initializeBinding,
   updateBinding,
 } from '../binding.js';
-import { Template, TemplateRoot } from '../template.js';
+import { Template, TemplateFragment } from '../template.js';
 import { Updater } from '../updater.js';
 
 export class ChildNodeTemplate<T> implements Template<T> {
@@ -19,13 +19,13 @@ export class ChildNodeTemplate<T> implements Template<T> {
     }
   }
 
-  hydrate(data: T, updater: Updater): SingleTemplateRoot<T> {
+  hydrate(data: T, updater: Updater): ValueTemplateFragment<T> {
     const part = {
       type: PartType.ChildNode,
       node: document.createComment(''),
     } as const;
     const binding = initializeBinding(data, part, updater);
-    return new SingleTemplateRoot(binding);
+    return new ValueTemplateFragment(binding);
   }
 
   sameTemplate(other: Template<T>): boolean {
@@ -38,19 +38,17 @@ export class TextTemplate<T> implements Template<T> {
 
   private constructor() {
     if (TextTemplate.instance !== undefined) {
-      throw new Error(
-        'SingleTextTemplate constructor cannot be called directly.',
-      );
+      throw new Error('TextTemplate constructor cannot be called directly.');
     }
   }
 
-  hydrate(data: T, updater: Updater): SingleTemplateRoot<T> {
+  hydrate(data: T, updater: Updater): ValueTemplateFragment<T> {
     const part = {
       type: PartType.Node,
       node: document.createTextNode(''),
     } as const;
     const binding = initializeBinding(data, part, updater);
-    return new SingleTemplateRoot(binding);
+    return new ValueTemplateFragment(binding);
   }
 
   sameTemplate(other: Template<T>): boolean {
@@ -58,7 +56,7 @@ export class TextTemplate<T> implements Template<T> {
   }
 }
 
-export class SingleTemplateRoot<T> implements TemplateRoot<T> {
+export class ValueTemplateFragment<T> implements TemplateFragment<T> {
   private readonly _binding: Binding<T>;
 
   constructor(binding: Binding<T>) {
@@ -73,11 +71,11 @@ export class SingleTemplateRoot<T> implements TemplateRoot<T> {
     return this._binding.endNode;
   }
 
-  bindData(newData: T, updater: Updater<unknown>): void {
+  rehydrate(newData: T, updater: Updater<unknown>): void {
     updateBinding(this._binding, newData, updater);
   }
 
-  unbindData(updater: Updater): void {
+  detach(_part: ChildNodePart, updater: Updater): void {
     this._binding.unbind(updater);
   }
 

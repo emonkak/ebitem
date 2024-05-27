@@ -7,13 +7,13 @@ import {
   directiveTag,
 } from '../binding.js';
 import { Hook, HookType } from '../context.js';
-import {
-  LOWEST_PRIORITY,
-  TaskPriority,
-  isHigherPriority,
-} from '../scheduler.js';
+import { LOW_PRIORITY, TaskPriority, comparePriorities } from '../scheduler.js';
 import type { Scope } from '../scope.js';
-import type { Template, TemplateDirective, TemplateRoot } from '../template.js';
+import type {
+  Template,
+  TemplateDirective,
+  TemplateFragment,
+} from '../template.js';
 import type { Component, Effect, Updater } from '../updater.js';
 
 export type BlockType<TProps, TData, TContext> = (
@@ -87,18 +87,18 @@ export class BlockBinding<TProps, TData, TContext>
 
   private _memoizedTemplate: Template<TData, TContext> | null = null;
 
-  private _pendingRoot: TemplateRoot<TData, TContext> | null = null;
+  private _pendingFragment: TemplateFragment<TData, TContext> | null = null;
 
-  private _memoizedRoot: TemplateRoot<TData, TContext> | null = null;
+  private _memoizedFragment: TemplateFragment<TData, TContext> | null = null;
 
-  private _cachedRoots: WeakMap<
+  private _cachedFragments: WeakMap<
     Template<TData, TContext>,
-    TemplateRoot<TData, TContext>
+    TemplateFragment<TData, TContext>
   > | null = null;
 
   private _hooks: Hook[] = [];
 
-  private _priority: TaskPriority = LOWEST_PRIORITY;
+  private _priority: TaskPriority = LOW_PRIORITY;
 
   private _flags = BlockFlags.NONE;
 
@@ -117,7 +117,7 @@ export class BlockBinding<TProps, TData, TContext>
   }
 
   get startNode(): ChildNode {
-    return this._memoizedRoot?.startNode ?? this._part.node;
+    return this._memoizedFragment?.startNode ?? this._part.node;
   }
 
   get endNode(): ChildNode {
@@ -149,7 +149,7 @@ export class BlockBinding<TProps, TData, TContext>
   requestUpdate(updater: Updater, priority: TaskPriority): void {
     if (
       !(this._flags & BlockFlags.UPDATING) ||
-      isHigherPriority(priority, this._priority)
+      comparePriorities(priority, this._priority) > 0
     ) {
       this._priority = priority;
       this._flags |= BlockFlags.UPDATING;
@@ -171,16 +171,16 @@ export class BlockBinding<TProps, TData, TContext>
   }
 
   unbind(updater: Updater): void {
-    this._pendingRoot?.unbindData(updater);
+    this._pendingFragment?.detach(this._part, updater);
 
-    if (this._memoizedRoot !== this._pendingRoot) {
-      this._memoizedRoot?.unbindData(updater);
+    if (this._memoizedFragment !== this._pendingFragment) {
+      this._memoizedFragment?.detach(this._part, updater);
     }
 
     this._cleanHooks();
     this._requestMutation(updater);
 
-    this._pendingRoot = null;
+    this._pendingFragment = null;
     this._flags |= BlockFlags.UNMOUNTING;
     this._flags &= ~BlockFlags.UPDATING;
   }
@@ -196,7 +196,7 @@ export class BlockBinding<TProps, TData, TContext>
     const context = scope.createContext(this, this._hooks, updater);
     const { template, data } = type(props, context);
 
-    if (this._pendingRoot !== null) {
+    if (this._pendingFragment !== null) {
       if (this._hooks.length !== previousNumberOfHooks) {
         throw new Error(
           'The block has been rendered different number of hooks than during the previous render.',
@@ -204,67 +204,70 @@ export class BlockBinding<TProps, TData, TContext>
       }
 
       if (this._memoizedTemplate !== template) {
-        // First, unbind data of the current root.
-        this._pendingRoot.unbindData(updater);
+        // First, detach of the current fragment.
+        this._pendingFragment.detach(this._part, updater);
 
         // We need to mount child nodes before hydration.
         this._requestMutation(updater);
 
-        let nextRoot;
+        let nextFragment;
 
-        if (this._cachedRoots !== null) {
-          nextRoot = this._cachedRoots.get(template);
-          if (nextRoot !== undefined) {
-            nextRoot.bindData(data, updater);
+        if (this._cachedFragments !== null) {
+          nextFragment = this._cachedFragments.get(template);
+          if (nextFragment !== undefined) {
+            nextFragment.rehydrate(data, updater);
           } else {
-            nextRoot = template.hydrate(data, updater);
+            nextFragment = template.hydrate(data, updater);
           }
         } else {
           // It is rare that different templates are returned, so we defer
-          // creating root caches.
-          this._cachedRoots = new WeakMap();
-          nextRoot = template.hydrate(data, updater);
+          // creating fragment caches.
+          this._cachedFragments = new WeakMap();
+          nextFragment = template.hydrate(data, updater);
         }
 
-        // Remember the previous root for future renderings.
-        this._cachedRoots.set(this._memoizedTemplate!, this._pendingRoot);
+        // Remember the previous fragment for future renderings.
+        this._cachedFragments.set(
+          this._memoizedTemplate!,
+          this._pendingFragment,
+        );
 
-        this._pendingRoot = nextRoot;
+        this._pendingFragment = nextFragment;
       } else {
-        this._pendingRoot.bindData(data, updater);
+        this._pendingFragment.rehydrate(data, updater);
       }
     } else {
       // Child nodes must be mounted before hydration.
       this._requestMutation(updater);
 
-      this._pendingRoot = template.hydrate(data, updater);
+      this._pendingFragment = template.hydrate(data, updater);
     }
 
     this._memoizedType = this._value.type;
     this._memoizedTemplate = template;
-    this._priority = LOWEST_PRIORITY;
+    this._priority = LOW_PRIORITY;
     this._flags &= ~BlockFlags.UPDATING;
   }
 
   disconnect(): void {
-    this._pendingRoot?.disconnect();
+    this._pendingFragment?.disconnect();
 
-    if (this._memoizedRoot !== this._pendingRoot) {
-      this._memoizedRoot?.disconnect();
+    if (this._memoizedFragment !== this._pendingFragment) {
+      this._memoizedFragment?.disconnect();
     }
 
     this._cleanHooks();
 
-    this._pendingRoot = null;
+    this._pendingFragment = null;
   }
 
   commit(): void {
     if (this._flags & BlockFlags.UNMOUNTING) {
-      this._memoizedRoot?.unmount(this._part);
+      this._memoizedFragment?.unmount(this._part);
     } else {
-      this._memoizedRoot?.unmount(this._part);
-      this._pendingRoot?.mount(this._part);
-      this._memoizedRoot = this._pendingRoot;
+      this._memoizedFragment?.unmount(this._part);
+      this._pendingFragment?.mount(this._part);
+      this._memoizedFragment = this._pendingFragment;
     }
 
     this._flags &= ~(BlockFlags.MUTATING | BlockFlags.UNMOUNTING);

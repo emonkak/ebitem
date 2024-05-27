@@ -1,5 +1,7 @@
 import { Binding, Directive, Part, directiveTag } from '../src/binding.js';
-import { Updater } from '../src/updater.js';
+import { NORMAL_PRIORITY } from '../src/scheduler.js';
+import { Scope } from '../src/scope.js';
+import { Component, Updater } from '../src/updater.js';
 
 export class MockDirective implements Directive {
   [directiveTag](part: Part, _updater: Updater): MockBinding {

@@ -5,6 +5,7 @@ export interface Updater<TContext = unknown> {
   get currentComponent(): Component<TContext> | null;
   getCurrentPriority(): TaskPriority;
   isUpdating(): boolean;
+  waitForUpdate(): Promise<void>;
   enqueueComponent(component: Component<TContext>): void;
   enqueueLayoutEffect(effect: Effect): void;
   enqueueMutationEffect(effect: Effect): void;

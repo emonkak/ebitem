@@ -20,7 +20,7 @@ type UnwrapSignals<T> = T extends any[]
     }
   : never;
 
-export abstract class Signal<T> implements Directive, UsableObject<T> {
+export abstract class Signal<T> implements Directive, UsableObject<T, Context> {
   abstract get value(): T;
 
   abstract get version(): number;
@@ -41,6 +41,11 @@ export abstract class Signal<T> implements Directive, UsableObject<T> {
     return this.value;
   }
 
+  [directiveTag](part: Part, updater: Updater): SignalBinding<T> {
+    const valueBinding = initializeBinding(this.value, part, updater);
+    return new SignalBinding(this, valueBinding, updater);
+  }
+
   [usableTag](context: Context): T {
     context.useEffect(
       () =>
@@ -50,71 +55,6 @@ export abstract class Signal<T> implements Directive, UsableObject<T> {
       [this],
     );
     return this.value;
-  }
-
-  [directiveTag](part: Part, updater: Updater): SignalBinding<T> {
-    const binding = initializeBinding(this.value, part, updater);
-
-    return new SignalBinding(this, binding, updater);
-  }
-}
-
-export class SignalBinding<T> implements Binding<Signal<T>> {
-  private readonly _binding: Binding<T>;
-
-  private _signal: Signal<T>;
-
-  private _subscription: Subscription | null;
-
-  constructor(signal: Signal<T>, binding: Binding<T>, updater: Updater) {
-    this._signal = signal;
-    this._binding = binding;
-    this._subscription = this._subscribeSignal(signal, updater);
-  }
-
-  get part(): Part {
-    return this._binding.part;
-  }
-
-  get startNode(): ChildNode {
-    return this._binding.startNode;
-  }
-
-  get endNode(): ChildNode {
-    return this._binding.endNode;
-  }
-
-  get value(): Signal<T> {
-    return this._signal;
-  }
-
-  set value(newSignal: Signal<T>) {
-    this._signal = newSignal;
-  }
-
-  bind(updater: Updater): void {
-    updateBinding(this._binding, this._signal.value, updater);
-    this._subscription?.();
-    this._subscription = this._subscribeSignal(this._signal, updater);
-  }
-
-  unbind(updater: Updater): void {
-    this._binding.unbind(updater);
-    this._subscription?.();
-    this._subscription = null;
-  }
-
-  disconnect(): void {
-    this._binding.disconnect();
-    this._subscription?.();
-    this._subscription = null;
-  }
-
-  private _subscribeSignal(signal: Signal<T>, updater: Updater): Subscription {
-    return signal.subscribe(() => {
-      updateBinding(this._binding, signal.value, updater);
-      updater.scheduleUpdate();
-    });
   }
 }
 
@@ -154,6 +94,10 @@ export class AtomSignal<T> extends Signal<T> {
       const subscriber = node.value;
       subscriber();
     }
+  }
+
+  setUntrackedValue(newValue: T): void {
+    this._value = newValue;
   }
 
   subscribe(subscriber: Subscriber): Subscription {
@@ -228,5 +172,68 @@ export class ComputedSignal<
         subscriptions[i]!();
       }
     };
+  }
+}
+
+export class SignalBinding<T> implements Binding<Signal<T>> {
+  private readonly _valueBinding: Binding<T>;
+
+  private _signal: Signal<T>;
+
+  private _subscription: Subscription | null;
+
+  constructor(signal: Signal<T>, valueBinding: Binding<T>, updater: Updater) {
+    this._signal = signal;
+    this._valueBinding = valueBinding;
+    this._subscription = this._subscribeSignal(signal, updater);
+  }
+
+  get part(): Part {
+    return this._valueBinding.part;
+  }
+
+  get startNode(): ChildNode {
+    return this._valueBinding.startNode;
+  }
+
+  get endNode(): ChildNode {
+    return this._valueBinding.endNode;
+  }
+
+  get value(): Signal<T> {
+    return this._signal;
+  }
+
+  set value(newSignal: Signal<T>) {
+    this._signal = newSignal;
+  }
+
+  get valueBinding(): Binding<T> {
+    return this._valueBinding;
+  }
+
+  bind(updater: Updater): void {
+    updateBinding(this._valueBinding, this._signal.value, updater);
+    this._subscription?.();
+    this._subscription = this._subscribeSignal(this._signal, updater);
+  }
+
+  unbind(updater: Updater): void {
+    this._valueBinding.unbind(updater);
+    this._subscription?.();
+    this._subscription = null;
+  }
+
+  disconnect(): void {
+    this._valueBinding.disconnect();
+    this._subscription?.();
+    this._subscription = null;
+  }
+
+  private _subscribeSignal(signal: Signal<T>, updater: Updater): Subscription {
+    return signal.subscribe(() => {
+      updateBinding(this._valueBinding, signal.value, updater);
+      updater.scheduleUpdate();
+    });
   }
 }

@@ -6,7 +6,7 @@ import {
   initializeBinding,
   updateBinding,
 } from '../binding.js';
-import type { Template, TemplateRoot } from '../template.js';
+import type { Template, TemplateFragment } from '../template.js';
 import type { Updater } from '../updater.js';
 
 export type Hole =
@@ -107,7 +107,7 @@ export class TaggedTemplate implements Template<unknown[]> {
     return this._holes;
   }
 
-  hydrate(data: unknown[], updater: Updater): TaggedTemplateRoot {
+  hydrate(data: unknown[], updater: Updater): TaggedTemplateFragment {
     const holes = this._holes;
 
     if (holes.length !== data.length) {
@@ -196,7 +196,7 @@ export class TaggedTemplate implements Template<unknown[]> {
       }
     }
 
-    return new TaggedTemplateRoot(bindings, [...rootNode.childNodes]);
+    return new TaggedTemplateFragment(bindings, [...rootNode.childNodes]);
   }
 
   sameTemplate(other: Template<unknown[]>): boolean {
@@ -208,12 +208,10 @@ export class TaggedTemplate implements Template<unknown[]> {
   }
 }
 
-export class TaggedTemplateRoot implements TemplateRoot<unknown[]> {
+export class TaggedTemplateFragment implements TemplateFragment<unknown[]> {
   private readonly _bindings: Binding<unknown>[];
 
   private readonly _childNodes: ChildNode[];
-
-  private readonly _startNode: Comment = document.createComment('');
 
   constructor(bindings: Binding<unknown>[], childNodes: ChildNode[]) {
     this._bindings = bindings;
@@ -225,18 +223,18 @@ export class TaggedTemplateRoot implements TemplateRoot<unknown[]> {
   }
 
   get startNode(): ChildNode | null {
-    return this._startNode;
+    return this._childNodes[0] ?? null;
   }
 
   get endNode(): ChildNode | null {
-    return this._childNodes.at(-1) ?? this._startNode;
+    return this._childNodes.at(-1) ?? null;
   }
 
   get bindings(): Binding<unknown>[] {
     return this._bindings;
   }
 
-  bindData(newData: unknown[], updater: Updater): void {
+  rehydrate(newData: unknown[], updater: Updater): void {
     if (newData.length !== this._bindings.length) {
       throw new Error(
         `The number of new data must be ${this._bindings.length}, but got ${newData.length}.`,
@@ -248,18 +246,18 @@ export class TaggedTemplateRoot implements TemplateRoot<unknown[]> {
     }
   }
 
-  unbindData(updater: Updater): void {
-    const rootNode = this._startNode.parentNode;
+  detach(part: ChildNodePart, updater: Updater): void {
+    const rootNode = part.node.parentNode;
 
     for (let i = 0, l = this._bindings.length; i < l; i++) {
       const binding = this._bindings[i]!;
       const part = binding.part;
 
       if (
-        part.type === PartType.ChildNode &&
+        (part.type === PartType.ChildNode || part.type === PartType.Node) &&
         part.node.parentNode === rootNode
       ) {
-        // This is a direct child binding, so it must be unbound.
+        // This binding is mounted as a child of the root, so it must be unbound.
         binding.unbind(updater);
       } else {
         // Otherwise, it does not need to be unbound.
@@ -271,8 +269,6 @@ export class TaggedTemplateRoot implements TemplateRoot<unknown[]> {
   mount(part: ChildNodePart): void {
     const referenceNode = part.node;
 
-    referenceNode.before(this._startNode);
-
     for (let i = 0, l = this._childNodes.length; i < l; i++) {
       referenceNode.before(this._childNodes[i]!);
     }
@@ -282,8 +278,6 @@ export class TaggedTemplateRoot implements TemplateRoot<unknown[]> {
     const { parentNode } = part.node;
 
     if (parentNode !== null) {
-      parentNode.removeChild(this._startNode);
-
       for (let i = 0, l = this._childNodes.length; i < l; i++) {
         parentNode.removeChild(this._childNodes[i]!);
       }

@@ -6,11 +6,7 @@ import {
   PartType,
   directiveTag,
 } from './binding.js';
-import {
-  LOWEST_PRIORITY,
-  TaskPriority,
-  isHigherPriority,
-} from './scheduler.js';
+import { LOW_PRIORITY, TaskPriority, comparePriorities } from './scheduler.js';
 import type { Scope } from './scope.js';
 import type { Component, Effect, Updater } from './updater.js';
 
@@ -18,15 +14,15 @@ export interface Template<TData, TContext = unknown> {
   hydrate(
     data: TData,
     updater: Updater<TContext>,
-  ): TemplateRoot<TData, TContext>;
+  ): TemplateFragment<TData, TContext>;
   sameTemplate(other: Template<TData, TContext>): boolean;
 }
 
-export interface TemplateRoot<TData, TContext = unknown> {
+export interface TemplateFragment<TData, TContext = unknown> {
   get startNode(): ChildNode | null;
   get endNode(): ChildNode | null;
-  bindData(data: TData, updater: Updater<TContext>): void;
-  unbindData(updater: Updater): void;
+  rehydrate(data: TData, updater: Updater<TContext>): void;
+  detach(part: ChildNodePart, updater: Updater): void;
   mount(part: ChildNodePart): void;
   unmount(part: ChildNodePart): void;
   disconnect(): void;
@@ -87,13 +83,13 @@ export class TemplateBinding<TData, TContext>
 
   private _value: TemplateDirective<TData, TContext>;
 
-  private _memoizedRoot: TemplateRoot<TData, TContext> | null = null;
+  private _memoizedFragment: TemplateFragment<TData, TContext> | null = null;
 
-  private _pendingRoot: TemplateRoot<TData, TContext> | null = null;
+  private _pendingFragment: TemplateFragment<TData, TContext> | null = null;
 
   private _template: Template<TData, TContext> | null = null;
 
-  private _priority: TaskPriority = LOWEST_PRIORITY;
+  private _priority: TaskPriority = LOW_PRIORITY;
 
   private _flags = TemplateFlags.NONE;
 
@@ -112,7 +108,7 @@ export class TemplateBinding<TData, TContext>
   }
 
   get startNode(): ChildNode {
-    return this._memoizedRoot?.startNode ?? this._part.node;
+    return this._memoizedFragment?.startNode ?? this._part.node;
   }
 
   get endNode(): ChildNode {
@@ -145,7 +141,7 @@ export class TemplateBinding<TData, TContext>
   requestUpdate(updater: Updater<TContext>, priority: TaskPriority): void {
     if (
       !(this._flags & TemplateFlags.UPDATING) ||
-      isHigherPriority(priority, this._priority)
+      comparePriorities(priority, this._priority) > 0
     ) {
       this._priority = priority;
       this._flags |= TemplateFlags.UPDATING;
@@ -167,15 +163,15 @@ export class TemplateBinding<TData, TContext>
   }
 
   unbind(updater: Updater<TContext>): void {
-    this._pendingRoot?.unbindData(updater);
+    this._pendingFragment?.detach(this._part, updater);
 
-    if (this._memoizedRoot !== this._pendingRoot) {
-      this._memoizedRoot?.unbindData(updater);
+    if (this._memoizedFragment !== this._pendingFragment) {
+      this._memoizedFragment?.detach(this._part, updater);
     }
 
     this._requestMutation(updater);
 
-    this._pendingRoot = null;
+    this._pendingFragment = null;
     this._flags |= TemplateFlags.UNMOUNTING;
     this._flags &= ~TemplateFlags.UPDATING;
   }
@@ -183,45 +179,45 @@ export class TemplateBinding<TData, TContext>
   render(updater: Updater<TContext>, _scope: Scope<TContext>): void {
     const { template, data } = this._value;
 
-    if (this._pendingRoot !== null) {
+    if (this._pendingFragment !== null) {
       if (this._template && this._template.sameTemplate(template)) {
-        this._pendingRoot.bindData(data, updater);
+        this._pendingFragment.rehydrate(data, updater);
       } else {
-        this._pendingRoot.unbindData(updater);
-        this._pendingRoot = null;
+        this._pendingFragment.detach(this._part, updater);
+        this._pendingFragment = null;
       }
     }
 
-    if (this._pendingRoot === null) {
+    if (this._pendingFragment === null) {
       this._requestMutation(updater);
-      this._pendingRoot = template.hydrate(data, updater);
+      this._pendingFragment = template.hydrate(data, updater);
     }
 
     this._template = template;
-    this._priority = LOWEST_PRIORITY;
+    this._priority = LOW_PRIORITY;
     this._flags &= ~TemplateFlags.UPDATING;
   }
 
   commit(): void {
     if (this._flags & TemplateFlags.UNMOUNTING) {
-      this._memoizedRoot?.unmount(this._part);
+      this._memoizedFragment?.unmount(this._part);
     } else {
-      this._memoizedRoot?.unmount(this._part);
-      this._pendingRoot?.mount(this._part);
-      this._memoizedRoot = this._pendingRoot;
+      this._memoizedFragment?.unmount(this._part);
+      this._pendingFragment?.mount(this._part);
+      this._memoizedFragment = this._pendingFragment;
     }
 
     this._flags &= ~(TemplateFlags.MUTATING | TemplateFlags.UNMOUNTING);
   }
 
   disconnect(): void {
-    this._pendingRoot?.disconnect();
+    this._pendingFragment?.disconnect();
 
-    if (this._memoizedRoot !== this._pendingRoot) {
-      this._memoizedRoot?.disconnect();
+    if (this._memoizedFragment !== this._pendingFragment) {
+      this._memoizedFragment?.disconnect();
     }
 
-    this._pendingRoot = null;
+    this._pendingFragment = null;
   }
 
   private _requestMutation(updater: Updater<TContext>): void {

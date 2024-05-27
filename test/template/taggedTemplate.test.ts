@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   AttributeBinding,
@@ -11,9 +11,10 @@ import {
   directiveTag,
 } from '../../src/binding.js';
 import { DefaultScope } from '../../src/scope.js';
+import { Template } from '../../src/template.js';
 import {
   TaggedTemplate,
-  TaggedTemplateRoot,
+  TaggedTemplateFragment,
   getMarker,
   isValidMarker,
 } from '../../src/template/taggedTemplate.js';
@@ -301,7 +302,7 @@ describe('TaggedTemplate', () => {
   });
 
   describe('.hydrate()', () => {
-    it('should return a TaggedTemplateRoot', () => {
+    it('should hydrate a TaggedTemplateFragment', () => {
       const template = html`
         <div class=${0}>
           <!-- ${1} -->
@@ -317,53 +318,81 @@ describe('TaggedTemplate', () => {
         new MockDirective(),
       ];
       const updater = new SyncUpdater(new DefaultScope());
-      const root = template.hydrate(values, updater);
+      const fragment = template.hydrate(values, updater);
 
-      expect(root).toBeInstanceOf(TaggedTemplateRoot);
-      expect(root.bindings).toHaveLength(values.length);
-      expect(root.childNodes).toHaveLength(1);
-
-      expect(root.bindings.map((binding) => binding.value)).toEqual(values);
-
-      expect(root.bindings[0]).toBeInstanceOf(AttributeBinding);
-      expect(root.bindings[0]?.part).toMatchObject({
+      expect(fragment).toBeInstanceOf(TaggedTemplateFragment);
+      expect(fragment.bindings).toHaveLength(values.length);
+      expect(fragment.bindings.map((binding) => binding.value)).toEqual(values);
+      expect(fragment.bindings[0]).toBeInstanceOf(AttributeBinding);
+      expect(fragment.bindings[0]?.part).toMatchObject({
         type: PartType.Attribute,
         name: 'class',
       });
-      expect(root.bindings[1]).toBeInstanceOf(NodeBinding);
-      expect(root.bindings[1]?.part).toMatchObject({
+      expect(fragment.bindings[1]).toBeInstanceOf(NodeBinding);
+      expect(fragment.bindings[1]?.part).toMatchObject({
         type: PartType.ChildNode,
       });
-      expect(root.bindings[2]).toBeInstanceOf(PropertyBinding);
-      expect(root.bindings[2]?.part).toMatchObject({
+      expect(fragment.bindings[2]).toBeInstanceOf(PropertyBinding);
+      expect(fragment.bindings[2]?.part).toMatchObject({
         type: PartType.Property,
         name: 'value',
       });
-      expect(root.bindings[3]).toBeInstanceOf(EventBinding);
-      expect(root.bindings[3]?.part).toMatchObject({
+      expect(fragment.bindings[3]).toBeInstanceOf(EventBinding);
+      expect(fragment.bindings[3]?.part).toMatchObject({
         type: PartType.Event,
         name: 'onchange',
       });
-      expect(root.bindings[4]).toBeInstanceOf(SpreadBinding);
-      expect(root.bindings[4]?.part).toMatchObject({
+      expect(fragment.bindings[4]).toBeInstanceOf(SpreadBinding);
+      expect(fragment.bindings[4]?.part).toMatchObject({
         type: PartType.Element,
       });
-      expect(root.bindings[5]).toBeInstanceOf(MockBinding);
-      expect(root.bindings[5]?.part).toMatchObject({
+      expect(fragment.bindings[5]).toBeInstanceOf(MockBinding);
+      expect(fragment.bindings[5]?.part).toMatchObject({
         type: PartType.Node,
       });
+      expect(fragment.childNodes.map(nodeToString)).toEqual([
+        `
+        <div>
+          <!---->
+          <input type="text"><span></span>
+        </div>`.trim(),
+      ]);
+      expect(fragment.startNode).toBe(fragment.childNodes[0]);
+      expect(fragment.endNode).toBe(fragment.childNodes[0]);
 
       updater.flush();
 
-      expect((root.childNodes[0] as Element)?.outerHTML).toBe(
+      expect(fragment.childNodes.map(nodeToString)).toEqual([
         `
         <div class="foo">
           <!--bar-->
           <input type="text" class="qux"><span></span>
         </div>`.trim(),
-      );
-      expect(root.childNodes[0]).toBe(root.startNode);
-      expect(root.childNodes[0]).toBe(root.endNode);
+      ]);
+    });
+
+    it('should hydrate a TaggedTemplateFragment without bindings', () => {
+      const template = html`<div></div>`;
+      const updater = new SyncUpdater(new DefaultScope());
+      const fragment = template.hydrate([], updater);
+
+      expect(fragment).toBeInstanceOf(TaggedTemplateFragment);
+      expect(fragment.bindings).toHaveLength(0);
+      expect(fragment.childNodes.map(nodeToString)).toEqual(['<div></div>']);
+      expect(fragment.startNode).toBe(fragment.childNodes[0]);
+      expect(fragment.endNode).toBe(fragment.childNodes[0]);
+    });
+
+    it('should hydrate a TaggedTemplateFragment with empty template', () => {
+      const template = html``;
+      const updater = new SyncUpdater(new DefaultScope());
+      const fragment = template.hydrate([], updater);
+
+      expect(fragment).toBeInstanceOf(TaggedTemplateFragment);
+      expect(fragment.bindings).toHaveLength(0);
+      expect(fragment.childNodes).toHaveLength(0);
+      expect(fragment.startNode).toBeNull();
+      expect(fragment.endNode).toBeNull();
     });
 
     it('should throw an error if the number of holes and values do not match', () => {
@@ -372,96 +401,201 @@ describe('TaggedTemplate', () => {
       `;
       const values = ['foo', 'bar'];
       const updater = new SyncUpdater(new DefaultScope());
+
       expect(() => {
         template.hydrate(values, updater);
       }).toThrow('There may be multiple holes indicating the same attribute.');
     });
   });
+
+  describe('.sameTemplate()', () => {
+    it('should return whether the template is the same as other template', () => {
+      const template1 = html`
+        <div></div>
+      `;
+      const template2 = html`
+        <div></div>
+      `;
+
+      expect(template1.sameTemplate(template1)).toBe(true);
+      expect(template1.sameTemplate(template2)).toBe(false);
+      expect(template1.sameTemplate({} as Template<unknown, unknown>)).toBe(
+        false,
+      );
+    });
+  });
 });
 
-describe('TaggedTemplateRoot', () => {
+describe('TaggedTemplateFragment', () => {
+  describe('.rehydrate()', () => {
+    it('should update bindings in the fragment with new values', () => {
+      const template = html`
+        <div class="${0}">${1} ${2}</div>
+      `;
+      const values = ['foo', 'bar', 'baz'];
+      const updater = new SyncUpdater(new DefaultScope());
+      const fragment = template.hydrate(values, updater);
+
+      updater.flush();
+
+      expect(fragment.childNodes.map(nodeToString)).toEqual([
+        '<div class="foo">bar baz</div>',
+      ]);
+
+      fragment.rehydrate(['bar', 'baz', 'qux'], updater);
+      updater.flush();
+
+      expect(fragment.childNodes.map(nodeToString)).toEqual([
+        '<div class="bar">baz qux</div>',
+      ]);
+    });
+  });
+
+  describe('.detach()', () => {
+    it('should unbind bindings mounted as a child of the fragment', () => {
+      const template = html`
+        ${0}<div class=${2}>${3}</div><!--${4}-->
+      `;
+      const values = ['foo', 'bar', 'baz', 'qux'];
+      const container = document.createElement('div');
+      const part = {
+        type: PartType.ChildNode,
+        node: document.createComment(''),
+      } as const;
+      const updater = new SyncUpdater(new DefaultScope());
+      const fragment = template.hydrate(values, updater);
+
+      container.appendChild(part.node);
+      fragment.mount(part);
+      updater.flush();
+
+      expect(fragment.childNodes.map(nodeToString)).toEqual([
+        'foo',
+        '<div class="bar">baz</div>',
+        'qux',
+      ]);
+      expect(container.innerHTML).toBe(
+        'foo<div class="bar">baz</div><!--qux--><!---->',
+      );
+
+      const unbindSpies = fragment.bindings.map((binding) =>
+        vi.spyOn(binding, 'unbind'),
+      );
+      const disconnectSpies = fragment.bindings.map((binding) =>
+        vi.spyOn(binding, 'disconnect'),
+      );
+
+      fragment.detach(part, updater);
+      updater.flush();
+
+      expect(fragment.childNodes.map(nodeToString)).toEqual([
+        '',
+        '<div class="bar">baz</div>',
+        '',
+      ]);
+      expect(container.innerHTML).toBe(
+        '<div class="bar">baz</div><!----><!---->',
+      );
+      expect(unbindSpies.map((spy) => spy.mock.calls.length)).toEqual([
+        1, 0, 0, 1,
+      ]);
+      expect(disconnectSpies.map((spy) => spy.mock.calls.length)).toEqual([
+        0, 1, 1, 0,
+      ]);
+    });
+
+    it('should throw an error if the number of binding and values do not match', () => {
+      const template = html`
+        <p>Count: ${0}</p>
+      `;
+      const updater = new SyncUpdater(new DefaultScope());
+      const fragment = template.hydrate([0], updater);
+
+      expect(() => {
+        fragment.rehydrate([], updater);
+      }).toThrow('The number of new data must be 1, but got 0.');
+    });
+  });
+
+  describe('.disconnect()', () => {
+    it('should disconnect bindings in the fragment', () => {
+      let disconnects = 0;
+      const template = html`
+        <p>Count: ${0}</p>
+      `;
+      const directive = new MockDirective();
+      vi.spyOn(directive, directiveTag).mockImplementation(function (
+        this: MockDirective,
+        part: Part,
+      ) {
+        const binding = new MockBinding(directive, part);
+        vi.spyOn(binding, 'disconnect').mockImplementation(() => {
+          disconnects++;
+        });
+        return binding;
+      });
+      const values = [directive];
+      const updater = new SyncUpdater(new DefaultScope());
+      const fragment = template.hydrate(values, updater);
+
+      expect(disconnects).toBe(0);
+
+      fragment.disconnect();
+
+      expect(disconnects).toBe(1);
+    });
+  });
+
   describe('.mount()', () => {
-    it('should mount child nodes on the part', () => {
+    it('should mount child nodes at the part', () => {
       const template = html`
         <p>Hello, ${0}!</p>
       `;
       const values = ['World'];
       const updater = new SyncUpdater(new DefaultScope());
-      const root = template.hydrate(values, updater);
+      const fragment = template.hydrate(values, updater);
 
       updater.flush();
 
       const container = document.createElement('div');
-      const marker = document.createComment('');
-
-      container.appendChild(marker);
-
-      root.mount({
+      const part = {
         type: PartType.ChildNode,
-        node: marker,
-      });
+        node: document.createComment(''),
+      } as const;
 
-      expect(container.innerHTML, '<p>Hello).toBe(World!</p><!---->');
+      container.appendChild(part.node);
+      fragment.mount(part);
 
-      root.unmount({
-        type: PartType.ChildNode,
-        node: marker,
-      });
+      expect(container.innerHTML).toBe('<p>Hello, World!</p><!---->');
+
+      fragment.unmount(part);
 
       expect(container.innerHTML).toBe('<!---->');
     });
-  });
 
-  describe('.bindData()', () => {
-    it('should update bindings with new values', () => {
+    it('should not mount child nodes if the part is not mounted', () => {
       const template = html`
-        <p>Count: ${0}</p>
+        <p>Hello, ${0}!</p>
       `;
-      const values = [0];
+      const values = ['World'];
       const updater = new SyncUpdater(new DefaultScope());
-      const root = template.hydrate(values, updater);
+      const fragment = template.hydrate(values, updater);
 
       updater.flush();
 
-      expect((root.childNodes[0] as Element)?.outerHTML).toBe(
-        '<p>Count: 0</p>',
-      );
+      const container = document.createElement('div');
+      const part = {
+        type: PartType.ChildNode,
+        node: document.createComment(''),
+      } as const;
 
-      root.bindData([1], updater);
+      fragment.mount(part);
 
-      updater.flush();
+      expect(container.innerHTML).toBe('');
 
-      expect((root.childNodes[0] as Element)?.outerHTML).toBe(
-        '<p>Count: 1</p>',
-      );
-    });
-  });
+      fragment.unmount(part);
 
-  describe('.disconnect()', () => {
-    it('should disconnect bindings', () => {
-      let disconnects = 0;
-      const template = html`
-        <p>Count: ${0}</p>
-      `;
-      const values = [
-        Object.assign(new MockDirective(), {
-          [directiveTag](this: MockDirective, part: Part) {
-            return Object.assign(new MockBinding(this, part), {
-              disconnect() {
-                disconnects++;
-              },
-            });
-          },
-        }),
-      ];
-      const updater = new SyncUpdater(new DefaultScope());
-      const root = template.hydrate(values, updater);
-
-      expect(disconnects).toBe(0);
-
-      root.disconnect();
-
-      expect(disconnects).toBe(1);
+      expect(container.innerHTML).toBe('');
     });
   });
 });
@@ -493,4 +627,10 @@ function svg(
   ..._values: unknown[]
 ): TaggedTemplate {
   return TaggedTemplate.parseSVG(tokens, MARKER);
+}
+
+function nodeToString(node: Node): string {
+  return node.nodeType === Node.ELEMENT_NODE
+    ? (node as Element).outerHTML
+    : node.nodeValue ?? '';
 }
