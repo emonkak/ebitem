@@ -165,11 +165,11 @@ function Counter({ count$ }: CounterProps, context: Context) {
         '(Even)',
         '(Odd)',
       )}</span>
-      <span class="count-even">${when(count % 2 === 0, '(Even)')}</span>
-      <span class="count-odd">${unless(count % 2 === 0, '(Odd)')}</span>
       <span class="count-choose">${choice(count % 2, (count) =>
         count === 0 ? '(Even)' : '(Odd)',
       )}</span>
+      <span class="count-even">${when(count % 2 === 0, '(Even)')}</span>
+      <span class="count-odd">${unless(count % 2 === 0, '(Odd)')}</span>
       <${context.element(
         count % 2 === 0 ? 'strong' : 'em',
         { style: style({ color: 'blue' }) },

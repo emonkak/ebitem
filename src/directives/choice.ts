@@ -113,17 +113,14 @@ export class ChoiceBinding<TKey, TValue>
 
   unbind(updater: Updater): void {
     if (this._currentBinding !== null) {
+      this._currentBinding.unbind(updater);
       this._currentKey = null;
-      this._currentBinding?.unbind(updater);
-      this._currentBinding = null;
     }
   }
 
   disconnect(): void {
     if (this._currentBinding !== null) {
-      this._currentKey = null;
-      this._currentBinding?.disconnect();
-      this._currentBinding = null;
+      this._currentBinding.disconnect();
     }
   }
 
