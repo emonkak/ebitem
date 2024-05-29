@@ -7,10 +7,9 @@ import {
   PropertyBinding,
   SpreadBinding,
   directiveTag,
-  initializeBinding,
   isDirective,
   mountValue,
-  updateBinding,
+  resolveBinding,
 } from '../src/binding.js';
 import { LocalScope } from '../src/localScope.js';
 import { Part, PartType } from '../src/part.js';
@@ -38,21 +37,21 @@ describe('AttributeBinding', () => {
   describe('.bind()', () => {
     it('should update the attribute with the passed string', () => {
       const element = document.createElement('div');
-      const binding = new AttributeBinding('foo', {
+      const part = {
         type: PartType.Attribute,
         node: element,
         name: 'class',
-      });
+      } as const;
+      const binding = new AttributeBinding('foo', part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      binding.rebind(updater);
       updater.flush();
 
       expect(binding.value).toBe('foo');
       expect(element.getAttribute('class')).toBe('foo');
 
-      binding.value = 'bar';
-      binding.bind(updater);
+      binding.bind('bar', updater);
       updater.flush();
 
       expect(binding.value).toBe('bar');
@@ -71,21 +70,21 @@ describe('AttributeBinding', () => {
         },
       };
       const element = document.createElement('div');
-      const binding = new AttributeBinding(obj1, {
+      const part = {
         type: PartType.Attribute,
         node: element,
         name: 'class',
-      });
+      } as const;
+      const binding = new AttributeBinding(obj1, part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      binding.rebind(updater);
       updater.flush();
 
       expect(binding.value).toBe(obj1);
       expect(element.getAttribute('class')).toBe('foo');
 
-      binding.value = obj2;
-      binding.bind(updater);
+      binding.bind(obj2, updater);
       updater.flush();
 
       expect(binding.value).toBe(obj2);
@@ -94,21 +93,21 @@ describe('AttributeBinding', () => {
 
     it('should toggle the attribute according to the boolean value', () => {
       const element = document.createElement('div');
-      const binding = new AttributeBinding(true, {
+      const part = {
         type: PartType.Attribute,
         node: element,
         name: 'contenteditable',
-      });
+      } as const;
+      const binding = new AttributeBinding(true, part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      binding.rebind(updater);
       updater.flush();
 
       expect(binding.value).toBe(true);
       expect(element.hasAttribute('contenteditable')).toBe(true);
 
-      binding.value = false;
-      binding.bind(updater);
+      binding.bind(false, updater);
       updater.flush();
 
       expect(binding.value).toBe(false);
@@ -117,15 +116,16 @@ describe('AttributeBinding', () => {
 
     it('should remove the attribute when null is passed', () => {
       const element = document.createElement('div');
-      const binding = new AttributeBinding(null, {
+      const part = {
         type: PartType.Attribute,
         node: element,
         name: 'contenteditable',
-      });
+      } as const;
+      const binding = new AttributeBinding(null, part);
       const updater = new SyncUpdater(new LocalScope());
 
       element.toggleAttribute('contenteditable', true);
-      binding.bind(updater);
+      binding.rebind(updater);
       updater.flush();
 
       expect(binding.value).toBe(null);
@@ -134,50 +134,82 @@ describe('AttributeBinding', () => {
 
     it('should remove the attribute when undefined is passed', () => {
       const element = document.createElement('div');
-      const binding = new AttributeBinding(undefined, {
+      const part = {
         type: PartType.Attribute,
         node: element,
         name: 'contenteditable',
-      });
+      } as const;
+      const binding = new AttributeBinding(undefined, part);
       const updater = new SyncUpdater(new LocalScope());
 
       element.toggleAttribute('contenteditable', true);
-      binding.bind(updater);
+      binding.rebind(updater);
       updater.flush();
 
       expect(binding.value).toBe(undefined);
       expect(element.hasAttribute('contenteditable')).toBe(false);
     });
 
+    it('should not update the binding if the new and old values are the same', () => {
+      const element = document.createElement('div');
+      const part = {
+        type: PartType.Attribute,
+        node: element,
+        name: 'class',
+      } as const;
+      const binding = new AttributeBinding('foo', part);
+      const updater = new SyncUpdater(new LocalScope());
+
+      binding.bind('foo', updater);
+
+      expect(binding.value).toBe('foo');
+      expect(updater.isNothingScheduled()).toBe(true);
+    });
+
     it('should do nothing if called twice', () => {
       const element = document.createElement('div');
-      const binding = new AttributeBinding(undefined, {
+      const part = {
         type: PartType.Attribute,
         node: element,
         name: 'contenteditable',
-      });
+      } as const;
+      const binding = new AttributeBinding(undefined, part);
       const updater = new SyncUpdater(new LocalScope());
+
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
         'enqueueMutationEffect',
       );
 
-      binding.bind(updater);
-      binding.bind(updater);
+      binding.rebind(updater);
+      binding.rebind(updater);
 
       expect(enqueueMutationEffectSpy).toHaveBeenCalledOnce();
       expect(enqueueMutationEffectSpy).toHaveBeenCalledWith(binding);
+    });
+
+    it('should throw the error if the value is a directive', () => {
+      expect(() => {
+        const binding = new AttributeBinding(null, {
+          type: PartType.Attribute,
+          node: document.createElement('div'),
+          name: 'class',
+        });
+        const updater = new SyncUpdater(new LocalScope());
+        binding.bind(new MockDirective(), updater);
+      }).toThrow('A value must not be a directive,');
     });
   });
 
   describe('.unbind()', () => {
     it('should remove the attribute', () => {
       const element = document.createElement('div');
-      const binding = new AttributeBinding(true, {
+      const part = {
         type: PartType.Attribute,
         node: element,
         name: 'contenteditable',
-      });
+      } as const;
+      const binding = new AttributeBinding(true, part);
       const updater = new SyncUpdater(new LocalScope());
 
       element.toggleAttribute('contenteditable', true);
@@ -190,12 +222,14 @@ describe('AttributeBinding', () => {
 
     it('should do nothing if called twice', () => {
       const element = document.createElement('div');
-      const binding = new AttributeBinding(undefined, {
+      const part = {
         type: PartType.Attribute,
         node: element,
         name: 'contenteditable',
-      });
+      } as const;
+      const binding = new AttributeBinding(undefined, part);
       const updater = new SyncUpdater(new LocalScope());
+
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
         'enqueueMutationEffect',
@@ -212,11 +246,12 @@ describe('AttributeBinding', () => {
   describe('.disconnect()', () => {
     it('should do nothing', () => {
       const element = document.createElement('div');
-      const binding = new AttributeBinding(true, {
+      const part = {
         type: PartType.Attribute,
         node: element,
         name: 'contenteditable',
-      });
+      } as const;
+      const binding = new AttributeBinding(true, part);
 
       binding.disconnect();
     });
@@ -252,22 +287,16 @@ describe('EventBinding', () => {
           },
         );
       }).toThrow(
-        'A value that EventBinding binds must be EventListener, EventListenerObject or null.',
+        'A value of EventBinding must be EventListener, EventListenerObject or null.',
       );
-    });
-  });
-
-  describe('.value', () => {
-    it('should throw the error if the value other than an event listner is assigned', () => {
       expect(() => {
-        const binding = new EventBinding(null, {
+        new EventBinding(undefined, {
           type: PartType.Event,
           node: document.createElement('div'),
           name: 'hello',
         });
-        binding.value = {};
       }).toThrow(
-        'A value that EventBinding binds must be EventListener, EventListenerObject or null.',
+        'A value of EventBinding must be EventListener, EventListenerObject or null.',
       );
     });
   });
@@ -276,18 +305,19 @@ describe('EventBinding', () => {
     it('should attach the function to the element as an event listener', () => {
       const listener1 = vi.fn();
       const listener2 = vi.fn();
+      const event = new CustomEvent('hello');
       const element = document.createElement('div');
-      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
       const part = {
         type: PartType.Event,
         node: element,
         name: 'hello',
       } as const;
-      const event = new CustomEvent('hello');
       const binding = new EventBinding(listener1, part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
+
+      binding.rebind(updater);
       updater.flush();
       element.dispatchEvent(event);
 
@@ -297,8 +327,7 @@ describe('EventBinding', () => {
       expect(listener1).toHaveBeenCalledWith(event);
       expect(listener2).not.toHaveBeenCalled();
 
-      binding.value = listener2;
-      binding.bind(updater);
+      binding.bind(listener2, updater);
       updater.flush();
       element.dispatchEvent(event);
 
@@ -307,15 +336,6 @@ describe('EventBinding', () => {
     });
 
     it('should attach the object to the element as an event listener', () => {
-      const element = document.createElement('div');
-      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
-      const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
-      const part = {
-        type: PartType.Event,
-        node: element,
-        name: 'hello',
-      } as const;
-      const event = new CustomEvent('hello');
       const listener1 = {
         capture: true,
         handleEvent: vi.fn(),
@@ -324,10 +344,20 @@ describe('EventBinding', () => {
         capture: false,
         handleEvent: vi.fn(),
       };
+      const event = new CustomEvent('hello');
+      const element = document.createElement('div');
+      const part = {
+        type: PartType.Event,
+        node: element,
+        name: 'hello',
+      } as const;
       const binding = new EventBinding(listener1, part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
+      const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
+
+      binding.rebind(updater);
       updater.flush();
       element.dispatchEvent(event);
 
@@ -341,8 +371,7 @@ describe('EventBinding', () => {
       expect(listener1.handleEvent).toHaveBeenCalledWith(event);
       expect(listener2.handleEvent).not.toHaveBeenCalled();
 
-      binding.value = listener2;
-      binding.bind(updater);
+      binding.bind(listener2, updater);
       updater.flush();
       element.dispatchEvent(event);
 
@@ -362,26 +391,51 @@ describe('EventBinding', () => {
       expect(listener2.handleEvent).toHaveBeenCalledWith(event);
     });
 
-    it('should detach the active event listener when null is passed', () => {
-      const listener = vi.fn();
+    it('should not attach the event listener if the new and current listeners are the same', () => {
+      const listener = () => {};
       const element = document.createElement('div');
-      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
-      const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
       const part = {
         type: PartType.Event,
         node: element,
         name: 'hello',
       } as const;
+      const binding = new EventBinding(listener, part);
+      const updater = new SyncUpdater(new LocalScope());
+
+      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
+      const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
+
+      binding.rebind(updater);
+      updater.flush();
+
+      expect(addEventListenerSpy).toHaveBeenCalledOnce();
+      expect(removeEventListenerSpy).not.toHaveBeenCalled();
+
+      binding.bind(listener, updater);
+
+      expect(updater.isNothingScheduled()).toBe(true);
+    });
+
+    it('should detach the active event listener when null is passed', () => {
+      const element = document.createElement('div');
+      const part = {
+        type: PartType.Event,
+        node: element,
+        name: 'hello',
+      } as const;
+      const listener = vi.fn();
       const event = new CustomEvent('hello');
       const binding = new EventBinding(listener, part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
+      const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
+
+      binding.rebind(updater);
       updater.flush();
       element.dispatchEvent(event);
 
-      binding.value = null;
-      binding.bind(updater);
+      binding.bind(null, updater);
       updater.flush();
       element.dispatchEvent(event);
 
@@ -396,22 +450,49 @@ describe('EventBinding', () => {
     it('should do nothing if called twice', () => {
       const listener = () => {};
       const element = document.createElement('div');
-      const binding = new EventBinding(listener, {
+      const part = {
         type: PartType.Event,
         node: element,
         name: 'click',
-      });
+      } as const;
+      const binding = new EventBinding(listener, part);
       const updater = new SyncUpdater(new LocalScope());
+
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
         'enqueueMutationEffect',
       );
 
-      binding.bind(updater);
-      binding.bind(updater);
+      binding.rebind(updater);
+      binding.rebind(updater);
 
       expect(enqueueMutationEffectSpy).toHaveBeenCalledOnce();
       expect(enqueueMutationEffectSpy).toHaveBeenCalledWith(binding);
+    });
+
+    it('should throw the error if the value other than an event listner or null is assigned', () => {
+      expect(() => {
+        const binding = new EventBinding(null, {
+          type: PartType.Event,
+          node: document.createElement('div'),
+          name: 'hello',
+        });
+        const updater = new SyncUpdater(new LocalScope());
+        binding.bind({}, updater);
+      }).toThrow(
+        'A value of EventBinding must be EventListener, EventListenerObject or null.',
+      );
+      expect(() => {
+        const binding = new EventBinding(null, {
+          type: PartType.Event,
+          node: document.createElement('div'),
+          name: 'hello',
+        });
+        const updater = new SyncUpdater(new LocalScope());
+        binding.bind(undefined, updater);
+      }).toThrow(
+        'A value of EventBinding must be EventListener, EventListenerObject or null.',
+      );
     });
   });
 
@@ -419,8 +500,6 @@ describe('EventBinding', () => {
     it('should detach the active event listener', () => {
       const listener = vi.fn();
       const element = document.createElement('div');
-      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
-      const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
       const part = {
         type: PartType.Event,
         node: element,
@@ -430,7 +509,10 @@ describe('EventBinding', () => {
       const binding = new EventBinding(listener, part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
+      const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
+
+      binding.rebind(updater);
       updater.flush();
       element.dispatchEvent(event);
 
@@ -450,14 +532,15 @@ describe('EventBinding', () => {
     it('should do nothing if called twice', () => {
       const listener = () => {};
       const element = document.createElement('div');
-      const binding = new EventBinding(listener, {
+      const part = {
         type: PartType.Event,
         node: element,
         name: 'click',
-      });
+      } as const;
+      const binding = new EventBinding(listener, part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      binding.rebind(updater);
 
       updater.flush();
 
@@ -476,11 +559,12 @@ describe('EventBinding', () => {
     it('should do nothing if there is no active listner', () => {
       const listener = () => {};
       const element = document.createElement('div');
-      const binding = new EventBinding(listener, {
+      const part = {
         type: PartType.Event,
         node: element,
         name: 'click',
-      });
+      } as const;
+      const binding = new EventBinding(listener, part);
       const updater = new SyncUpdater(new LocalScope());
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
@@ -498,16 +582,18 @@ describe('EventBinding', () => {
     it('should detach the active event listener function', () => {
       const listener = () => {};
       const element = document.createElement('div');
-      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
-      const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
-      const binding = new EventBinding(listener, {
+      const part = {
         type: PartType.Event,
         node: element,
         name: 'hello',
-      });
+      } as const;
+      const binding = new EventBinding(listener, part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
+      const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
+
+      binding.rebind(updater);
       updater.flush();
 
       binding.disconnect();
@@ -532,16 +618,18 @@ describe('EventBinding', () => {
     it('should detach the active event listener object', () => {
       const listener = { handleEvent: () => {}, capture: true };
       const element = document.createElement('div');
-      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
-      const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
-      const binding = new EventBinding(listener, {
+      const part = {
         type: PartType.Event,
         node: element,
         name: 'hello',
-      });
+      } as const;
+      const binding = new EventBinding(listener, part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
+      const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
+
+      binding.rebind(updater);
       updater.flush();
 
       binding.disconnect();
@@ -594,63 +682,91 @@ describe('NodeBinding', () => {
   describe('.bind()', () => {
     it('should update the value of the node', () => {
       const node = document.createTextNode('');
-      const binding = new NodeBinding('foo', {
+      const part = {
         type: PartType.Node,
         node,
-      });
+      } as const;
+      const binding = new NodeBinding('foo', part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      binding.rebind(updater);
       updater.flush();
 
       expect(binding.value).toBe('foo');
       expect(node.nodeValue).toBe('foo');
 
-      binding.value = 'bar';
-      binding.bind(updater);
+      binding.bind('bar', updater);
       updater.flush();
 
       expect(binding.value).toBe('bar');
       expect(node.nodeValue).toBe('bar');
 
-      binding.value = null;
-      binding.bind(updater);
+      binding.bind(null, updater);
+      updater.flush();
       updater.flush();
 
       expect(binding.value).toBe(null);
       expect(node.nodeValue).toBe('');
     });
 
-    it('should do nothing if called twice', () => {
+    it('should not update the binding if the new and old values are the same', () => {
       const node = document.createTextNode('');
-      const binding = new NodeBinding(undefined, {
+      const part = {
         type: PartType.Node,
         node,
-      });
+      } as const;
+      const updater = new SyncUpdater(new LocalScope());
+      const binding = new NodeBinding('foo', part);
+
+      binding.bind('foo', updater);
+
+      expect(binding.value).toBe('foo');
+      expect(updater.isNothingScheduled()).toBe(true);
+    });
+
+    it('should do nothing if called twice', () => {
+      const node = document.createTextNode('');
+      const part = {
+        type: PartType.Node,
+        node,
+      } as const;
+      const binding = new NodeBinding(undefined, part);
       const updater = new SyncUpdater(new LocalScope());
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
         'enqueueMutationEffect',
       );
 
-      binding.bind(updater);
-      binding.bind(updater);
+      binding.rebind(updater);
+      binding.rebind(updater);
 
       expect(enqueueMutationEffectSpy).toHaveBeenCalledOnce();
       expect(enqueueMutationEffectSpy).toHaveBeenCalledWith(binding);
+    });
+
+    it('should throw the error if the value is a directive', () => {
+      expect(() => {
+        const binding = new NodeBinding('foo', {
+          type: PartType.Node,
+          node: document.createElement('div'),
+        });
+        const updater = new SyncUpdater(new LocalScope());
+        binding.bind(new MockDirective(), updater);
+      }).toThrow('A value must not be a directive,');
     });
   });
 
   describe('.unbind()', () => {
     it('should set null to the value of the node', () => {
       const node = document.createTextNode('');
-      const binding = new NodeBinding('foo', {
+      const part = {
         type: PartType.Node,
         node,
-      });
+      } as const;
+      const binding = new NodeBinding('foo', part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      binding.rebind(updater);
       updater.flush();
 
       expect(binding.value).toBe('foo');
@@ -665,10 +781,11 @@ describe('NodeBinding', () => {
 
     it('should do nothing if called twice', () => {
       const node = document.createTextNode('');
-      const binding = new NodeBinding(undefined, {
+      const part = {
         type: PartType.Node,
         node,
-      });
+      } as const;
+      const binding = new NodeBinding(undefined, part);
       const updater = new SyncUpdater(new LocalScope());
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
@@ -686,10 +803,11 @@ describe('NodeBinding', () => {
   describe('.disconnect()', () => {
     it('should do nothing', () => {
       const node = document.createTextNode('');
-      const binding = new NodeBinding(true, {
+      const part = {
         type: PartType.Node,
         node,
-      });
+      } as const;
+      const binding = new NodeBinding('foo', part);
 
       binding.disconnect();
     });
@@ -717,45 +835,74 @@ describe('PropertyBinding', () => {
   describe('.bind()', () => {
     it('should update the property of the element', () => {
       const element = document.createElement('div');
-      const binding = new PropertyBinding('foo', {
+      const part = {
         type: PartType.Property,
         node: element,
         name: 'className',
-      });
+      } as const;
+      const binding = new PropertyBinding('foo', part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      binding.rebind(updater);
       updater.flush();
 
       expect(binding.value).toBe('foo');
       expect(element.className).toBe('foo');
 
-      binding.value = 'bar';
-      binding.bind(updater);
+      binding.bind('bar', updater);
       updater.flush();
 
       expect(binding.value).toBe('bar');
       expect(element.className).toBe('bar');
     });
 
-    it('should do nothing if called twice', () => {
+    it('should not update the binding if the new and old values are the same', () => {
       const element = document.createElement('div');
-      const binding = new PropertyBinding(undefined, {
+      const part = {
         type: PartType.Property,
         node: element,
         name: 'className',
-      });
+      } as const;
+      const updater = new SyncUpdater(new LocalScope());
+      const binding = new PropertyBinding('foo', part);
+
+      binding.bind('foo', updater);
+
+      expect(binding.value).toBe('foo');
+      expect(updater.isNothingScheduled()).toBe(true);
+    });
+
+    it('should do nothing if called twice', () => {
+      const element = document.createElement('div');
+      const part = {
+        type: PartType.Property,
+        node: element,
+        name: 'className',
+      } as const;
+      const binding = new PropertyBinding(undefined, part);
       const updater = new SyncUpdater(new LocalScope());
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
         'enqueueMutationEffect',
       );
 
-      binding.bind(updater);
-      binding.bind(updater);
+      binding.rebind(updater);
+      binding.rebind(updater);
 
       expect(enqueueMutationEffectSpy).toHaveBeenCalledOnce();
       expect(enqueueMutationEffectSpy).toHaveBeenCalledWith(binding);
+    });
+
+    it('should throw the error if the value is a directive', () => {
+      expect(() => {
+        const binding = new PropertyBinding('foo', {
+          type: PartType.Property,
+          node: document.createElement('div'),
+          name: 'className',
+        });
+        const updater = new SyncUpdater(new LocalScope());
+        binding.bind(new MockDirective(), updater);
+      }).toThrow('A value must not be a directive,');
     });
   });
 
@@ -763,11 +910,12 @@ describe('PropertyBinding', () => {
     it('should do nothing', () => {
       const element = document.createElement('div');
       const setterSpy = vi.spyOn(element, 'className', 'set');
-      const binding = new PropertyBinding('foo', {
+      const part = {
         type: PartType.Property,
         node: element,
         name: 'className',
-      });
+      } as const;
+      const binding = new PropertyBinding('foo', part);
       const updater = new SyncUpdater(new LocalScope());
 
       binding.unbind(updater);
@@ -781,11 +929,12 @@ describe('PropertyBinding', () => {
     it('should do nothing', () => {
       const element = document.createElement('div');
       const setterSpy = vi.spyOn(element, 'className', 'set');
-      const binding = new PropertyBinding('foo', {
+      const part = {
         type: PartType.Property,
         node: element,
         name: 'className',
-      });
+      } as const;
+      const binding = new PropertyBinding('foo', part);
       const updater = new SyncUpdater(new LocalScope());
 
       binding.disconnect();
@@ -815,32 +964,31 @@ describe('SpreadBinding', () => {
 
     it('should throw the error when a non-object value is passed', () => {
       expect(() => {
-        const element = document.createElement('div');
-        const part = {
+        new SpreadBinding(null, {
           type: PartType.Element,
-          node: element,
-        } as const;
-        new SpreadBinding(null, part);
-      }).toThrow('The value of SpreadBinding must be an object.');
+          node: document.createElement('div'),
+        });
+      }).toThrow('A value of SpreadBinding must be an object,');
     });
   });
 
   describe('.value', () => {
     it('should throw the error when a non-object value is passed', () => {
       expect(() => {
-        const element = document.createElement('div');
-        const part = {
-          type: PartType.Element,
-          node: element,
-        } as const;
-        const binding = new SpreadBinding({}, part);
-
-        binding.value = null;
-      }).toThrow('A value of SpreadBinding must be an object.');
+        const binding = new SpreadBinding(
+          {},
+          {
+            type: PartType.Element,
+            node: document.createElement('div'),
+          },
+        );
+        const updater = new SyncUpdater(new LocalScope());
+        binding.bind(null, updater);
+      }).toThrow('A value of SpreadBinding must be an object,');
     });
   });
 
-  describe('.bind()', () => {
+  describe('.rebind()', () => {
     it('should bind element attributes', () => {
       const props = {
         class: 'foo',
@@ -854,7 +1002,7 @@ describe('SpreadBinding', () => {
       const binding = new SpreadBinding(props, part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      binding.rebind(updater);
       updater.flush();
 
       expect(element.getAttribute('class')).toBe('foo');
@@ -874,7 +1022,7 @@ describe('SpreadBinding', () => {
       const binding = new SpreadBinding(props, part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      binding.rebind(updater);
       updater.flush();
 
       expect(element.className).toBe('foo');
@@ -895,7 +1043,7 @@ describe('SpreadBinding', () => {
       const binding = new SpreadBinding(props, part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      binding.rebind(updater);
       updater.flush();
 
       expect(addEventListenerSpy).toHaveBeenCalledTimes(2);
@@ -923,14 +1071,16 @@ describe('SpreadBinding', () => {
       const binding = new SpreadBinding(props, part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      binding.rebind(updater);
       updater.flush();
 
-      binding.value = {
-        class: 'foo', // same value as last time
-        title: 'baz',
-      };
-      binding.bind(updater);
+      binding.bind(
+        {
+          class: 'foo', // same value as last time
+          title: 'baz',
+        },
+        updater,
+      );
       updater.flush();
 
       expect(setAttributeSpy).toHaveBeenCalledTimes(3);
@@ -954,11 +1104,10 @@ describe('SpreadBinding', () => {
       const binding = new SpreadBinding(props, part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      binding.rebind(updater);
       updater.flush();
 
-      binding.value = { class: undefined };
-      binding.bind(updater);
+      binding.bind({ class: undefined }, updater);
       updater.flush();
 
       expect(element.hasAttribute('class')).toBe(false);
@@ -980,7 +1129,7 @@ describe('SpreadBinding', () => {
       const binding = new SpreadBinding(props, part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      binding.rebind(updater);
       updater.flush();
 
       binding.unbind(updater);
@@ -997,7 +1146,7 @@ describe('SpreadBinding', () => {
 
       const createMockDirective = () =>
         Object.assign(new MockDirective(), {
-          [directiveTag](this: MockDirective, part: Part) {
+          [directiveTag](this: MockDirective, part: Part): MockBinding {
             return Object.assign(new MockBinding(this, part), {
               disconnect() {
                 disconnects++;
@@ -1017,7 +1166,7 @@ describe('SpreadBinding', () => {
       const binding = new SpreadBinding(props, part);
       const updater = new SyncUpdater(new LocalScope());
 
-      binding.bind(updater);
+      binding.rebind(updater);
       updater.flush();
 
       binding.disconnect();
@@ -1027,7 +1176,7 @@ describe('SpreadBinding', () => {
   });
 });
 
-describe('initializeBinding()', () => {
+describe('resolveBinding()', () => {
   it('should perform the value if it is a directive', () => {
     const part = {
       type: PartType.Node,
@@ -1036,7 +1185,7 @@ describe('initializeBinding()', () => {
     const directive = new MockDirective();
     const directiveSpy = vi.spyOn(directive, directiveTag);
     const updater = new SyncUpdater(new LocalScope());
-    const binding = initializeBinding(directive, part, updater);
+    const binding = resolveBinding(directive, part, updater);
 
     expect(binding).toBeInstanceOf(MockBinding);
     expect(directiveSpy).toHaveBeenCalledOnce();
@@ -1051,12 +1200,11 @@ describe('initializeBinding()', () => {
       name: 'class',
     } as const;
     const updater = new SyncUpdater(new LocalScope());
-    const binding = initializeBinding('foo', part, updater);
-
-    updater.flush();
+    const binding = resolveBinding('foo', part, updater);
 
     expect(binding).toBeInstanceOf(AttributeBinding);
-    expect(element.getAttribute('class')).toBe('foo');
+    expect(binding.value).toBe('foo');
+    expect(updater.isNothingScheduled()).toBe(true);
   });
 
   it('should resolve the value as a EventBinding if the part is a EventPart', () => {
@@ -1067,17 +1215,12 @@ describe('initializeBinding()', () => {
       node: element,
       name: 'hello',
     } as const;
-    const event = new CustomEvent('hello');
     const updater = new SyncUpdater(new LocalScope());
-    const binding = initializeBinding(listener, part, updater);
-
-    updater.flush();
-
-    element.dispatchEvent(event);
+    const binding = resolveBinding(listener, part, updater);
 
     expect(binding).toBeInstanceOf(EventBinding);
-    expect(listener).toHaveBeenCalledOnce();
-    expect(listener).toHaveBeenCalledWith(event);
+    expect(binding.value).toBe(listener);
+    expect(updater.isNothingScheduled()).toBe(true);
   });
 
   it('should resolve the value as a PropertyBinding if the part is a PropertyPart', () => {
@@ -1088,12 +1231,11 @@ describe('initializeBinding()', () => {
       name: 'className',
     } as const;
     const updater = new SyncUpdater(new LocalScope());
-    const binding = initializeBinding('foo', part, updater);
-
-    updater.flush();
+    const binding = resolveBinding('foo', part, updater);
 
     expect(binding).toBeInstanceOf(PropertyBinding);
-    expect(element.className).toBe('foo');
+    expect(binding.value).toBe('foo');
+    expect(updater.isNothingScheduled()).toBe(true);
   });
 
   it('should resolve the value as a NodeBinding if the part is a NodePart', () => {
@@ -1103,12 +1245,11 @@ describe('initializeBinding()', () => {
       node,
     } as const;
     const updater = new SyncUpdater(new LocalScope());
-    const binding = initializeBinding('foo', part, updater);
-
-    updater.flush();
+    const binding = resolveBinding('foo', part, updater);
 
     expect(binding).toBeInstanceOf(NodeBinding);
-    expect(node.nodeValue).toBe('foo');
+    expect(binding.value).toBe('foo');
+    expect(updater.isNothingScheduled()).toBe(true);
   });
 
   it('should resolve the value as a NodeBinding if the part is a ChildNodePart', () => {
@@ -1118,12 +1259,11 @@ describe('initializeBinding()', () => {
       node,
     } as const;
     const updater = new SyncUpdater(new LocalScope());
-    const binding = initializeBinding('foo', part, updater);
-
-    updater.flush();
+    const binding = resolveBinding('foo', part, updater);
 
     expect(binding).toBeInstanceOf(NodeBinding);
-    expect(node.nodeValue).toBe('foo');
+    expect(binding.value).toBe('foo');
+    expect(updater.isNothingScheduled()).toBe(true);
   });
 
   it('should resolve the value as a SpreadBinding if the part is a ElementPart', () => {
@@ -1133,24 +1273,22 @@ describe('initializeBinding()', () => {
       node: element,
     } as const;
     const updater = new SyncUpdater(new LocalScope());
-    const binding = initializeBinding(
-      {
-        class: 'foo',
-        title: 'bar',
-      },
-      part,
-      updater,
-    );
+    const props = {
+      class: 'foo',
+      title: 'bar',
+    };
+    const binding = resolveBinding(props, part, updater);
 
+    binding.rebind(updater);
     updater.flush();
 
     expect(binding).toBeInstanceOf(SpreadBinding);
-    expect(element.getAttribute('class')).toBe('foo');
-    expect(element.getAttribute('title')).toBe('bar');
+    expect(binding.value).toBe(props);
+    expect(updater.isNothingScheduled()).toBe(true);
   });
 });
 
-describe('isDirective', () => {
+describe('isDirective()', () => {
   it('should return true if the value is directive', () => {
     expect(isDirective(null)).toBe(false);
     expect(isDirective('')).toBe(false);
@@ -1159,7 +1297,7 @@ describe('isDirective', () => {
   });
 });
 
-describe('mountValue', () => {
+describe('mountValue()', () => {
   it('should mount element inside the container', async () => {
     const directive = new MockDirective();
     const container = document.createElement('div');
@@ -1195,113 +1333,5 @@ describe('mountValue', () => {
     expect(directiveSpy).toHaveBeenCalledOnce();
     expect(isUpdatingSpy).toHaveBeenCalledOnce();
     expect(scheduleUpdateSpy).not.toHaveBeenCalled();
-  });
-});
-
-describe('updateBinding()', () => {
-  it('should update the non-directive binding if the new and old values are not the same', () => {
-    const node = document.createTextNode('');
-    const part = {
-      type: PartType.Node,
-      node,
-    } as const;
-    const updater = new SyncUpdater(new LocalScope());
-    const binding = new NodeBinding('foo', part);
-    const bindSpy = vi.spyOn(binding, 'bind');
-
-    updateBinding(binding, 'bar', updater);
-
-    expect(binding.value).toBe('bar');
-    expect(bindSpy).toHaveBeenCalledOnce();
-    expect(bindSpy).toHaveBeenCalledWith(updater);
-  });
-
-  it('should update the directive binding if the new and old values are not the same', () => {
-    const node = document.createTextNode('');
-    const part = {
-      type: PartType.Node,
-      node,
-    } as const;
-    const updater = new SyncUpdater(new LocalScope());
-    const directive1 = new MockDirective();
-    const directive2 = new MockDirective();
-    const binding = new MockBinding(directive1, part);
-    const bindSpy = vi.spyOn(binding, 'bind');
-
-    updateBinding(binding, directive2, updater);
-
-    expect(binding.value).toBe(directive2);
-    expect(bindSpy).toHaveBeenCalledOnce();
-    expect(bindSpy).toHaveBeenCalledWith(updater);
-  });
-
-  it('should not update the binding if the new and old values are the same', () => {
-    const node = document.createTextNode('');
-    const part = {
-      type: PartType.Node,
-      node,
-    } as const;
-    const updater = new SyncUpdater(new LocalScope());
-    const binding = new NodeBinding('foo', part);
-    const bindSpy = vi.spyOn(binding, 'bind');
-
-    updateBinding(binding, 'foo', updater);
-
-    expect(binding.value).toBe('foo');
-    expect(bindSpy).not.toHaveBeenCalled();
-  });
-
-  it('should throw the error if the old value is a directive and the new value is a non-directive', () => {
-    const directive = new MockDirective();
-    const node = document.createTextNode('');
-    const part = {
-      type: PartType.Node,
-      node,
-    } as const;
-    const updater = new SyncUpdater(new LocalScope());
-    const binding = new MockBinding(directive, part);
-
-    expect(() => updateBinding(binding, null as any, updater)).toThrow(
-      'The new value should be "MockDirective", but got "null".',
-    );
-    expect(() =>
-      updateBinding(binding, function foo() {} as any, updater),
-    ).toThrow('The new value should be "MockDirective", but got "foo".');
-    expect(() => updateBinding(binding, (() => {}) as any, updater)).toThrow(
-      'The new value should be "MockDirective", but got "function".',
-    );
-    expect(() =>
-      updateBinding(binding, new (class {})() as any, updater),
-    ).toThrow('The new value should be "MockDirective", but got "object".');
-  });
-
-  it('should throw the error if the old value is a directive and the new value is a different directive', () => {
-    const directive = new MockDirective();
-    const node = document.createTextNode('');
-    const part = {
-      type: PartType.Node,
-      node,
-    } as const;
-    const updater = new SyncUpdater(new LocalScope());
-    const binding = new MockBinding(directive, part);
-
-    expect(() =>
-      updateBinding(binding, { [directiveTag]() {} } as any, updater),
-    ).toThrow('The new value should be "MockDirective", but got "Object".');
-  });
-
-  it('should throw the erorr if the old value is a non-directive and the new value is a directive', () => {
-    const directive = new MockDirective();
-    const node = document.createTextNode('');
-    const part = {
-      type: PartType.Node,
-      node,
-    } as const;
-    const updater = new SyncUpdater(new LocalScope());
-    const binding = new NodeBinding('foo', part);
-
-    expect(() => updateBinding(binding, directive, updater)).toThrow(
-      'The new value should not be a directive, but got "MockDirective".',
-    );
   });
 });

@@ -2,8 +2,8 @@ import {
   Binding,
   Directive,
   directiveTag,
-  initializeBinding,
-  updateBinding,
+  ensureDirective,
+  resolveBinding,
 } from '../binding.js';
 import type { Part } from '../part.js';
 import type { Updater } from '../types.js';
@@ -33,21 +33,17 @@ export class ChoiceDirective<TKey, TValue> implements Directive {
     return this._factory;
   }
 
-  [directiveTag](part: Part, updater: Updater): ChoiceBinding<TKey, TValue> {
-    const binding = new ChoiceBinding(this, part);
-
-    binding.bind(updater);
-
-    return binding;
+  [directiveTag](part: Part, _updater: Updater): ChoiceBinding<TKey, TValue> {
+    return new ChoiceBinding(this, part);
   }
 }
 
 export class ChoiceBinding<TKey, TValue>
   implements Binding<ChoiceDirective<TKey, TValue>>
 {
-  private readonly _part: Part;
+  private _directive: ChoiceDirective<TKey, TValue>;
 
-  private _value: ChoiceDirective<TKey, TValue>;
+  private readonly _part: Part;
 
   private _currentKey: TKey | null = null;
 
@@ -55,8 +51,8 @@ export class ChoiceBinding<TKey, TValue>
 
   private _cachedBindings: Map<TKey, Binding<TValue>> = new Map();
 
-  constructor(value: ChoiceDirective<TKey, TValue>, part: Part) {
-    this._value = value;
+  constructor(directive: ChoiceDirective<TKey, TValue>, part: Part) {
+    this._directive = directive;
     this._part = part;
   }
 
@@ -73,20 +69,30 @@ export class ChoiceBinding<TKey, TValue>
   }
 
   get value(): ChoiceDirective<TKey, TValue> {
-    return this._value;
+    return this._directive;
   }
 
-  set value(newValue: ChoiceDirective<TKey, TValue>) {
-    this._value = newValue;
+  bind(newValue: ChoiceDirective<TKey, TValue>, updater: Updater): void {
+    DEBUG: {
+      ensureDirective(ChoiceDirective, newValue);
+    }
+    const oldValue = this._directive;
+    if (
+      oldValue.key !== newValue.key ||
+      oldValue.factory !== newValue.factory
+    ) {
+      this._directive = newValue;
+      this.rebind(updater);
+    }
   }
 
-  bind(updater: Updater): void {
-    const { key: newKey, factory } = this._value;
+  rebind(updater: Updater): void {
+    const { key: newKey, factory } = this._directive;
     const newValue = factory(newKey);
 
     if (this._currentBinding !== null) {
       if (Object.is(this._currentKey, newKey)) {
-        updateBinding(this._currentBinding, newValue, updater);
+        this._currentBinding.bind(newValue, updater);
       } else {
         this._currentBinding.unbind(updater);
         // Remenber the old binding for future updates.
@@ -112,16 +118,11 @@ export class ChoiceBinding<TKey, TValue>
   }
 
   unbind(updater: Updater): void {
-    if (this._currentBinding !== null) {
-      this._currentBinding.unbind(updater);
-      this._currentKey = null;
-    }
+    this._currentBinding?.unbind(updater);
   }
 
   disconnect(): void {
-    if (this._currentBinding !== null) {
-      this._currentBinding.disconnect();
-    }
+    this._currentBinding?.disconnect();
   }
 
   private _getBindingFromCache(
@@ -131,11 +132,12 @@ export class ChoiceBinding<TKey, TValue>
   ): Binding<TValue> {
     const cachedBinding = this._cachedBindings.get(newKey);
     if (cachedBinding !== undefined) {
-      cachedBinding.value = newValue;
-      cachedBinding.bind(updater);
+      cachedBinding.bind(newValue, updater);
       return cachedBinding;
     } else {
-      return initializeBinding(newValue, this._part, updater);
+      const binding = resolveBinding(newValue, this._part, updater);
+      binding.rebind(updater);
+      return binding;
     }
   }
 }

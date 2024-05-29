@@ -1,4 +1,4 @@
-import { Binding, initializeBinding, updateBinding } from '../binding.js';
+import { Binding, resolveBinding } from '../binding.js';
 import { ChildNodePart, PartType } from '../part.js';
 import { Template, TemplateFragment, Updater } from '../types.js';
 
@@ -18,7 +18,8 @@ export class ChildNodeTemplate<T> implements Template<T> {
       type: PartType.ChildNode,
       node: document.createComment(''),
     } as const;
-    const binding = initializeBinding(data, part, updater);
+    const binding = resolveBinding(data, part, updater);
+    binding.rebind(updater);
     return new ValueTemplateFragment(binding);
   }
 
@@ -41,7 +42,8 @@ export class TextTemplate<T> implements Template<T> {
       type: PartType.Node,
       node: document.createTextNode(''),
     } as const;
-    const binding = initializeBinding(data, part, updater);
+    const binding = resolveBinding(data, part, updater);
+    binding.rebind(updater);
     return new ValueTemplateFragment(binding);
   }
 
@@ -66,7 +68,7 @@ export class ValueTemplateFragment<T> implements TemplateFragment<T> {
   }
 
   update(newData: T, updater: Updater<unknown>): void {
-    updateBinding(this._binding, newData, updater);
+    this._binding.bind(newData, updater);
   }
 
   detach(_part: ChildNodePart, updater: Updater): void {

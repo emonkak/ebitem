@@ -1,4 +1,9 @@
-import { Binding, Directive, directiveTag } from '../binding.js';
+import {
+  Binding,
+  Directive,
+  directiveTag,
+  ensureValueIsDirective,
+} from '../binding.js';
 import { AttributePart, Part, PartType } from '../part.js';
 import type { Effect, Updater } from '../types.js';
 
@@ -21,25 +26,20 @@ export class ClassNamesDirective implements Directive {
     return this._classSpecifiers;
   }
 
-  [directiveTag](part: Part, updater: Updater): ClassNamesBinding {
+  [directiveTag](part: Part, _updater: Updater): ClassNamesBinding {
     if (part.type !== PartType.Attribute || part.name !== 'class') {
       throw new Error(
         'ClassNamesDirective must be used in the "class" attribute.',
       );
     }
-
-    const binding = new ClassNamesBinding(this, part);
-
-    binding.bind(updater);
-
-    return binding;
+    return new ClassNamesBinding(this, part);
   }
 }
 
 export class ClassNamesBinding implements Effect, Binding<ClassNamesDirective> {
-  private readonly _part: AttributePart;
-
   private _value: ClassNamesDirective;
+
+  private readonly _part: AttributePart;
 
   private _dirty = false;
 
@@ -64,11 +64,24 @@ export class ClassNamesBinding implements Effect, Binding<ClassNamesDirective> {
     return this._value;
   }
 
-  set value(newValue: ClassNamesDirective) {
-    this._value = newValue;
+  bind(newValue: ClassNamesDirective, updater: Updater): void {
+    DEBUG: {
+      ensureValueIsDirective(newValue, ClassNamesDirective);
+    }
+    const oldClassSpecifiers = this._value.classSpecifiers;
+    const newClassSpecifiers = newValue.classSpecifiers;
+    if (
+      newClassSpecifiers.length != oldClassSpecifiers.length &&
+      newClassSpecifiers.some(
+        (classSpecifier, index) => classSpecifier !== oldClassSpecifiers[index],
+      )
+    ) {
+      this._value = newValue;
+      this.rebind(updater);
+    }
   }
 
-  bind(updater: Updater): void {
+  rebind(updater: Updater): void {
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
       this._dirty = true;
@@ -76,11 +89,10 @@ export class ClassNamesBinding implements Effect, Binding<ClassNamesDirective> {
   }
 
   unbind(updater: Updater): void {
-    this._value = new ClassNamesDirective([]);
-
-    if (!this._dirty) {
-      updater.enqueueMutationEffect(this);
-      this._dirty = true;
+    const oldClassSpecifiers = this._value.classSpecifiers;
+    if (oldClassSpecifiers.length > 0) {
+      this._value = new ClassNamesDirective([]);
+      this.rebind(updater);
     }
   }
 

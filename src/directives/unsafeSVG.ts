@@ -1,4 +1,9 @@
-import { Binding, Directive, directiveTag } from '../binding.js';
+import {
+  Binding,
+  Directive,
+  directiveTag,
+  ensureDirective,
+} from '../binding.js';
 import { ChildNodePart, Part, PartType } from '../part.js';
 import type { Updater } from '../types.js';
 
@@ -17,30 +22,25 @@ export class UnsafeSVGDirective implements Directive {
     return this._unsafeContent;
   }
 
-  [directiveTag](part: Part, updater: Updater): UnsafeSVGBinding {
+  [directiveTag](part: Part, _updater: Updater): UnsafeSVGBinding {
     if (part.type !== PartType.ChildNode) {
       throw new Error('UnsafeSVGDirective must be used in ChildNodePart.');
     }
-
-    const binding = new UnsafeSVGBinding(this, part);
-
-    binding.bind(updater);
-
-    return binding;
+    return new UnsafeSVGBinding(this, part);
   }
 }
 
 export class UnsafeSVGBinding implements Binding<UnsafeSVGDirective> {
-  private readonly _part: ChildNodePart;
+  private _directive: UnsafeSVGDirective;
 
-  private _value: UnsafeSVGDirective;
+  private readonly _part: ChildNodePart;
 
   private _childNodes: ChildNode[] = [];
 
   private _dirty = false;
 
-  constructor(value: UnsafeSVGDirective, part: ChildNodePart) {
-    this._value = value;
+  constructor(directive: UnsafeSVGDirective, part: ChildNodePart) {
+    this._directive = directive;
     this._part = part;
   }
 
@@ -57,14 +57,21 @@ export class UnsafeSVGBinding implements Binding<UnsafeSVGDirective> {
   }
 
   get value(): UnsafeSVGDirective {
-    return this._value;
+    return this._directive;
   }
 
-  set value(newValue: UnsafeSVGDirective) {
-    this._value = newValue;
+  bind(newValue: UnsafeSVGDirective, updater: Updater): void {
+    DEBUG: {
+      ensureDirective(UnsafeSVGDirective, newValue);
+    }
+    const oldValue = this._directive;
+    if (oldValue.unsafeContent !== newValue.unsafeContent) {
+      this._directive = newValue;
+      this.rebind(updater);
+    }
   }
 
-  bind(updater: Updater): void {
+  rebind(updater: Updater): void {
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
       this._dirty = true;
@@ -72,18 +79,17 @@ export class UnsafeSVGBinding implements Binding<UnsafeSVGDirective> {
   }
 
   unbind(updater: Updater): void {
-    this._value = new UnsafeSVGDirective('');
-
-    if (!this._dirty) {
-      updater.enqueueMutationEffect(this);
-      this._dirty = true;
+    const { unsafeContent } = this._directive;
+    if (unsafeContent !== '') {
+      this._directive = new UnsafeSVGDirective('');
+      this.rebind(updater);
     }
   }
 
   disconnect(): void {}
 
   commit(): void {
-    const { unsafeContent } = this._value;
+    const { unsafeContent } = this._directive;
 
     for (let i = 0, l = this._childNodes.length; i < l; i++) {
       this._childNodes[i]!.remove();

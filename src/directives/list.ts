@@ -2,8 +2,8 @@ import {
   Binding,
   Directive,
   directiveTag,
-  initializeBinding,
-  updateBinding,
+  ensureDirective,
+  resolveBinding,
 } from '../binding.js';
 import { ChildNodePart, Part, PartType } from '../part.js';
 import type { Effect, Updater } from '../types.js';
@@ -61,33 +61,31 @@ export class ListDirective<TItem, TValue, TKey> implements Directive {
 
   [directiveTag](
     part: Part,
-    updater: Updater,
+    _updater: Updater,
   ): ListBinding<TItem, TValue, TKey> {
     if (part.type !== PartType.ChildNode) {
       throw new Error('ListDirective must be used in ChildNodePart.');
     }
-
-    const binding = new ListBinding(this, part);
-
-    binding.bind(updater);
-
-    return binding;
+    return new ListBinding(this, part);
   }
 }
 
 export class ListBinding<TItem, TValue, TKey>
   implements Binding<ListDirective<TItem, TValue, TKey>>
 {
-  private readonly _part: ChildNodePart;
+  private _directive: ListDirective<TItem, TValue, TKey>;
 
-  private _value: ListDirective<TItem, TValue, TKey>;
+  private readonly _part: ChildNodePart;
 
   private _bindings: Binding<TValue>[] = [];
 
   private _keys: TKey[] = [];
 
-  constructor(value: ListDirective<TItem, TValue, TKey>, part: ChildNodePart) {
-    this._value = value;
+  constructor(
+    directive: ListDirective<TItem, TValue, TKey>,
+    part: ChildNodePart,
+  ) {
+    this._directive = directive;
     this._part = part;
   }
 
@@ -104,14 +102,25 @@ export class ListBinding<TItem, TValue, TKey>
   }
 
   get value(): ListDirective<TItem, TValue, TKey> {
-    return this._value;
+    return this._directive;
   }
 
-  set value(newValue: ListDirective<TItem, TValue, TKey>) {
-    this._value = newValue;
+  bind(newValue: ListDirective<TItem, TValue, TKey>, updater: Updater): void {
+    DEBUG: {
+      ensureDirective(ListDirective, newValue);
+    }
+    const oldValue = this._directive;
+    if (
+      oldValue.items !== newValue.items ||
+      oldValue.keySelector !== newValue.keySelector ||
+      oldValue.valueSelector !== newValue.valueSelector
+    ) {
+      this._directive = newValue;
+      this.rebind(updater);
+    }
   }
 
-  bind(updater: Updater): void {
+  rebind(updater: Updater): void {
     if (this._bindings.length > 0) {
       this._reconcileItems(updater);
     } else {
@@ -121,10 +130,8 @@ export class ListBinding<TItem, TValue, TKey>
 
   unbind(updater: Updater): void {
     for (let i = 0, l = this._bindings.length; i < l; i++) {
-      unmountItem(this._bindings[i]!, updater);
+      removeItem(this._bindings[i]!, updater);
     }
-
-    this._bindings = [];
   }
 
   disconnect(): void {
@@ -134,13 +141,13 @@ export class ListBinding<TItem, TValue, TKey>
   }
 
   private _initializeItems(updater: Updater): void {
-    const { items, keySelector, valueSelector } = this._value;
+    const { items, keySelector, valueSelector } = this._directive;
     const bindings = new Array<Binding<TValue>>(items.length);
     const keys = items.map(keySelector);
     const values = items.map(valueSelector);
 
     for (let i = 0, l = bindings.length; i < l; i++) {
-      bindings[i] = mountItem(values[i]!, this._part, updater);
+      bindings[i] = addItem(values[i]!, this._part, updater);
     }
 
     this._bindings = bindings;
@@ -148,7 +155,7 @@ export class ListBinding<TItem, TValue, TKey>
   }
 
   private _reconcileItems(updater: Updater): void {
-    const { items, keySelector, valueSelector } = this._value;
+    const { items, keySelector, valueSelector } = this._directive;
     const oldBindings: (Binding<TValue> | undefined)[] = this._bindings;
     const oldKeys = this._keys;
     const newBindings = new Array<Binding<TValue>>(items.length);
@@ -174,19 +181,19 @@ export class ListBinding<TItem, TValue, TKey>
       } else if (oldKeys[oldHead] === newKeys[newHead]) {
         // Old head matches new head; update in place
         const binding = (newBindings[newHead] = oldBindings[oldHead]!);
-        updateBinding(binding, newValues[newHead]!, updater);
+        binding.bind(newValues[newHead]!, updater);
         oldHead++;
         newHead++;
       } else if (oldKeys[oldTail] === newKeys[newTail]) {
         // Old tail matches new tail; update in place
         const binding = (newBindings[newTail] = oldBindings[oldTail]!);
-        updateBinding(binding, newValues[newTail]!, updater);
+        binding.bind(newValues[newTail]!, updater);
         oldTail--;
         newTail--;
       } else if (oldKeys[oldHead] === newKeys[newTail]) {
         // Old tail matches new head; update and move to new head.
         const binding = (newBindings[newTail] = oldBindings[oldHead]!);
-        updateBinding(binding, newValues[newTail]!, updater);
+        binding.bind(newValues[newTail]!, updater);
         reorderItem(
           binding,
           newBindings[newTail + 1] ?? null,
@@ -198,7 +205,7 @@ export class ListBinding<TItem, TValue, TKey>
       } else if (oldKeys[oldTail] === newKeys[newHead]) {
         // Old tail matches new head; update and move to new head.
         const binding = (newBindings[newHead] = oldBindings[oldTail]!);
-        updateBinding(binding, newValues[newHead]!, updater);
+        binding.bind(newValues[newHead]!, updater);
         reorderItem(binding, oldBindings[oldHead] ?? null, this._part, updater);
         oldTail--;
         newHead++;
@@ -211,11 +218,11 @@ export class ListBinding<TItem, TValue, TKey>
         }
         if (!newKeyToIndexMap.has(oldKeys[oldHead]!)) {
           // Old head is no longer in new list; remove
-          unmountItem(oldBindings[oldHead]!, updater);
+          removeItem(oldBindings[oldHead]!, updater);
           oldHead++;
         } else if (!newKeyToIndexMap.has(oldKeys[oldTail]!)) {
           // Old tail is no longer in new list; remove
-          unmountItem(oldBindings[oldTail]!, updater);
+          removeItem(oldBindings[oldTail]!, updater);
           oldTail--;
         } else {
           // Any mismatches at this point are due to additions or moves; see if
@@ -224,7 +231,7 @@ export class ListBinding<TItem, TValue, TKey>
           if (oldIndex !== undefined) {
             // Reuse old part.
             const binding = (newBindings[newHead] = oldBindings[oldIndex]!);
-            updateBinding(binding, newValues[newHead]!, updater);
+            binding.bind(newValues[newHead]!, updater);
             reorderItem(
               binding,
               oldBindings[oldHead] ?? null,
@@ -236,7 +243,7 @@ export class ListBinding<TItem, TValue, TKey>
             oldBindings[oldIndex] = undefined;
           } else {
             // No old part for this value; create a new one and insert it.
-            newBindings[newHead] = mountItem(
+            newBindings[newHead] = addItem(
               newValues[newHead]!,
               this._part,
               updater,
@@ -251,11 +258,7 @@ export class ListBinding<TItem, TValue, TKey>
     while (newHead <= newTail) {
       // For all remaining additions, we insert before last new tail, since old
       // pointers are no longer valid.
-      newBindings[newHead] = mountItem(
-        newValues[newHead]!,
-        this._part,
-        updater,
-      );
+      newBindings[newHead] = addItem(newValues[newHead]!, this._part, updater);
       newHead++;
     }
 
@@ -263,7 +266,7 @@ export class ListBinding<TItem, TValue, TKey>
     while (oldHead <= oldTail) {
       const oldBinding = oldBindings[oldHead];
       if (oldBinding !== undefined) {
-        unmountItem(oldBinding, updater);
+        removeItem(oldBinding, updater);
       }
       oldHead++;
     }
@@ -326,6 +329,21 @@ class UnmountPart implements Effect {
   }
 }
 
+function addItem<T>(value: T, listPart: Part, updater: Updater): Binding<T> {
+  const part = {
+    type: PartType.ChildNode,
+    node: document.createComment(''),
+  } as const;
+
+  updater.enqueueMutationEffect(new MountPart(part, listPart));
+
+  const binding = resolveBinding(value, part, updater);
+
+  binding.rebind(updater);
+
+  return binding;
+}
+
 function generateIndexMap<T>(
   elements: T[],
   start: number,
@@ -336,17 +354,6 @@ function generateIndexMap<T>(
     map.set(elements[i], i);
   }
   return map;
-}
-
-function mountItem<T>(value: T, listPart: Part, updater: Updater): Binding<T> {
-  const part = {
-    type: PartType.ChildNode,
-    node: document.createComment(''),
-  } as const;
-
-  updater.enqueueMutationEffect(new MountPart(part, listPart));
-
-  return initializeBinding(value, part, updater);
 }
 
 function moveNodes(
@@ -369,6 +376,12 @@ function moveNodes(
   referenceNode.before(...targetNodes);
 }
 
+function removeItem<T>(binding: Binding<T>, updater: Updater): void {
+  binding.unbind(updater);
+
+  updater.enqueueMutationEffect(new UnmountPart(binding.part));
+}
+
 function reorderItem<T>(
   binding: Binding<T>,
   referenceBinding: Binding<T> | null,
@@ -378,10 +391,4 @@ function reorderItem<T>(
   updater.enqueueMutationEffect(
     new ReorderItem(binding, referenceBinding, listPart),
   );
-}
-
-function unmountItem<T>(binding: Binding<T>, updater: Updater): void {
-  binding.unbind(updater);
-
-  updater.enqueueMutationEffect(new UnmountPart(binding.part));
 }

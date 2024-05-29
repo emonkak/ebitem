@@ -1,4 +1,9 @@
-import { Binding, Directive, directiveTag } from '../binding.js';
+import {
+  Binding,
+  Directive,
+  directiveTag,
+  ensureDirective,
+} from '../binding.js';
 import { Hook, HookType } from '../hook.js';
 import { ChildNodePart, Part, PartType } from '../part.js';
 import { TaskPriority, comparePriorities } from '../scheduler.js';
@@ -56,12 +61,7 @@ export class BlockDirective<TProps, TData, TContext>
     if (part.type !== PartType.ChildNode) {
       throw new Error('BlockDirective must be used in ChildNodePart.');
     }
-
-    const binding = new BlockBinding(this, part, updater.getCurrentComponent());
-
-    binding.bind(updater);
-
-    return binding;
+    return new BlockBinding(this, part, updater.getCurrentComponent());
   }
 }
 
@@ -71,11 +71,11 @@ export class BlockBinding<TProps, TData, TContext>
     Effect,
     Component<TContext>
 {
+  private _directive: BlockDirective<TProps, TData, TContext>;
+
   private readonly _part: ChildNodePart;
 
   private readonly _parent: Component<TContext> | null;
-
-  private _value: BlockDirective<TProps, TData, TContext>;
 
   private _memoizedType: BlockType<TProps, TData, TContext> | null = null;
 
@@ -97,11 +97,11 @@ export class BlockBinding<TProps, TData, TContext>
   private _flags = FLAG_NONE;
 
   constructor(
-    value: BlockDirective<TProps, TData, TContext>,
+    directive: BlockDirective<TProps, TData, TContext>,
     part: ChildNodePart,
     parent: Component<TContext> | null = null,
   ) {
-    this._value = value;
+    this._directive = directive;
     this._part = part;
     this._parent = parent;
   }
@@ -131,11 +131,7 @@ export class BlockBinding<TProps, TData, TContext>
   }
 
   get value(): BlockDirective<TProps, TData, TContext> {
-    return this._value;
-  }
-
-  set value(newValue: BlockDirective<TProps, TData, TContext>) {
-    this._value = newValue;
+    return this._directive;
   }
 
   render(scope: Scope<TContext>, updater: Updater<TContext>): void {
@@ -143,7 +139,7 @@ export class BlockBinding<TProps, TData, TContext>
       return;
     }
 
-    const { type, props } = this._value;
+    const { type, props } = this._directive;
 
     if (this._memoizedType !== null && type !== this._memoizedType) {
       this._cleanHooks();
@@ -199,7 +195,7 @@ export class BlockBinding<TProps, TData, TContext>
       this._pendingFragment = template.hydrate(data, updater);
     }
 
-    this._memoizedType = this._value.type;
+    this._memoizedType = this._directive.type;
     this._memoizedTemplate = template;
     this._flags &= ~FLAG_UPDATING;
   }
@@ -218,7 +214,18 @@ export class BlockBinding<TProps, TData, TContext>
     this._flags &= ~FLAG_UNMOUNTING;
   }
 
-  bind(updater: Updater): void {
+  bind(
+    newValue: BlockDirective<TProps, TData, TContext>,
+    updater: Updater,
+  ): void {
+    DEBUG: {
+      ensureDirective(BlockDirective, newValue);
+    }
+    this._directive = newValue;
+    this.rebind(updater);
+  }
+
+  rebind(updater: Updater): void {
     if (!(this._flags & FLAG_UPDATING)) {
       this._priority = this._parent?.priority ?? updater.getCurrentPriority();
       this._flags |= FLAG_UPDATING;

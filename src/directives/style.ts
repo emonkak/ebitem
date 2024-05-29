@@ -1,4 +1,9 @@
-import { Binding, Directive, directiveTag } from '../binding.js';
+import {
+  Binding,
+  Directive,
+  directiveTag,
+  ensureDirective,
+} from '../binding.js';
 import { AttributePart, Part, PartType } from '../part.js';
 import type { Effect, Updater } from '../types.js';
 
@@ -25,28 +30,23 @@ export class StyleDirective implements Directive {
     return this._styleMap;
   }
 
-  [directiveTag](part: Part, updater: Updater): StyleBinding {
+  [directiveTag](part: Part, _updater: Updater): StyleBinding {
     if (part.type !== PartType.Attribute || part.name !== 'style') {
       throw new Error('StyleDirective must be used in the "style" attribute.');
     }
-
-    const binding = new StyleBinding(this, part);
-
-    binding.bind(updater);
-
-    return binding;
+    return new StyleBinding(this, part);
   }
 }
 
 export class StyleBinding implements Binding<StyleDirective>, Effect {
-  private readonly _part: AttributePart;
+  private _directive: StyleDirective;
 
-  private _value: StyleDirective;
+  private readonly _part: AttributePart;
 
   private _dirty = false;
 
-  constructor(value: StyleDirective, part: AttributePart) {
-    this._value = value;
+  constructor(directive: StyleDirective, part: AttributePart) {
+    this._directive = directive;
     this._part = part;
   }
 
@@ -63,14 +63,21 @@ export class StyleBinding implements Binding<StyleDirective>, Effect {
   }
 
   get value(): StyleDirective {
-    return this._value;
+    return this._directive;
   }
 
-  set value(newValue: StyleDirective) {
-    this._value = newValue;
+  bind(newValue: StyleDirective, updater: Updater): void {
+    DEBUG: {
+      ensureDirective(StyleDirective, newValue);
+    }
+    const oldValue = this._directive;
+    if (!shallowEqual(newValue.styleMap, oldValue.styleMap)) {
+      this._directive = newValue;
+      this.rebind(updater);
+    }
   }
 
-  bind(updater: Updater): void {
+  rebind(updater: Updater): void {
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
       this._dirty = true;
@@ -78,11 +85,10 @@ export class StyleBinding implements Binding<StyleDirective>, Effect {
   }
 
   unbind(updater: Updater): void {
-    this._value = new StyleDirective({});
-
-    if (!this._dirty) {
-      updater.enqueueMutationEffect(this);
-      this._dirty = true;
+    const oldValue = this._directive;
+    if (Object.keys(oldValue).length > 0) {
+      this._directive = new StyleDirective({});
+      this.rebind(updater);
     }
   }
 
@@ -93,7 +99,7 @@ export class StyleBinding implements Binding<StyleDirective>, Effect {
       | HTMLElement
       | MathMLElement
       | SVGElement;
-    const { styleMap } = this._value;
+    const { styleMap } = this._directive;
 
     for (const property in styleMap) {
       const value = styleMap[property as StyleProperty]!;
@@ -101,9 +107,34 @@ export class StyleBinding implements Binding<StyleDirective>, Effect {
     }
 
     for (const property of attributeStyleMap.keys()) {
-      if (!(property in styleMap)) {
+      if (!Object.hasOwn(styleMap, property)) {
         attributeStyleMap.delete(property);
       }
     }
   }
+}
+
+function shallowEqual(
+  first: { [key: string]: unknown },
+  second: { [key: string]: unknown },
+): boolean {
+  if (first === second) {
+    return true;
+  }
+
+  const firstKeys = Object.keys(first);
+  const secondKeys = Object.keys(second);
+
+  if (firstKeys.length !== secondKeys.length) {
+    return false;
+  }
+
+  for (let i = 0; i < firstKeys.length; i++) {
+    const key = firstKeys[i]!;
+    if (!Object.hasOwn(second, key) || first[key] !== second[key]!) {
+      return false;
+    }
+  }
+
+  return true;
 }

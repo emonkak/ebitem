@@ -74,6 +74,17 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
     this._schedulePassiveEffects(pipeline);
   }
 
+  isNothingScheduled(): boolean {
+    const pipeline = this._currentPipeline;
+    return (
+      this._taskCount.value === 0 &&
+      pipeline.pendingComponents.length === 0 &&
+      pipeline.pendingLayoutEffects.length === 0 &&
+      pipeline.pendingMutationEffects.length === 0 &&
+      pipeline.pendingPassiveEffects.length === 0
+    );
+  }
+
   isUpdating(): boolean {
     return this._taskCount.value > 0;
   }
@@ -245,6 +256,15 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
 
   enqueuePassiveEffect(effect: Effect): void {
     this._pendingPassiveEffects.push(effect);
+  }
+
+  isNothingScheduled(): boolean {
+    return (
+      this._pendingComponents.length === 0 &&
+      this._pendingLayoutEffects.length === 0 &&
+      this._pendingMutationEffects.length === 0 &&
+      this._pendingPassiveEffects.length === 0
+    );
   }
 
   isUpdating(): boolean {

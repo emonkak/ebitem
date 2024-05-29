@@ -10,9 +10,9 @@ export class MockDirective implements Directive {
 }
 
 export class MockBinding implements Binding<MockDirective> {
-  private readonly _part: Part;
-
   private _value: MockDirective;
+
+  private readonly _part: Part;
 
   constructor(value: MockDirective, part: Part) {
     this._value = value;
@@ -31,15 +31,15 @@ export class MockBinding implements Binding<MockDirective> {
     return this._part.node;
   }
 
-  set value(newValue: MockDirective) {
-    this._value = newValue;
-  }
-
   get value(): MockDirective {
     return this._value;
   }
 
-  bind(_updater: Updater): void {}
+  bind(newValue: MockDirective, _updater: Updater): void {
+    this._value = newValue;
+  }
+
+  rebind(_updater: Updater): void {}
 
   unbind(_updater: Updater): void {}
 

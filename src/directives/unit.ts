@@ -1,4 +1,9 @@
-import { Binding, Directive, directiveTag } from '../binding.js';
+import {
+  Binding,
+  Directive,
+  directiveTag,
+  ensureDirective,
+} from '../binding.js';
 import type { Part } from '../part.js';
 import type { Updater } from '../types.js';
 
@@ -12,17 +17,14 @@ export class UnitDirective implements Directive {
   }
 
   [directiveTag](part: Part, _updater: Updater): UnitBinding {
-    return new UnitBinding(this, part);
+    return new UnitBinding(part);
   }
 }
 
 export class UnitBinding implements Binding<UnitDirective> {
   private readonly _part: Part;
 
-  private _value: UnitDirective;
-
-  constructor(value: UnitDirective, part: Part) {
-    this._value = value;
+  constructor(part: Part) {
     this._part = part;
   }
 
@@ -39,14 +41,16 @@ export class UnitBinding implements Binding<UnitDirective> {
   }
 
   get value(): UnitDirective {
-    return this._value;
+    return UnitDirective.instance;
   }
 
-  set value(newValue: UnitDirective) {
-    this._value = newValue;
+  bind(newValue: UnitDirective, _updater: Updater): void {
+    DEBUG: {
+      ensureDirective(UnitDirective, newValue);
+    }
   }
 
-  bind(_updater: Updater): void {}
+  rebind(_updater: Updater): void {}
 
   unbind(_updater: Updater): void {}
 

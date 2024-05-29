@@ -1,4 +1,9 @@
-import { Binding, Directive, directiveTag } from '../binding.js';
+import {
+  Binding,
+  Directive,
+  directiveTag,
+  ensureDirective,
+} from '../binding.js';
 import { ChildNodePart, Part, PartType } from '../part.js';
 import { TaskPriority, comparePriorities } from '../scheduler.js';
 import type {
@@ -42,16 +47,7 @@ export class TemplateDirective<TData, TContext = unknown>
     if (part.type !== PartType.ChildNode) {
       throw new Error('TemplateDirective must be used in ChildNodePart.');
     }
-
-    const binding = new TemplateBinding(
-      this,
-      part,
-      updater.getCurrentComponent(),
-    );
-
-    binding.bind(updater);
-
-    return binding;
+    return new TemplateBinding(this, part, updater.getCurrentComponent());
   }
 }
 
@@ -61,11 +57,11 @@ export class TemplateBinding<TData, TContext>
     Effect,
     Component<TContext>
 {
+  private _directive: TemplateDirective<TData, TContext>;
+
   private readonly _part: ChildNodePart;
 
   private readonly _parent: Component<TContext> | null;
-
-  private _value: TemplateDirective<TData, TContext>;
 
   private _memoizedFragment: TemplateFragment<TData, TContext> | null = null;
 
@@ -78,11 +74,11 @@ export class TemplateBinding<TData, TContext>
   private _flags = FLAG_NONE;
 
   constructor(
-    value: TemplateDirective<TData, TContext>,
+    directive: TemplateDirective<TData, TContext>,
     part: ChildNodePart,
     parent: Component<TContext> | null = null,
   ) {
-    this._value = value;
+    this._directive = directive;
     this._part = part;
     this._parent = parent;
   }
@@ -100,11 +96,7 @@ export class TemplateBinding<TData, TContext>
   }
 
   get value(): TemplateDirective<TData, TContext> {
-    return this._value;
-  }
-
-  set value(newValue: TemplateDirective<TData, TContext>) {
-    this._value = newValue;
+    return this._directive;
   }
 
   get parent(): Component<TContext> | null {
@@ -124,7 +116,7 @@ export class TemplateBinding<TData, TContext>
       return;
     }
 
-    const { template, data } = this._value;
+    const { template, data } = this._directive;
 
     if (this._pendingFragment !== null) {
       if (this._memoizedTemplate?.isSameTemplate(template) ?? false) {
@@ -158,7 +150,15 @@ export class TemplateBinding<TData, TContext>
     this._flags &= ~FLAG_UNMOUNTING;
   }
 
-  bind(updater: Updater<TContext>): void {
+  bind(newValue: TemplateDirective<TData, TContext>, updater: Updater): void {
+    DEBUG: {
+      ensureDirective(TemplateDirective, newValue);
+    }
+    this._directive = newValue;
+    this.rebind(updater);
+  }
+
+  rebind(updater: Updater<TContext>): void {
     if (!(this._flags & FLAG_UPDATING)) {
       this._priority = this._parent?.priority ?? updater.getCurrentPriority();
       this._flags |= FLAG_UPDATING;

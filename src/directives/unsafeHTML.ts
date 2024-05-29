@@ -1,4 +1,9 @@
-import { Binding, Directive, directiveTag } from '../binding.js';
+import {
+  Binding,
+  Directive,
+  directiveTag,
+  ensureDirective,
+} from '../binding.js';
 import { ChildNodePart, Part, PartType } from '../part.js';
 import type { Updater } from '../types.js';
 
@@ -17,30 +22,25 @@ export class UnsafeHTMLDirective implements Directive {
     return this._unsafeContent;
   }
 
-  [directiveTag](part: Part, updater: Updater): UnsafeHTMLBinding {
+  [directiveTag](part: Part, _updater: Updater): UnsafeHTMLBinding {
     if (part.type !== PartType.ChildNode) {
       throw new Error('UnsafeHTMLDirective must be used in ChildNodePart.');
     }
-
-    const binding = new UnsafeHTMLBinding(this, part);
-
-    binding.bind(updater);
-
-    return binding;
+    return new UnsafeHTMLBinding(this, part);
   }
 }
 
 export class UnsafeHTMLBinding implements Binding<UnsafeHTMLDirective> {
-  private readonly _part: ChildNodePart;
+  private _directive: UnsafeHTMLDirective;
 
-  private _value: UnsafeHTMLDirective;
+  private readonly _part: ChildNodePart;
 
   private _childNodes: ChildNode[] = [];
 
   private _dirty = false;
 
   constructor(_value: UnsafeHTMLDirective, part: ChildNodePart) {
-    this._value = _value;
+    this._directive = _value;
     this._part = part;
   }
 
@@ -57,14 +57,21 @@ export class UnsafeHTMLBinding implements Binding<UnsafeHTMLDirective> {
   }
 
   get value(): UnsafeHTMLDirective {
-    return this._value;
+    return this._directive;
   }
 
-  set value(newValue: UnsafeHTMLDirective) {
-    this._value = newValue;
+  bind(newValue: UnsafeHTMLDirective, updater: Updater): void {
+    DEBUG: {
+      ensureDirective(UnsafeHTMLDirective, newValue);
+    }
+    const oldValue = this._directive;
+    if (oldValue.unsafeContent !== newValue.unsafeContent) {
+      this._directive = newValue;
+      this.rebind(updater);
+    }
   }
 
-  bind(updater: Updater): void {
+  rebind(updater: Updater): void {
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
       this._dirty = true;
@@ -72,18 +79,17 @@ export class UnsafeHTMLBinding implements Binding<UnsafeHTMLDirective> {
   }
 
   unbind(updater: Updater): void {
-    this._value = new UnsafeHTMLDirective('');
-
-    if (!this._dirty) {
-      updater.enqueueMutationEffect(this);
-      this._dirty = true;
+    const { unsafeContent } = this._directive;
+    if (unsafeContent !== '') {
+      this._directive = new UnsafeHTMLDirective('');
+      this.rebind(updater);
     }
   }
 
   disconnect(): void {}
 
   commit(): void {
-    const { unsafeContent } = this._value;
+    const { unsafeContent } = this._directive;
 
     for (let i = 0, l = this._childNodes.length; i < l; i++) {
       this._childNodes[i]!.remove();

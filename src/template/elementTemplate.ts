@@ -1,4 +1,4 @@
-import { Binding, initializeBinding, updateBinding } from '../binding.js';
+import { Binding, resolveBinding } from '../binding.js';
 import { ChildNodePart, PartType } from '../part.js';
 import type { Template, TemplateFragment, Updater } from '../types.js';
 
@@ -29,16 +29,14 @@ export class ElementTemplate<TElementValue, TChildNodeValue>
       type: PartType.ChildNode,
       node: document.createComment(''),
     } as const;
-    const elementBinding = initializeBinding(
-      elementValue,
-      elementPart,
-      updater,
-    );
-    const childNodeBinding = initializeBinding(
+    const elementBinding = resolveBinding(elementValue, elementPart, updater);
+    const childNodeBinding = resolveBinding(
       childNodeValue,
       childNodePart,
       updater,
     );
+    elementBinding.rebind(updater);
+    childNodeBinding.rebind(updater);
     return new ElementTemplateFragment(elementBinding, childNodeBinding);
   }
 
@@ -79,8 +77,8 @@ export class ElementTemplateFragment<TElementValue, TChildNodeValue>
     newData: ElementData<TElementValue, TChildNodeValue>,
     updater: Updater<unknown>,
   ): void {
-    updateBinding(this._elementBinding, newData.elementValue, updater);
-    updateBinding(this._childNodeBinding, newData.childNodeValue, updater);
+    this._elementBinding.bind(newData.elementValue, updater);
+    this._childNodeBinding.bind(newData.childNodeValue, updater);
   }
 
   detach(_part: ChildNodePart, updater: Updater): void {

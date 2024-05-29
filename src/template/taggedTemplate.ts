@@ -1,4 +1,4 @@
-import { Binding, initializeBinding, updateBinding } from '../binding.js';
+import { Binding, resolveBinding } from '../binding.js';
 import { ChildNodePart, Part, PartType } from '../part.js';
 import type { Template, TemplateFragment, Updater } from '../types.js';
 
@@ -169,11 +169,10 @@ export class TaggedTemplate implements Template<unknown[]> {
               break;
           }
 
-          bindings[holeIndex] = initializeBinding(
-            data[holeIndex],
-            part,
-            updater,
-          );
+          const binding = resolveBinding(data[holeIndex], part, updater);
+          binding.rebind(updater);
+
+          bindings[holeIndex] = binding;
           holeIndex++;
 
           if (holeIndex >= holes.length) {
@@ -229,7 +228,7 @@ export class TaggedTemplateFragment implements TemplateFragment<unknown[]> {
     }
 
     for (let i = 0, l = this._bindings.length; i < l; i++) {
-      updateBinding(this._bindings[i]!, newData[i]!, updater);
+      this._bindings[i]!.bind(newData[i]!, updater);
     }
   }
 

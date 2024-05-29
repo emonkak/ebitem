@@ -1,4 +1,9 @@
-import { Binding, Directive, directiveTag } from '../binding.js';
+import {
+  Binding,
+  Directive,
+  directiveTag,
+  ensureDirective,
+} from '../binding.js';
 import type { Ref } from '../hook.js';
 import { AttributePart, Part, PartType } from '../part.js';
 import type { Effect, Updater } from '../types.js';
@@ -20,25 +25,20 @@ export class RefDirective implements Directive {
     return this._ref;
   }
 
-  [directiveTag](part: Part, updater: Updater): RefBinding {
+  [directiveTag](part: Part, _updater: Updater): RefBinding {
     if (part.type !== PartType.Attribute || part.name !== 'ref') {
       throw new Error('RefDirective must be used in "ref" attribute.');
     }
-
-    const binding = new RefBinding(this, part);
-
-    binding.bind(updater);
-
-    return binding;
+    return new RefBinding(this, part);
   }
 }
 
 export class RefBinding implements Binding<RefDirective>, Effect {
-  private readonly _part: AttributePart;
-
   private _pendingDirective: RefDirective;
 
-  private _memoizedDirective = new RefDirective(null);
+  private _memoizedDirective: RefDirective | null = null;
+
+  private readonly _part: AttributePart;
 
   private _dirty = false;
 
@@ -63,11 +63,18 @@ export class RefBinding implements Binding<RefDirective>, Effect {
     return this._pendingDirective;
   }
 
-  set value(newValue: RefDirective) {
-    this._pendingDirective = newValue;
+  bind(newValue: RefDirective, updater: Updater): void {
+    DEBUG: {
+      ensureDirective(RefDirective, newValue);
+    }
+    const oldValue = this._pendingDirective;
+    if (oldValue.ref !== newValue.ref) {
+      this._pendingDirective = newValue;
+      this.rebind(updater);
+    }
   }
 
-  bind(updater: Updater): void {
+  rebind(updater: Updater): void {
     if (!this._dirty) {
       updater.enqueuePassiveEffect(this);
       this._dirty = true;
@@ -75,18 +82,17 @@ export class RefBinding implements Binding<RefDirective>, Effect {
   }
 
   unbind(updater: Updater): void {
-    this._pendingDirective = new RefDirective(null);
-
-    if (!this._dirty) {
-      updater.enqueuePassiveEffect(this);
-      this._dirty = true;
+    const { ref } = this._pendingDirective;
+    if (ref !== null) {
+      this._pendingDirective = new RefDirective(null);
+      this.rebind(updater);
     }
   }
 
   disconnect() {}
 
   commit(): void {
-    const oldRef = this._memoizedDirective.ref;
+    const oldRef = this._memoizedDirective?.ref ?? null;
     const newRef = this._pendingDirective.ref;
 
     if (oldRef !== null) {

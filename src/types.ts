@@ -5,6 +5,7 @@ import type { TaskPriority } from './scheduler.js';
 export interface Updater<TContext = unknown> {
   getCurrentComponent(): Component<TContext> | null;
   getCurrentPriority(): TaskPriority;
+  isNothingScheduled(): boolean;
   isUpdating(): boolean;
   waitForUpdate(): Promise<void>;
   enqueueComponent(component: Component<TContext>): void;
