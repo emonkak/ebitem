@@ -10,12 +10,10 @@ import type {
   Updater,
 } from '../types.js';
 
-const TemplateFlags = {
-  NONE: 0,
-  UPDATING: 1 << 0,
-  MUTATING: 1 << 1,
-  UNMOUNTING: 1 << 2,
-};
+const FLAG_NONE = 0;
+const FLAG_UPDATING = 1 << 0;
+const FLAG_MUTATING = 1 << 1;
+const FLAG_UNMOUNTING = 1 << 2;
 
 export class TemplateDirective<TData, TContext = unknown>
   implements Directive<TContext>
@@ -73,11 +71,11 @@ export class TemplateBinding<TData, TContext>
 
   private _pendingFragment: TemplateFragment<TData, TContext> | null = null;
 
-  private _template: Template<TData, TContext> | null = null;
+  private _memoizedTemplate: Template<TData, TContext> | null = null;
 
   private _priority: TaskPriority = 'background';
 
-  private _flags = TemplateFlags.NONE;
+  private _flags = FLAG_NONE;
 
   constructor(
     value: TemplateDirective<TData, TContext>,
@@ -118,17 +116,18 @@ export class TemplateBinding<TData, TContext>
   }
 
   get dirty(): boolean {
-    return !!(
-      this._flags & TemplateFlags.UPDATING ||
-      this._flags & TemplateFlags.UNMOUNTING
-    );
+    return !!(this._flags & FLAG_UPDATING || this._flags & FLAG_UNMOUNTING);
   }
 
   render(_scope: Scope<TContext>, updater: Updater<TContext>): void {
+    if (!(this._flags & FLAG_UPDATING)) {
+      return;
+    }
+
     const { template, data } = this._value;
 
     if (this._pendingFragment !== null) {
-      if (this._template && this._template.sameTemplate(template)) {
+      if (this._memoizedTemplate?.sameTemplate(template) ?? false) {
         this._pendingFragment.update(data, updater);
       } else {
         this._pendingFragment.detach(this._part, updater);
@@ -141,33 +140,32 @@ export class TemplateBinding<TData, TContext>
       this._requestMutation(updater);
     }
 
-    this._template = template;
-    this._priority = 'background';
-    this._flags &= ~TemplateFlags.UPDATING;
+    this._memoizedTemplate = template;
+    this._flags &= ~FLAG_UPDATING;
   }
 
   requestUpdate(updater: Updater<TContext>, priority: TaskPriority): void {
     if (
-      !(this._flags & TemplateFlags.UPDATING) ||
+      !(this._flags & FLAG_UPDATING) ||
       comparePriorities(priority, this._priority) > 0
     ) {
       this._priority = priority;
-      this._flags |= TemplateFlags.UPDATING;
+      this._flags |= FLAG_UPDATING;
       updater.enqueueComponent(this);
       updater.scheduleUpdate();
     }
 
-    this._flags &= ~TemplateFlags.UNMOUNTING;
+    this._flags &= ~FLAG_UNMOUNTING;
   }
 
   bind(updater: Updater<TContext>): void {
-    if (!(this._flags & TemplateFlags.UPDATING)) {
+    if (!(this._flags & FLAG_UPDATING)) {
       this._priority = this._parent?.priority ?? updater.getCurrentPriority();
-      this._flags |= TemplateFlags.UPDATING;
+      this._flags |= FLAG_UPDATING;
       updater.enqueueComponent(this);
     }
 
-    this._flags &= ~TemplateFlags.UNMOUNTING;
+    this._flags &= ~FLAG_UNMOUNTING;
   }
 
   unbind(updater: Updater<TContext>): void {
@@ -179,12 +177,12 @@ export class TemplateBinding<TData, TContext>
     this._requestMutation(updater);
 
     this._pendingFragment = null;
-    this._flags |= TemplateFlags.UNMOUNTING;
-    this._flags &= ~TemplateFlags.UPDATING;
+    this._flags |= FLAG_UNMOUNTING;
+    this._flags &= ~FLAG_UPDATING;
   }
 
   commit(): void {
-    if (this._flags & TemplateFlags.UNMOUNTING) {
+    if (this._flags & FLAG_UNMOUNTING) {
       this._memoizedFragment?.unmount(this._part);
     } else {
       this._memoizedFragment?.unmount(this._part);
@@ -192,7 +190,7 @@ export class TemplateBinding<TData, TContext>
       this._memoizedFragment = this._pendingFragment;
     }
 
-    this._flags &= ~(TemplateFlags.MUTATING | TemplateFlags.UNMOUNTING);
+    this._flags &= ~(FLAG_MUTATING | FLAG_UNMOUNTING);
   }
 
   disconnect(): void {
@@ -204,9 +202,9 @@ export class TemplateBinding<TData, TContext>
   }
 
   private _requestMutation(updater: Updater<TContext>): void {
-    if (!(this._flags & TemplateFlags.MUTATING)) {
+    if (!(this._flags & FLAG_MUTATING)) {
       updater.enqueueMutationEffect(this);
-      this._flags |= TemplateFlags.MUTATING;
+      this._flags |= FLAG_MUTATING;
     }
   }
 }

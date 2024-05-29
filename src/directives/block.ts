@@ -17,12 +17,10 @@ export type BlockType<TProps, TData, TContext> = (
   context: TContext,
 ) => TemplateDirective<TData, TContext>;
 
-const BlockFlags = {
-  NONE: 0,
-  UPDATING: 1 << 0,
-  MUTATING: 1 << 1,
-  UNMOUNTING: 1 << 2,
-};
+const FLAG_NONE = 0;
+const FLAG_UPDATING = 1 << 0;
+const FLAG_MUTATING = 1 << 1;
+const FLAG_UNMOUNTING = 1 << 2;
 
 export function block<TProps, TData, TContext>(
   type: BlockType<TProps, TData, TContext>,
@@ -96,7 +94,7 @@ export class BlockBinding<TProps, TData, TContext>
 
   private _priority: TaskPriority = 'background';
 
-  private _flags = BlockFlags.NONE;
+  private _flags = FLAG_NONE;
 
   constructor(
     value: BlockDirective<TProps, TData, TContext>,
@@ -129,9 +127,7 @@ export class BlockBinding<TProps, TData, TContext>
   }
 
   get dirty(): boolean {
-    return !!(
-      this._flags & BlockFlags.UPDATING || this._flags & BlockFlags.UNMOUNTING
-    );
+    return !!(this._flags & FLAG_UPDATING || this._flags & FLAG_UNMOUNTING);
   }
 
   get value(): BlockDirective<TProps, TData, TContext> {
@@ -143,6 +139,10 @@ export class BlockBinding<TProps, TData, TContext>
   }
 
   render(scope: Scope<TContext>, updater: Updater<TContext>): void {
+    if (!(this._flags & FLAG_UPDATING)) {
+      return;
+    }
+
     const { type, props } = this._value;
 
     if (this._memoizedType !== null && type !== this._memoizedType) {
@@ -201,32 +201,31 @@ export class BlockBinding<TProps, TData, TContext>
 
     this._memoizedType = this._value.type;
     this._memoizedTemplate = template;
-    this._priority = 'background';
-    this._flags &= ~BlockFlags.UPDATING;
+    this._flags &= ~FLAG_UPDATING;
   }
 
   requestUpdate(updater: Updater, priority: TaskPriority): void {
     if (
-      !(this._flags & BlockFlags.UPDATING) ||
+      !(this._flags & FLAG_UPDATING) ||
       comparePriorities(priority, this._priority) > 0
     ) {
       this._priority = priority;
-      this._flags |= BlockFlags.UPDATING;
+      this._flags |= FLAG_UPDATING;
       updater.enqueueComponent(this);
       updater.scheduleUpdate();
     }
 
-    this._flags &= ~BlockFlags.UNMOUNTING;
+    this._flags &= ~FLAG_UNMOUNTING;
   }
 
   bind(updater: Updater): void {
-    if (!(this._flags & BlockFlags.UPDATING)) {
+    if (!(this._flags & FLAG_UPDATING)) {
       this._priority = this._parent?.priority ?? updater.getCurrentPriority();
-      this._flags |= BlockFlags.UPDATING;
+      this._flags |= FLAG_UPDATING;
       updater.enqueueComponent(this);
     }
 
-    this._flags &= ~BlockFlags.UNMOUNTING;
+    this._flags &= ~FLAG_UNMOUNTING;
   }
 
   unbind(updater: Updater): void {
@@ -240,8 +239,8 @@ export class BlockBinding<TProps, TData, TContext>
     this._requestMutation(updater);
 
     this._pendingFragment = null;
-    this._flags |= BlockFlags.UNMOUNTING;
-    this._flags &= ~BlockFlags.UPDATING;
+    this._flags |= FLAG_UNMOUNTING;
+    this._flags &= ~FLAG_UPDATING;
   }
 
   disconnect(): void {
@@ -257,7 +256,7 @@ export class BlockBinding<TProps, TData, TContext>
   }
 
   commit(): void {
-    if (this._flags & BlockFlags.UNMOUNTING) {
+    if (this._flags & FLAG_UNMOUNTING) {
       this._memoizedFragment?.unmount(this._part);
     } else {
       this._memoizedFragment?.unmount(this._part);
@@ -265,7 +264,7 @@ export class BlockBinding<TProps, TData, TContext>
       this._memoizedFragment = this._pendingFragment;
     }
 
-    this._flags &= ~(BlockFlags.MUTATING | BlockFlags.UNMOUNTING);
+    this._flags &= ~(FLAG_MUTATING | FLAG_UNMOUNTING);
   }
 
   private _cleanHooks(): void {
@@ -280,9 +279,9 @@ export class BlockBinding<TProps, TData, TContext>
   }
 
   private _requestMutation(updater: Updater<TContext>): void {
-    if (!(this._flags & BlockFlags.MUTATING)) {
+    if (!(this._flags & FLAG_MUTATING)) {
       updater.enqueueMutationEffect(this);
-      this._flags |= BlockFlags.MUTATING;
+      this._flags |= FLAG_MUTATING;
     }
   }
 
