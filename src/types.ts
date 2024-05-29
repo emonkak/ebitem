@@ -50,7 +50,7 @@ export interface Template<TData, TContext = unknown> {
     data: TData,
     updater: Updater<TContext>,
   ): TemplateFragment<TData, TContext>;
-  sameTemplate(other: Template<TData, TContext>): boolean;
+  isSameTemplate(other: Template<TData, TContext>): boolean;
 }
 
 export interface TemplateFragment<TData, TContext = unknown> {

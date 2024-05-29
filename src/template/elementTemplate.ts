@@ -42,10 +42,13 @@ export class ElementTemplate<TElementValue, TChildNodeValue>
     return new ElementTemplateFragment(elementBinding, childNodeBinding);
   }
 
-  sameTemplate(
+  isSameTemplate(
     other: Template<ElementData<TElementValue, TChildNodeValue>>,
   ): boolean {
-    return other instanceof ElementTemplate && other._type === this._type;
+    return (
+      other === this ||
+      (other instanceof ElementTemplate && other._type === this._type)
+    );
   }
 }
 

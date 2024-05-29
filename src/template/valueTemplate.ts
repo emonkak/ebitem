@@ -22,8 +22,8 @@ export class ChildNodeTemplate<T> implements Template<T> {
     return new ValueTemplateFragment(binding);
   }
 
-  sameTemplate(other: Template<T>): boolean {
-    return other instanceof ChildNodeTemplate;
+  isSameTemplate(other: Template<T>): boolean {
+    return other === this;
   }
 }
 
@@ -45,8 +45,8 @@ export class TextTemplate<T> implements Template<T> {
     return new ValueTemplateFragment(binding);
   }
 
-  sameTemplate(other: Template<T>): boolean {
-    return other instanceof TextTemplate;
+  isSameTemplate(other: Template<T>): boolean {
+    return other === this;
   }
 }
 

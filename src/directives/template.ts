@@ -127,7 +127,7 @@ export class TemplateBinding<TData, TContext>
     const { template, data } = this._value;
 
     if (this._pendingFragment !== null) {
-      if (this._memoizedTemplate?.sameTemplate(template) ?? false) {
+      if (this._memoizedTemplate?.isSameTemplate(template) ?? false) {
         this._pendingFragment.update(data, updater);
       } else {
         this._pendingFragment.detach(this._part, updater);

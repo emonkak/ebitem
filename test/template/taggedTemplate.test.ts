@@ -407,7 +407,7 @@ describe('TaggedTemplate', () => {
     });
   });
 
-  describe('.sameTemplate()', () => {
+  describe('.isSameTemplate()', () => {
     it('should return whether the template is the same as other template', () => {
       const template1 = html`
         <div></div>
@@ -416,9 +416,9 @@ describe('TaggedTemplate', () => {
         <div></div>
       `;
 
-      expect(template1.sameTemplate(template1)).toBe(true);
-      expect(template1.sameTemplate(template2)).toBe(false);
-      expect(template1.sameTemplate({} as Template<unknown, unknown>)).toBe(
+      expect(template1.isSameTemplate(template1)).toBe(true);
+      expect(template1.isSameTemplate(template2)).toBe(false);
+      expect(template1.isSameTemplate({} as Template<unknown, unknown>)).toBe(
         false,
       );
     });

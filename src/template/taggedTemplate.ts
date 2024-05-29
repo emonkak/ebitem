@@ -190,12 +190,8 @@ export class TaggedTemplate implements Template<unknown[]> {
     return new TaggedTemplateFragment(bindings, [...rootNode.childNodes]);
   }
 
-  sameTemplate(other: Template<unknown[]>): boolean {
-    return (
-      other instanceof TaggedTemplate &&
-      other._element === this._element &&
-      other._holes === this._holes
-    );
+  isSameTemplate(other: Template<unknown[]>): boolean {
+    return other === this;
   }
 }
 
