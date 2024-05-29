@@ -11,6 +11,10 @@
       "import": "./dist/directives.js",
       "types": "./dist/directives.d.ts"
     },
+    "./globalHooks.js": {
+      "import": "./dist/globalHooks.js",
+      "types": "./dist/globalHooks.d.ts"
+    },
     "./signal.js": {
       "import": "./dist/signal.js",
       "types": "./dist/signal.d.ts"

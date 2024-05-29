@@ -1,6 +1,7 @@
 import {
   ConcurrentUpdater,
   Context,
+  GlobalScope,
   LocalScope,
   mountValue,
 } from '@emonkak/ebitem';
@@ -17,22 +18,23 @@ import {
   unsafeHTML,
   when,
 } from '@emonkak/ebitem/directives.js';
+import {
+  use,
+  useEvent,
+  useMemo,
+  useRef,
+  useState,
+} from '@emonkak/ebitem/globalHooks.js';
 import { AtomSignal, Signal } from '@emonkak/ebitem/signal.js';
 
 const counterSignal = new AtomSignal(0);
 
 function App(_props: {}, context: Context) {
-  const [items, setItems] = context.useState([
-    'foo',
-    'bar',
-    'baz',
-    'qux',
-    'quux',
-  ]);
+  const [items, setItems] = useState(['foo', 'bar', 'baz', 'qux', 'quux']);
 
   context.setContextValue('state', 'My Env');
 
-  const itemsList = context.useMemo(
+  const itemsList = useMemo(
     () =>
       list(
         items,
@@ -68,13 +70,13 @@ function App(_props: {}, context: Context) {
     [items],
   );
 
-  const onIncrement = context.useEvent((_event) => {
+  const onIncrement = useEvent((_event) => {
     counterSignal.value += 1;
   });
-  const onDecrement = context.useEvent((_event) => {
+  const onDecrement = useEvent((_event) => {
     counterSignal.value -= 1;
   });
-  const onShuffle = context.useEvent((_event) => {
+  const onShuffle = useEvent((_event) => {
     const newItems = shuffle(items.slice());
     setItems(newItems);
   });
@@ -133,9 +135,9 @@ function Item({ title, onUp, onDown, onDelete }: ItemProps, context: Context) {
   return context.html`
     <li>
       <span>${title} (${state})</span>
-      <button type="button" @click=${context.useEvent(onUp)}>Up</button>
-      <button type="button" @click=${context.useEvent(onDown)}>Down</button>
-      <button type="button" @click=${context.useEvent(onDelete)}>Delete</button>
+      <button type="button" @click=${useEvent(onUp)}>Up</button>
+      <button type="button" @click=${useEvent(onDown)}>Down</button>
+      <button type="button" @click=${useEvent(onDelete)}>Delete</button>
     </li>
   `;
 }
@@ -145,9 +147,9 @@ interface CounterProps {
 }
 
 function Counter({ count$ }: CounterProps, context: Context) {
-  const countLabelRef = context.useRef<Element | null>(null);
+  const countLabelRef = useRef<Element | null>(null);
 
-  const count = context.use(count$);
+  const count = use(count$);
 
   return context.html`
     <h1>
@@ -198,6 +200,6 @@ function shuffle<T>(elements: T[]): T[] {
   return elements;
 }
 
-const updater = new ConcurrentUpdater(new LocalScope());
+const updater = new ConcurrentUpdater(new GlobalScope(new LocalScope()));
 
 mountValue(block(App, {}), document.body, updater);

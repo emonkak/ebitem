@@ -39,6 +39,7 @@ export {
   type Namespace,
   LocalScope,
 } from './localScope.js';
+export { GlobalScope } from './globalScope.js';
 export {
   TaggedTemplate,
   TaggedTemplateFragment,
