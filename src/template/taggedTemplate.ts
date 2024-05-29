@@ -1,13 +1,6 @@
-import {
-  Binding,
-  ChildNodePart,
-  Part,
-  PartType,
-  initializeBinding,
-  updateBinding,
-} from '../binding.js';
-import type { Template, TemplateFragment } from '../template.js';
-import type { Updater } from '../updater.js';
+import { Binding, initializeBinding, updateBinding } from '../binding.js';
+import { ChildNodePart, Part, PartType } from '../part.js';
+import type { Template, TemplateFragment, Updater } from '../types.js';
 
 export type Hole =
   | AttributeHole
@@ -63,7 +56,6 @@ export class TaggedTemplate implements Template<unknown[]> {
     tokens: ReadonlyArray<string>,
     marker: string,
   ): TaggedTemplate {
-    // biome-ignore lint: use DEBUG label
     DEBUG: {
       ensureValidMarker(marker);
     }
@@ -77,7 +69,6 @@ export class TaggedTemplate implements Template<unknown[]> {
     tokens: ReadonlyArray<string>,
     marker: string,
   ): TaggedTemplate {
-    // biome-ignore lint: use DEBUG label
     DEBUG: {
       ensureValidMarker(marker);
     }
@@ -234,7 +225,7 @@ export class TaggedTemplateFragment implements TemplateFragment<unknown[]> {
     return this._bindings;
   }
 
-  rehydrate(newData: unknown[], updater: Updater): void {
+  update(newData: unknown[], updater: Updater): void {
     if (newData.length !== this._bindings.length) {
       throw new Error(
         `The number of new data must be ${this._bindings.length}, but got ${newData.length}.`,
@@ -363,7 +354,6 @@ function parseAttribtues(
         });
       }
     } else {
-      // biome-ignore lint: use DEBUG label
       DEBUG: {
         if (name.includes(marker)) {
           throw new Error(
@@ -402,7 +392,6 @@ function parseChildren(rootNode: Node, marker: string): Hole[] {
   while ((currentNode = walker.nextNode() as ChildNode | null) !== null) {
     switch (currentNode.nodeType) {
       case Node.ELEMENT_NODE: {
-        // biome-ignore lint: use DEBUG label
         DEBUG: {
           if ((currentNode as Element).tagName.includes(marker.toUpperCase())) {
             throw new Error(
@@ -425,7 +414,6 @@ function parseChildren(rootNode: Node, marker: string): Hole[] {
             index,
           });
         }
-        // biome-ignore lint: use DEBUG label
         DEBUG: {
           if ((currentNode as Comment).data.includes(marker)) {
             throw new Error(

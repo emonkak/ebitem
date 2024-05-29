@@ -1,12 +1,6 @@
-import {
-  AttributePart,
-  Binding,
-  Directive,
-  Part,
-  PartType,
-  directiveTag,
-} from '../binding.js';
-import type { Effect, Updater } from '../updater.js';
+import { Binding, Directive, directiveTag } from '../binding.js';
+import { AttributePart, Part, PartType } from '../part.js';
+import type { Effect, Updater } from '../types.js';
 
 export type ClassSpecifier = string | { [key: string]: boolean };
 

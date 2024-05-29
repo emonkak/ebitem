@@ -1,14 +1,12 @@
 import {
   Binding,
-  ChildNodePart,
   Directive,
-  Part,
-  PartType,
   directiveTag,
   initializeBinding,
   updateBinding,
 } from '../binding.js';
-import type { Effect, Updater } from '../updater.js';
+import { ChildNodePart, Part, PartType } from '../part.js';
+import type { Effect, Updater } from '../types.js';
 
 type Selector<TItem, TResult> = (item: TItem, index: number) => TResult;
 

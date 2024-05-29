@@ -1,56 +1,36 @@
-import { Context, Hook } from './context.js';
-import type { Template } from './template.js';
+import { Context } from './context.js';
+import type { Hook } from './hook.js';
 import { TaggedTemplate, getMarker } from './template/taggedTemplate.js';
-import type { Component, Updater } from './updater.js';
+import type { Component, Scope, Template, Updater } from './types.js';
 
 export type Namespace = { [key: PropertyKey]: unknown };
 
-export interface Scope<TContext> {
-  getVariable(key: PropertyKey, component: Component<TContext>): unknown;
-
-  setVariable(
-    key: PropertyKey,
-    value: unknown,
-    component: Component<TContext>,
-  ): void;
-
-  createContext(
-    component: Component<TContext>,
-    hooks: Hook[],
-    updater: Updater<TContext>,
-  ): TContext;
-
-  createHTMLTemplate(
-    tokens: ReadonlyArray<string>,
-    data: unknown[],
-  ): Template<unknown[], TContext>;
-
-  createSVGTemplate(
-    tokens: ReadonlyArray<string>,
-    data: unknown[],
-  ): Template<unknown[], TContext>;
-}
-
-export class DefaultScope implements Scope<Context> {
+export class LocalScope implements Scope<Context> {
   private readonly _globalNamespace: Namespace;
 
-  private readonly _marker: string;
+  private readonly _marker: string = getMarker();
 
   private readonly _namespaces: WeakMap<Component<Context>, Namespace> =
     new WeakMap();
 
   private readonly _cachedTemplates: WeakMap<
-    TemplateStringsArray,
+    ReadonlyArray<string>,
     Template<unknown, Context>
   > = new WeakMap();
 
   constructor(globalNamespace: Namespace = {}) {
     this._globalNamespace = globalNamespace;
-    this._marker = getMarker();
   }
 
   getVariable(key: PropertyKey, component: Component<Context>): unknown {
-    return this._namespaces.get(component)?.[key] ?? this._globalNamespace[key];
+    let current: Component<Context> | null = component;
+    do {
+      const value = this._namespaces.get(component)?.[key];
+      if (value !== undefined) {
+        return value;
+      }
+    } while ((current = current.parent));
+    return this._globalNamespace[key];
   }
 
   setVariable(
@@ -66,16 +46,18 @@ export class DefaultScope implements Scope<Context> {
     }
   }
 
-  createContext(
+  startContext(
     component: Component<Context>,
     hooks: Hook[],
     updater: Updater<Context>,
   ): Context {
-    return new Context(component, hooks, updater, this);
+    return new Context(component, hooks, this, updater);
   }
 
+  finishContext(_context: Context): void {}
+
   createHTMLTemplate(
-    tokens: TemplateStringsArray,
+    tokens: ReadonlyArray<string>,
     _data: unknown[],
   ): Template<unknown[], Context> {
     let template = this._cachedTemplates.get(tokens);
@@ -89,7 +71,7 @@ export class DefaultScope implements Scope<Context> {
   }
 
   createSVGTemplate(
-    tokens: TemplateStringsArray,
+    tokens: ReadonlyArray<string>,
     _data: unknown[],
   ): Template<unknown[], Context> {
     let template = this._cachedTemplates.get(tokens);

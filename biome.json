@@ -12,6 +12,9 @@
   },
   "linter": {
     "rules": {
+      "correctness": {
+        "noUnusedLabels": "off"
+      },
       "style": {
         "noNonNullAssertion": "off",
         "useEnumInitializers": "off"

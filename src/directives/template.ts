@@ -1,32 +1,14 @@
-import {
-  Binding,
-  ChildNodePart,
-  Directive,
-  Part,
-  PartType,
-  directiveTag,
-} from './binding.js';
-import { LOW_PRIORITY, TaskPriority, comparePriorities } from './scheduler.js';
-import type { Scope } from './scope.js';
-import type { Component, Effect, Updater } from './updater.js';
-
-export interface Template<TData, TContext = unknown> {
-  hydrate(
-    data: TData,
-    updater: Updater<TContext>,
-  ): TemplateFragment<TData, TContext>;
-  sameTemplate(other: Template<TData, TContext>): boolean;
-}
-
-export interface TemplateFragment<TData, TContext = unknown> {
-  get startNode(): ChildNode | null;
-  get endNode(): ChildNode | null;
-  rehydrate(data: TData, updater: Updater<TContext>): void;
-  detach(part: ChildNodePart, updater: Updater): void;
-  mount(part: ChildNodePart): void;
-  unmount(part: ChildNodePart): void;
-  disconnect(): void;
-}
+import { Binding, Directive, directiveTag } from '../binding.js';
+import { ChildNodePart, Part, PartType } from '../part.js';
+import { TaskPriority, comparePriorities } from '../scheduler.js';
+import type {
+  Component,
+  Effect,
+  Scope,
+  Template,
+  TemplateFragment,
+  Updater,
+} from '../types.js';
 
 const TemplateFlags = {
   NONE: 0,
@@ -63,7 +45,11 @@ export class TemplateDirective<TData, TContext = unknown>
       throw new Error('TemplateDirective must be used in ChildNodePart.');
     }
 
-    const binding = new TemplateBinding(this, part, updater.currentComponent);
+    const binding = new TemplateBinding(
+      this,
+      part,
+      updater.getCurrentComponent(),
+    );
 
     binding.bind(updater);
 
@@ -89,7 +75,7 @@ export class TemplateBinding<TData, TContext>
 
   private _template: Template<TData, TContext> | null = null;
 
-  private _priority: TaskPriority = LOW_PRIORITY;
+  private _priority: TaskPriority = 'background';
 
   private _flags = TemplateFlags.NONE;
 
@@ -119,6 +105,10 @@ export class TemplateBinding<TData, TContext>
     return this._value;
   }
 
+  set value(newValue: TemplateDirective<TData, TContext>) {
+    this._value = newValue;
+  }
+
   get parent(): Component<TContext> | null {
     return this._parent;
   }
@@ -134,8 +124,26 @@ export class TemplateBinding<TData, TContext>
     );
   }
 
-  set value(newValue: TemplateDirective<TData, TContext>) {
-    this._value = newValue;
+  render(_scope: Scope<TContext>, updater: Updater<TContext>): void {
+    const { template, data } = this._value;
+
+    if (this._pendingFragment !== null) {
+      if (this._template && this._template.sameTemplate(template)) {
+        this._pendingFragment.update(data, updater);
+      } else {
+        this._pendingFragment.detach(this._part, updater);
+        this._pendingFragment = null;
+      }
+    }
+
+    if (this._pendingFragment === null) {
+      this._pendingFragment = template.hydrate(data, updater);
+      this._requestMutation(updater);
+    }
+
+    this._template = template;
+    this._priority = 'background';
+    this._flags &= ~TemplateFlags.UPDATING;
   }
 
   requestUpdate(updater: Updater<TContext>, priority: TaskPriority): void {
@@ -163,38 +171,15 @@ export class TemplateBinding<TData, TContext>
   }
 
   unbind(updater: Updater<TContext>): void {
-    this._pendingFragment?.detach(this._part, updater);
-
-    if (this._memoizedFragment !== this._pendingFragment) {
-      this._memoizedFragment?.detach(this._part, updater);
+    if (this._pendingFragment !== this._memoizedFragment) {
+      this._pendingFragment?.detach(this._part, updater);
     }
 
+    this._memoizedFragment?.detach(this._part, updater);
     this._requestMutation(updater);
 
     this._pendingFragment = null;
     this._flags |= TemplateFlags.UNMOUNTING;
-    this._flags &= ~TemplateFlags.UPDATING;
-  }
-
-  render(updater: Updater<TContext>, _scope: Scope<TContext>): void {
-    const { template, data } = this._value;
-
-    if (this._pendingFragment !== null) {
-      if (this._template && this._template.sameTemplate(template)) {
-        this._pendingFragment.rehydrate(data, updater);
-      } else {
-        this._pendingFragment.detach(this._part, updater);
-        this._pendingFragment = null;
-      }
-    }
-
-    if (this._pendingFragment === null) {
-      this._requestMutation(updater);
-      this._pendingFragment = template.hydrate(data, updater);
-    }
-
-    this._template = template;
-    this._priority = LOW_PRIORITY;
     this._flags &= ~TemplateFlags.UPDATING;
   }
 
@@ -211,13 +196,11 @@ export class TemplateBinding<TData, TContext>
   }
 
   disconnect(): void {
-    this._pendingFragment?.disconnect();
-
-    if (this._memoizedFragment !== this._pendingFragment) {
-      this._memoizedFragment?.disconnect();
+    if (this._pendingFragment !== this._memoizedFragment) {
+      this._pendingFragment?.disconnect();
     }
 
-    this._pendingFragment = null;
+    this._memoizedFragment?.disconnect();
   }
 
   private _requestMutation(updater: Updater<TContext>): void {

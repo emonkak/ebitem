@@ -1,4 +1,12 @@
-import type { Effect, Updater } from './updater.js';
+import {
+  AttributePart,
+  ElementPart,
+  EventPart,
+  Part,
+  PartType,
+  PropertyPart,
+} from './part.js';
+import type { Effect, Updater } from './types.js';
 
 export interface Binding<TValue, TContext = unknown> {
   get part(): Part;
@@ -18,57 +26,7 @@ export interface Directive<TContext = unknown> {
   ): Binding<ThisType<this>>;
 }
 
-export type Part =
-  | AttributePart
-  | ChildNodePart
-  | ElementPart
-  | EventPart
-  | NodePart
-  | PropertyPart;
-
-export interface AttributePart {
-  type: PartType.Attribute;
-  node: Element;
-  name: string;
-}
-
-export interface ChildNodePart {
-  type: PartType.ChildNode;
-  node: ChildNode;
-}
-
-export interface ElementPart {
-  type: PartType.Element;
-  node: Element;
-}
-
-export interface EventPart {
-  type: PartType.Event;
-  node: Element;
-  name: string;
-}
-
-export interface PropertyPart {
-  type: PartType.Property;
-  node: Element;
-  name: string;
-}
-
-export interface NodePart {
-  type: PartType.Node;
-  node: ChildNode;
-}
-
 export type SpreadProps = { [key: string]: unknown };
-
-export enum PartType {
-  Attribute,
-  ChildNode,
-  Element,
-  Event,
-  Node,
-  Property,
-}
 
 export const directiveTag = Symbol('Directive');
 
@@ -451,16 +409,16 @@ export class SpreadBinding implements Binding<unknown> {
 
   unbind(updater: Updater): void {
     this._props = {};
-    this._bindings.forEach((binding) => {
+    for (const binding of this._bindings.values()) {
       binding.unbind(updater);
-    });
+    }
     this._bindings.clear();
   }
 
   disconnect(): void {
-    this._bindings.forEach((binding) => {
+    for (const binding of this._bindings.values()) {
       binding.disconnect();
-    });
+    }
   }
 }
 
@@ -516,7 +474,6 @@ export function updateBinding<TValue, TContext>(
     return;
   }
 
-  // biome-ignore lint: use DEBUG label
   DEBUG: {
     if (isDirective(binding.value)) {
       if (!isDirective(newValue) || !samePrototype(binding.value, newValue)) {

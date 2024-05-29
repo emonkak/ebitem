@@ -4,21 +4,20 @@ import {
   AttributeBinding,
   EventBinding,
   NodeBinding,
-  Part,
-  PartType,
   PropertyBinding,
   SpreadBinding,
   directiveTag,
 } from '../../src/binding.js';
-import { DefaultScope } from '../../src/scope.js';
-import { Template } from '../../src/template.js';
+import { LocalScope } from '../../src/localScope.js';
+import { Part, PartType } from '../../src/part.js';
 import {
   TaggedTemplate,
   TaggedTemplateFragment,
   getMarker,
   isValidMarker,
 } from '../../src/template/taggedTemplate.js';
-import { SyncUpdater } from '../../src/updater/syncUpdater.js';
+import { Template } from '../../src/types.js';
+import { SyncUpdater } from '../../src/updater.js';
 import { MockBinding, MockDirective } from '../mocks.js';
 
 const MARKER = getMarker();
@@ -317,7 +316,7 @@ describe('TaggedTemplate', () => {
         { class: 'qux' },
         new MockDirective(),
       ];
-      const updater = new SyncUpdater(new DefaultScope());
+      const updater = new SyncUpdater(new LocalScope());
       const fragment = template.hydrate(values, updater);
 
       expect(fragment).toBeInstanceOf(TaggedTemplateFragment);
@@ -373,7 +372,7 @@ describe('TaggedTemplate', () => {
 
     it('should hydrate a TaggedTemplateFragment without bindings', () => {
       const template = html`<div></div>`;
-      const updater = new SyncUpdater(new DefaultScope());
+      const updater = new SyncUpdater(new LocalScope());
       const fragment = template.hydrate([], updater);
 
       expect(fragment).toBeInstanceOf(TaggedTemplateFragment);
@@ -385,7 +384,7 @@ describe('TaggedTemplate', () => {
 
     it('should hydrate a TaggedTemplateFragment with empty template', () => {
       const template = html``;
-      const updater = new SyncUpdater(new DefaultScope());
+      const updater = new SyncUpdater(new LocalScope());
       const fragment = template.hydrate([], updater);
 
       expect(fragment).toBeInstanceOf(TaggedTemplateFragment);
@@ -400,7 +399,7 @@ describe('TaggedTemplate', () => {
         <div class=${0} class=${1}></div>
       `;
       const values = ['foo', 'bar'];
-      const updater = new SyncUpdater(new DefaultScope());
+      const updater = new SyncUpdater(new LocalScope());
 
       expect(() => {
         template.hydrate(values, updater);
@@ -427,13 +426,13 @@ describe('TaggedTemplate', () => {
 });
 
 describe('TaggedTemplateFragment', () => {
-  describe('.rehydrate()', () => {
+  describe('.update()', () => {
     it('should update bindings in the fragment with new values', () => {
       const template = html`
         <div class="${0}">${1} ${2}</div>
       `;
       const values = ['foo', 'bar', 'baz'];
-      const updater = new SyncUpdater(new DefaultScope());
+      const updater = new SyncUpdater(new LocalScope());
       const fragment = template.hydrate(values, updater);
 
       updater.flush();
@@ -442,7 +441,7 @@ describe('TaggedTemplateFragment', () => {
         '<div class="foo">bar baz</div>',
       ]);
 
-      fragment.rehydrate(['bar', 'baz', 'qux'], updater);
+      fragment.update(['bar', 'baz', 'qux'], updater);
       updater.flush();
 
       expect(fragment.childNodes.map(nodeToString)).toEqual([
@@ -462,7 +461,7 @@ describe('TaggedTemplateFragment', () => {
         type: PartType.ChildNode,
         node: document.createComment(''),
       } as const;
-      const updater = new SyncUpdater(new DefaultScope());
+      const updater = new SyncUpdater(new LocalScope());
       const fragment = template.hydrate(values, updater);
 
       container.appendChild(part.node);
@@ -508,11 +507,11 @@ describe('TaggedTemplateFragment', () => {
       const template = html`
         <p>Count: ${0}</p>
       `;
-      const updater = new SyncUpdater(new DefaultScope());
+      const updater = new SyncUpdater(new LocalScope());
       const fragment = template.hydrate([0], updater);
 
       expect(() => {
-        fragment.rehydrate([], updater);
+        fragment.update([], updater);
       }).toThrow('The number of new data must be 1, but got 0.');
     });
   });
@@ -535,7 +534,7 @@ describe('TaggedTemplateFragment', () => {
         return binding;
       });
       const values = [directive];
-      const updater = new SyncUpdater(new DefaultScope());
+      const updater = new SyncUpdater(new LocalScope());
       const fragment = template.hydrate(values, updater);
 
       expect(disconnects).toBe(0);
@@ -552,7 +551,7 @@ describe('TaggedTemplateFragment', () => {
         <p>Hello, ${0}!</p>
       `;
       const values = ['World'];
-      const updater = new SyncUpdater(new DefaultScope());
+      const updater = new SyncUpdater(new LocalScope());
       const fragment = template.hydrate(values, updater);
 
       updater.flush();
@@ -578,7 +577,7 @@ describe('TaggedTemplateFragment', () => {
         <p>Hello, ${0}!</p>
       `;
       const values = ['World'];
-      const updater = new SyncUpdater(new DefaultScope());
+      const updater = new SyncUpdater(new LocalScope());
       const fragment = template.hydrate(values, updater);
 
       updater.flush();

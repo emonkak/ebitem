@@ -1,12 +1,12 @@
 import {
   Binding,
   Directive,
-  Part,
   directiveTag,
   initializeBinding,
   updateBinding,
 } from '../binding.js';
-import type { Updater } from '../updater.js';
+import type { Part } from '../part.js';
+import type { Updater } from '../types.js';
 
 export function choice<TKey, TValue>(
   key: TKey,

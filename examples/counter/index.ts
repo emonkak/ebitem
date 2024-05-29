@@ -1,11 +1,11 @@
 import {
   ConcurrentUpdater,
   Context,
-  DefaultScope,
-  TemplateDirective,
+  LocalScope,
   mountValue,
 } from '@emonkak/ebitem';
 import {
+  TemplateDirective,
   block,
   choice,
   classNames,
@@ -198,6 +198,6 @@ function shuffle<T>(elements: T[]): T[] {
   return elements;
 }
 
-const updater = new ConcurrentUpdater(new DefaultScope());
+const updater = new ConcurrentUpdater(new LocalScope());
 
 mountValue(block(App, {}), document.body, updater);

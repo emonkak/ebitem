@@ -6,50 +6,58 @@ export {
   mountValue,
 } from './binding.js';
 export {
-  type Cleanup,
-  type EffectCallback,
   type InitialState,
   type NewState,
+  Context,
+} from './context.js';
+export {
+  type Cleanup,
+  type EffectCallback,
   type Ref,
   type RefCallback,
   type RefObject,
   type Usable,
   type UsableCallback,
   type UsableObject,
-  Context,
   usableTag,
-} from './context.js';
+} from './hook.js';
+export {
+  type Part,
+  type AttributePart,
+  type PropertyPart,
+  type NodePart,
+  type ChildNodePart,
+  type EventPart,
+  type ElementPart,
+  PartType,
+} from './part.js';
 export {
   type Scheduler,
   createDefaultScheduler,
 } from './scheduler.js';
 export {
-  type Scope,
   type Namespace,
-  DefaultScope,
-} from './scope.js';
-export {
-  type Template,
-  type TemplateFragment,
-  TemplateBinding,
-  TemplateDirective,
-} from './template.js';
+  LocalScope,
+} from './localScope.js';
 export {
   TaggedTemplate,
   TaggedTemplateFragment,
 } from './template/taggedTemplate.js';
 export {
   ChildNodeTemplate,
-  ValueTemplateFragment,
   TextTemplate,
+  ValueTemplateFragment,
 } from './template/valueTemplate.js';
-export {
-  type Effect,
-  type Component,
-  type Updater,
-} from './updater.js';
 export {
   type ConcurrentUpdaterOptions,
   ConcurrentUpdater,
-} from './updater/concurrentUpdater.js';
-export { SyncUpdater } from './updater/syncUpdater.js';
+  SyncUpdater,
+} from './updater.js';
+export type {
+  Component,
+  Effect,
+  Scope,
+  Template,
+  TemplateFragment,
+  Updater,
+} from './types.js';

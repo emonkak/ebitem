@@ -1,15 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  Binding,
-  NodeBinding,
-  PartType,
-  directiveTag,
-} from '../src/binding.js';
-import { Context, usableTag } from '../src/context.js';
-import { DefaultScope } from '../src/scope.js';
+import { Binding, NodeBinding, directiveTag } from '../src/binding.js';
+import { Context } from '../src/context.js';
+import { Hook, usableTag } from '../src/hook.js';
+import { LocalScope } from '../src/localScope.js';
+import { PartType } from '../src/part.js';
 import { AtomSignal, ComputedSignal, SignalBinding } from '../src/signal.js';
-import { SyncUpdater } from '../src/updater/syncUpdater.js';
+import { SyncUpdater } from '../src/updater.js';
+import { MockComponent } from './mocks.js';
 
 describe('AtomSignal', () => {
   it('should get 0 of the initial version on initalize', () => {
@@ -119,7 +117,7 @@ describe('AtomSignal', () => {
         type: PartType.Node,
         node: document.createTextNode(''),
       } as const;
-      const updater = new SyncUpdater(new DefaultScope());
+      const updater = new SyncUpdater(new LocalScope());
       const scheduleUpdateSpy = vi.spyOn(updater, 'scheduleUpdate');
       const binding = signal[directiveTag](part, updater);
       const bindSpy = vi.spyOn(binding.valueBinding, 'bind');
@@ -141,18 +139,12 @@ describe('AtomSignal', () => {
   describe('[usableTag]()', () => {
     it('should should subscribe the signal and return the signal value', () => {
       const signal = new AtomSignal('foo');
-      const updater = new SyncUpdater(new DefaultScope());
-      const context = {
-        useEffect(callback) {
-          updater.enqueuePassiveEffect({
-            commit() {
-              callback();
-            },
-          });
-        },
-        requestUpdate() {},
-      } as Context;
-      const requestUpdateSpy = vi.spyOn(context, 'requestUpdate');
+      const component = new MockComponent();
+      const hooks: Hook[] = [];
+      const scope = new LocalScope();
+      const updater = new SyncUpdater(scope);
+      const context = new Context(component, hooks, scope, updater);
+      const requestUpdateSpy = vi.spyOn(component, 'requestUpdate');
       const value = signal[usableTag](context);
 
       updater.flush();
@@ -291,7 +283,7 @@ describe('SignalBinding', () => {
         node: document.createTextNode(''),
       } as const;
       const valueBinding = new NodeBinding('foo', part) as Binding<string>;
-      const updater = new SyncUpdater(new DefaultScope());
+      const updater = new SyncUpdater(new LocalScope());
       const binding = new SignalBinding(signal, valueBinding, updater);
       const bindSpy = vi.spyOn(valueBinding, 'bind');
 
@@ -325,7 +317,7 @@ describe('SignalBinding', () => {
         node: document.createTextNode(''),
       } as const;
       const valueBinding = new NodeBinding('foo', part) as Binding<string>;
-      const updater = new SyncUpdater(new DefaultScope());
+      const updater = new SyncUpdater(new LocalScope());
       const binding = new SignalBinding(signal1, valueBinding, updater);
       const bindSpy = vi.spyOn(valueBinding, 'bind');
 
@@ -360,7 +352,7 @@ describe('SignalBinding', () => {
         node: document.createTextNode(''),
       } as const;
       const valueBinding = new NodeBinding('foo', part) as Binding<string>;
-      const updater = new SyncUpdater(new DefaultScope());
+      const updater = new SyncUpdater(new LocalScope());
       const binding = new SignalBinding(signal, valueBinding, updater);
       const unbindSpy = vi.spyOn(valueBinding, 'unbind');
 
@@ -387,7 +379,7 @@ describe('SignalBinding', () => {
         node: document.createTextNode(''),
       } as const;
       const valueBinding = new NodeBinding('foo', part) as Binding<string>;
-      const updater = new SyncUpdater(new DefaultScope());
+      const updater = new SyncUpdater(new LocalScope());
       const binding = new SignalBinding(signal, valueBinding, updater);
       const disconnectSpy = vi.spyOn(valueBinding, 'disconnect');
 

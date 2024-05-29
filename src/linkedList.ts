@@ -95,7 +95,6 @@ export class LinkedList<T> implements Iterable<T> {
   }
 
   remove(node: Node<T>): void {
-    // biome-ignore lint: use DEBUG label
     DEBUG: {
       if (!this.contains(node)) {
         throw new Error('The node is not contained in this list.');

@@ -1,51 +1,21 @@
+import { TemplateDirective } from './directives/template.js';
+import {
+  Cleanup,
+  EffectCallback,
+  EffectHook,
+  Hook,
+  HookType,
+  MemoHook,
+  ReducerHook,
+  RefObject,
+  Usable,
+  ensureHookType,
+  usableTag,
+} from './hook.js';
 import type { TaskPriority } from './scheduler.js';
-import type { Scope } from './scope.js';
-import { TemplateDirective } from './template.js';
 import { ElementData, ElementTemplate } from './template/elementTemplate.js';
 import { ChildNodeTemplate, TextTemplate } from './template/valueTemplate.js';
-import type { Component, Effect, Updater } from './updater.js';
-
-export type Hook = EffectHook | MemoHook<any> | ReducerHook<any, any>;
-
-export interface EffectHook {
-  type: HookType.Effect;
-  cleanup: Cleanup | void;
-  dependencies: unknown[] | undefined;
-}
-
-export interface MemoHook<TResult> {
-  type: HookType.Memo;
-  value: TResult;
-  dependencies: unknown[] | undefined;
-}
-
-export interface ReducerHook<TState, TAction> {
-  type: HookType.Reducer;
-  dispatch: (action: TAction) => void;
-  state: TState;
-}
-
-export type Usable<TResult, TContext> =
-  | UsableCallback<TResult, TContext>
-  | UsableObject<TResult, TContext>;
-
-export type UsableCallback<TResult, TContext> = (context: TContext) => TResult;
-
-export interface UsableObject<TResult, TContext> {
-  [usableTag](context: TContext): TResult;
-}
-
-export type Cleanup = () => void;
-
-export type EffectCallback = () => Cleanup | void;
-
-export type Ref<T> = RefCallback<T> | RefObject<T>;
-
-export type RefCallback<T> = (value: T) => void;
-
-export interface RefObject<T> {
-  current: T;
-}
+import type { Component, Effect, Scope, Updater } from './types.js';
 
 export type InitialState<TState> = TState extends Function
   ? () => TState
@@ -55,35 +25,27 @@ export type NewState<TState> = TState extends Function
   ? (prevState: TState) => TState
   : ((prevState: TState) => TState) | TState;
 
-export enum HookType {
-  Effect,
-  Memo,
-  Reducer,
-}
-
-export const usableTag = Symbol('Usable');
-
 export class Context {
   private readonly _component: Component<Context>;
 
   private readonly _hooks: Hook[];
 
-  private readonly _updater: Updater<Context>;
-
   private readonly _scope: Scope<Context>;
+
+  private readonly _updater: Updater<Context>;
 
   private _hookIndex = 0;
 
   constructor(
     component: Component<Context>,
     hooks: Hook[],
-    updater: Updater<Context>,
     scope: Scope<Context>,
+    updater: Updater<Context>,
   ) {
     this._component = component;
     this._hooks = hooks;
-    this._updater = updater;
     this._scope = scope;
+    this._updater = updater;
   }
 
   childNode<T>(value: T): TemplateDirective<T, Context> {
@@ -183,15 +145,13 @@ export class Context {
 
       currentHook.dependencies = dependencies;
     } else {
-      const newHook: EffectHook = {
+      const hook: EffectHook = {
         type: HookType.Effect,
         dependencies,
         cleanup: undefined,
       };
-      this._hooks.push(newHook);
-      this._updater.enqueuePassiveEffect(
-        new InvokeEffectHook(newHook, callback),
-      );
+      this._hooks.push(hook);
+      this._updater.enqueuePassiveEffect(new InvokeEffectHook(hook, callback));
     }
 
     this._hookIndex++;
@@ -232,15 +192,13 @@ export class Context {
 
       currentHook.dependencies = dependencies;
     } else {
-      const newHook: EffectHook = {
+      const hook: EffectHook = {
         type: HookType.Effect,
         dependencies,
         cleanup: undefined,
       };
-      this._hooks.push(newHook);
-      this._updater.enqueueLayoutEffect(
-        new InvokeEffectHook(newHook, callback),
-      );
+      this._hooks.push(hook);
+      this._updater.enqueueLayoutEffect(new InvokeEffectHook(hook, callback));
     }
 
     this._hookIndex++;
@@ -283,14 +241,14 @@ export class Context {
         currentHook,
       );
     } else {
-      const newHook: ReducerHook<TState, TAction> = {
+      const hook: ReducerHook<TState, TAction> = {
         type: HookType.Reducer,
         state:
           typeof initialState === 'function' ? initialState() : initialState,
         dispatch: (action: TAction) => {
-          const nextState = reducer(newHook.state, action);
-          if (!Object.is(newHook.state, nextState)) {
-            newHook.state = nextState;
+          const nextState = reducer(hook.state, action);
+          if (!Object.is(hook.state, nextState)) {
+            hook.state = nextState;
             this._component.requestUpdate(
               this._updater,
               priority ?? this._updater.getCurrentPriority(),
@@ -298,8 +256,8 @@ export class Context {
           }
         },
       };
-      currentHook = newHook;
-      this._hooks.push(newHook);
+      currentHook = hook;
+      this._hooks.push(hook);
     }
 
     this._hookIndex++;
@@ -376,15 +334,4 @@ function dependenciesAreChanged(
       (dependencies, index) => !Object.is(dependencies, oldDependencies[index]),
     )
   );
-}
-
-function ensureHookType<TExpectedHook extends Hook>(
-  expectedType: TExpectedHook['type'],
-  hook: Hook,
-): asserts hook is TExpectedHook {
-  if (hook.type !== expectedType) {
-    throw new Error(
-      `Unexpected hook type. Expected "${expectedType}" but got "${hook.type}".`,
-    );
-  }
 }

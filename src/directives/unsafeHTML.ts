@@ -1,12 +1,6 @@
-import {
-  Binding,
-  ChildNodePart,
-  Directive,
-  Part,
-  PartType,
-  directiveTag,
-} from '../binding.js';
-import type { Updater } from '../updater.js';
+import { Binding, Directive, directiveTag } from '../binding.js';
+import { ChildNodePart, Part, PartType } from '../part.js';
+import type { Updater } from '../types.js';
 
 export function unsafeHTML(content: string): UnsafeHTMLDirective {
   return new UnsafeHTMLDirective(content);

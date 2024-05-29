@@ -1,12 +1,6 @@
-import {
-  Binding,
-  ChildNodePart,
-  PartType,
-  initializeBinding,
-  updateBinding,
-} from '../binding.js';
-import { Template, TemplateFragment } from '../template.js';
-import { Updater } from '../updater.js';
+import { Binding, initializeBinding, updateBinding } from '../binding.js';
+import { ChildNodePart, PartType } from '../part.js';
+import { Template, TemplateFragment, Updater } from '../types.js';
 
 export class ChildNodeTemplate<T> implements Template<T> {
   static instance: ChildNodeTemplate<any> = new ChildNodeTemplate<any>();
@@ -71,7 +65,7 @@ export class ValueTemplateFragment<T> implements TemplateFragment<T> {
     return this._binding.endNode;
   }
 
-  rehydrate(newData: T, updater: Updater<unknown>): void {
+  update(newData: T, updater: Updater<unknown>): void {
     updateBinding(this._binding, newData, updater);
   }
 

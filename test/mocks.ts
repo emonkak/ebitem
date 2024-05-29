@@ -1,7 +1,7 @@
-import { Binding, Directive, Part, directiveTag } from '../src/binding.js';
-import { NORMAL_PRIORITY } from '../src/scheduler.js';
-import { Scope } from '../src/scope.js';
-import { Component, Updater } from '../src/updater.js';
+import { Binding, Directive, directiveTag } from '../src/binding.js';
+import { Part } from '../src/part.js';
+import { TaskPriority } from '../src/scheduler.js';
+import type { Component, Scope, Updater } from '../src/types.js';
 
 export class MockDirective implements Directive {
   [directiveTag](part: Part, _updater: Updater): MockBinding {
@@ -44,4 +44,22 @@ export class MockBinding implements Binding<MockDirective> {
   unbind(_updater: Updater): void {}
 
   disconnect(): void {}
+}
+
+export class MockComponent<TContext> implements Component<TContext> {
+  get dirty(): boolean {
+    return false;
+  }
+
+  get parent(): Component<TContext> | null {
+    return null;
+  }
+
+  get priority(): TaskPriority {
+    return 'user-visible';
+  }
+
+  requestUpdate(_updater: Updater<TContext>, _priority: TaskPriority): void {}
+
+  render(_scope: Scope<TContext>, _updater: Updater<TContext>): void {}
 }

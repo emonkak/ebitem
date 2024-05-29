@@ -1,12 +1,6 @@
-import {
-  Binding,
-  ChildNodePart,
-  PartType,
-  initializeBinding,
-  updateBinding,
-} from '../binding.js';
-import { Template, TemplateFragment } from '../template.js';
-import { Updater } from '../updater.js';
+import { Binding, initializeBinding, updateBinding } from '../binding.js';
+import { ChildNodePart, PartType } from '../part.js';
+import type { Template, TemplateFragment, Updater } from '../types.js';
 
 export interface ElementData<TElementValue, TChildNodeValue> {
   elementValue: TElementValue;
@@ -78,7 +72,7 @@ export class ElementTemplateFragment<TElementValue, TChildNodeValue>
     return this._elementBinding.endNode;
   }
 
-  rehydrate(
+  update(
     newData: ElementData<TElementValue, TChildNodeValue>,
     updater: Updater<unknown>,
   ): void {
