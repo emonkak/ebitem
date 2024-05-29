@@ -83,22 +83,21 @@ export class UnsafeSVGBinding implements Binding<UnsafeSVGDirective> {
   disconnect(): void {}
 
   commit(): void {
+    const { unsafeContent } = this._value;
+
     for (let i = 0, l = this._childNodes.length; i < l; i++) {
       this._childNodes[i]!.remove();
     }
-
-    const { unsafeContent } = this._value;
 
     if (unsafeContent !== '') {
       const template = document.createElement('template');
       template.innerHTML = '<svg>' + unsafeContent + '</svg>';
 
       const fragment = template.content;
-      this._childNodes = [...fragment.firstChild!.childNodes];
-      fragment.replaceChildren(...this._childNodes);
+      this._childNodes = [...(fragment.firstChild?.childNodes ?? [])];
 
       const reference = this._part.node;
-      reference.before(fragment);
+      reference.before(...this._childNodes);
     }
 
     this._dirty = false;

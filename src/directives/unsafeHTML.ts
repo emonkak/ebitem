@@ -83,11 +83,11 @@ export class UnsafeHTMLBinding implements Binding<UnsafeHTMLDirective> {
   disconnect(): void {}
 
   commit(): void {
+    const { unsafeContent } = this._value;
+
     for (let i = 0, l = this._childNodes.length; i < l; i++) {
       this._childNodes[i]!.remove();
     }
-
-    const { unsafeContent } = this._value;
 
     if (unsafeContent !== '') {
       const template = document.createElement('template');

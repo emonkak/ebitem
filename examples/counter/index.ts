@@ -16,6 +16,7 @@ import {
   style,
   unless,
   unsafeHTML,
+  unsafeSVG,
   when,
 } from '@emonkak/ebitem/directives.js';
 import {
@@ -104,7 +105,7 @@ function App(_props: {}, context: Context) {
       cy: 50,
       r: 50,
       fill: 'red',
-    })} /></svg>
+    })} /><${unsafeSVG('<circle cx="10" cy="10" r="10" fill="blue" />')} /></svg>
     <${block(SingleText<string>, { value: 'Hello' })} />
   `;
 }
