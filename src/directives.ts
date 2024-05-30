@@ -13,6 +13,11 @@ export {
   unless,
   when,
 } from './directives/condition.js';
+export {
+  DynamicBinding,
+  DynamicDirective,
+  dynamic,
+} from './directives/dynamic.js';
 export { ListBinding, ListDirective, list } from './directives/list.js';
 export { RefBinding, RefDirective, ref } from './directives/ref.js';
 export {

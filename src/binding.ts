@@ -440,7 +440,7 @@ export function ensureDirective<TExpectedClass extends Function>(
         expectedClass.name +
         '", but got "' +
         actualValue +
-        '". Consider using choice() or condition() directive instead.',
+        '". Consider using choice(), condition() or dynamic() directive instead.',
     );
   }
 }
@@ -523,7 +523,7 @@ function ensureNonDirective(value: unknown): void {
     throw new Error(
       'A value must not be a directive, but got "' +
         value +
-        '". Consider using choice() or condition() directive instead.',
+        '". Consider using choice(), condition() or dynamic() directive instead.',
     );
   }
 }
