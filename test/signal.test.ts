@@ -24,8 +24,8 @@ describe('SignalBinding', () => {
       expect(binding.startNode).toBe(part.node);
       expect(binding.endNode).toBe(part.node);
       expect(binding.value).toBe(signal);
-      expect(binding.valueBinding).toBeInstanceOf(NodeBinding);
-      expect(binding.valueBinding.value).toBe('foo');
+      expect(binding.binding).toBeInstanceOf(NodeBinding);
+      expect(binding.binding.value).toBe('foo');
       expect(updater.isNothingScheduled()).toBe(true);
     });
   });
@@ -44,14 +44,14 @@ describe('SignalBinding', () => {
       const subscribe = vi
         .spyOn(signal, 'subscribe')
         .mockReturnValue(unsubscribeSpy);
-      const rebindSpy = vi.spyOn(binding.valueBinding, 'rebind');
-      const bindSpy = vi.spyOn(binding.valueBinding, 'bind');
+      const rebindSpy = vi.spyOn(binding.binding, 'rebind');
+      const bindSpy = vi.spyOn(binding.binding, 'bind');
 
       binding.rebind(updater);
       signal.setUntrackedValue('bar');
       binding.bind(signal, updater);
 
-      expect(binding.valueBinding.value).toBe('bar');
+      expect(binding.binding.value).toBe('bar');
       expect(rebindSpy).toHaveBeenCalled();
       expect(bindSpy).toHaveBeenCalledOnce();
       expect(unsubscribeSpy).not.toHaveBeenCalled();
@@ -76,13 +76,13 @@ describe('SignalBinding', () => {
       const subscribe2Spy = vi
         .spyOn(signal2, 'subscribe')
         .mockReturnValue(unsubscribe1Spy);
-      const rebindSpy = vi.spyOn(binding.valueBinding, 'rebind');
-      const bindSpy = vi.spyOn(binding.valueBinding, 'bind');
+      const rebindSpy = vi.spyOn(binding.binding, 'rebind');
+      const bindSpy = vi.spyOn(binding.binding, 'bind');
 
       binding.rebind(updater);
       binding.bind(signal2, updater);
 
-      expect(binding.valueBinding.value).toBe('bar');
+      expect(binding.binding.value).toBe('bar');
       expect(rebindSpy).toHaveBeenCalled();
       expect(bindSpy).toHaveBeenCalledOnce();
       expect(unsubscribe1Spy).toHaveBeenCalledOnce();
@@ -118,18 +118,18 @@ describe('SignalBinding', () => {
       const updater = new SyncUpdater(new LocalScope());
       const binding = new SignalBinding(signal, part, updater);
 
-      const rebindSpy = vi.spyOn(binding.valueBinding, 'rebind');
-      const bindSpy = vi.spyOn(binding.valueBinding, 'bind');
+      const rebindSpy = vi.spyOn(binding.binding, 'rebind');
+      const bindSpy = vi.spyOn(binding.binding, 'bind');
 
       binding.rebind(updater);
 
-      expect(binding.valueBinding.value).toBe('foo');
+      expect(binding.binding.value).toBe('foo');
       expect(rebindSpy).toHaveBeenCalled();
       expect(bindSpy).not.toHaveBeenCalled();
 
       signal.value = 'bar';
 
-      expect(binding.valueBinding.value).toBe('bar');
+      expect(binding.binding.value).toBe('bar');
       expect(rebindSpy).toHaveBeenCalled();
       expect(bindSpy).toHaveBeenCalledOnce();
     });
@@ -149,7 +149,7 @@ describe('SignalBinding', () => {
       const subscribeSpy = vi
         .spyOn(signal, 'subscribe')
         .mockReturnValue(unsubscribeSpy);
-      const unbindSpy = vi.spyOn(binding.valueBinding, 'unbind');
+      const unbindSpy = vi.spyOn(binding.binding, 'unbind');
 
       binding.rebind(updater);
 
@@ -179,7 +179,7 @@ describe('SignalBinding', () => {
       const subscribeSpy = vi
         .spyOn(signal, 'subscribe')
         .mockReturnValue(unsubscribeSpy);
-      const disconnectSpy = vi.spyOn(binding.valueBinding, 'disconnect');
+      const disconnectSpy = vi.spyOn(binding.binding, 'disconnect');
 
       binding.rebind(updater);
 
@@ -311,8 +311,8 @@ describe('AtomSignal', () => {
       expect(binding.startNode).toBe(part.node);
       expect(binding.endNode).toBe(part.node);
       expect(binding.value).toBe(signal);
-      expect(binding.valueBinding).toBeInstanceOf(NodeBinding);
-      expect(binding.valueBinding.value).toBe('foo');
+      expect(binding.binding).toBeInstanceOf(NodeBinding);
+      expect(binding.binding.value).toBe('foo');
       expect(updater.isNothingScheduled()).toBe(true);
     });
   });
