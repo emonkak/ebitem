@@ -120,9 +120,9 @@ export class TemplateBinding<TData, TContext>
 
     if (this._pendingFragment !== null) {
       if (this._memoizedTemplate?.isSameTemplate(template) ?? false) {
-        this._pendingFragment.update(data, updater);
+        this._pendingFragment.bind(data, updater);
       } else {
-        this._pendingFragment.detach(this._part, updater);
+        this._pendingFragment.unbind(updater);
         this._pendingFragment = null;
       }
     }
@@ -170,10 +170,10 @@ export class TemplateBinding<TData, TContext>
 
   unbind(updater: Updater<TContext>): void {
     if (this._pendingFragment !== this._memoizedFragment) {
-      this._pendingFragment?.detach(this._part, updater);
+      this._pendingFragment?.unbind(updater);
     }
 
-    this._memoizedFragment?.detach(this._part, updater);
+    this._memoizedFragment?.unbind(updater);
     this._requestMutation(updater);
 
     this._pendingFragment = null;

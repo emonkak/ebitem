@@ -426,7 +426,7 @@ describe('TaggedTemplate', () => {
 });
 
 describe('TaggedTemplateFragment', () => {
-  describe('.update()', () => {
+  describe('.bind()', () => {
     it('should update bindings in the fragment with new values', () => {
       const template = html`
         <div class="${0}">${1} ${2}</div>
@@ -441,7 +441,7 @@ describe('TaggedTemplateFragment', () => {
         '<div class="foo">bar baz</div>',
       ]);
 
-      fragment.update(['bar', 'baz', 'qux'], updater);
+      fragment.bind(['bar', 'baz', 'qux'], updater);
       updater.flush();
 
       expect(fragment.childNodes.map(nodeToString)).toEqual([
@@ -450,7 +450,7 @@ describe('TaggedTemplateFragment', () => {
     });
   });
 
-  describe('.detach()', () => {
+  describe('.unbind()', () => {
     it('should unbind bindings mounted as a child of the fragment', () => {
       const template = html`
         ${0}<div class=${2}>${3}</div><!--${4}-->
@@ -484,7 +484,7 @@ describe('TaggedTemplateFragment', () => {
         vi.spyOn(binding, 'disconnect'),
       );
 
-      fragment.detach(part, updater);
+      fragment.unbind(updater);
       updater.flush();
 
       expect(fragment.childNodes.map(nodeToString)).toEqual([
@@ -511,7 +511,7 @@ describe('TaggedTemplateFragment', () => {
       const fragment = template.hydrate([0], updater);
 
       expect(() => {
-        fragment.update([], updater);
+        fragment.bind([], updater);
       }).toThrow('The number of new data must be 1, but got 0.');
     });
   });

@@ -157,7 +157,7 @@ export class BlockBinding<TProps, TData, TContext>
 
       if (this._memoizedTemplate !== template) {
         // First, detach of the current fragment.
-        this._pendingFragment.detach(this._part, updater);
+        this._pendingFragment.unbind(updater);
 
         // We need to mount child nodes before hydration.
         this._requestMutation(updater);
@@ -167,7 +167,7 @@ export class BlockBinding<TProps, TData, TContext>
         if (this._cachedFragments !== null) {
           nextFragment = this._cachedFragments.get(template);
           if (nextFragment !== undefined) {
-            nextFragment.update(data, updater);
+            nextFragment.bind(data, updater);
           } else {
             nextFragment = template.hydrate(data, updater);
           }
@@ -186,7 +186,7 @@ export class BlockBinding<TProps, TData, TContext>
 
         this._pendingFragment = nextFragment;
       } else {
-        this._pendingFragment.update(data, updater);
+        this._pendingFragment.bind(data, updater);
       }
     } else {
       // Child nodes must be mounted before hydration.
@@ -236,10 +236,10 @@ export class BlockBinding<TProps, TData, TContext>
   }
 
   unbind(updater: Updater): void {
-    this._pendingFragment?.detach(this._part, updater);
+    this._pendingFragment?.unbind(updater);
 
     if (this._memoizedFragment !== this._pendingFragment) {
-      this._memoizedFragment?.detach(this._part, updater);
+      this._memoizedFragment?.unbind(updater);
     }
 
     this._cleanHooks();

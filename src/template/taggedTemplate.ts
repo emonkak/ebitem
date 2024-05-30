@@ -220,7 +220,7 @@ export class TaggedTemplateFragment implements TemplateFragment<unknown[]> {
     return this._bindings;
   }
 
-  update(newData: unknown[], updater: Updater): void {
+  bind(newData: unknown[], updater: Updater): void {
     if (newData.length !== this._bindings.length) {
       throw new Error(
         `The number of new data must be ${this._bindings.length}, but got ${newData.length}.`,
@@ -232,16 +232,14 @@ export class TaggedTemplateFragment implements TemplateFragment<unknown[]> {
     }
   }
 
-  detach(part: ChildNodePart, updater: Updater): void {
-    const rootNode = part.node.parentNode;
-
+  unbind(updater: Updater): void {
     for (let i = 0, l = this._bindings.length; i < l; i++) {
       const binding = this._bindings[i]!;
       const part = binding.part;
 
       if (
         (part.type === PartType.ChildNode || part.type === PartType.Node) &&
-        part.node.parentNode === rootNode
+        this._childNodes.includes(part.node)
       ) {
         // This binding is mounted as a child of the root, so it must be unbound.
         binding.unbind(updater);

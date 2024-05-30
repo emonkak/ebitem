@@ -67,11 +67,11 @@ export class ValueTemplateFragment<T> implements TemplateFragment<T> {
     return this._binding.endNode;
   }
 
-  update(newData: T, updater: Updater<unknown>): void {
+  bind(newData: T, updater: Updater<unknown>): void {
     this._binding.bind(newData, updater);
   }
 
-  detach(_part: ChildNodePart, updater: Updater): void {
+  unbind(updater: Updater): void {
     this._binding.unbind(updater);
   }
 

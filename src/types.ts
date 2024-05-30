@@ -57,8 +57,8 @@ export interface Template<TData, TContext = unknown> {
 export interface TemplateFragment<TData, TContext = unknown> {
   get startNode(): ChildNode | null;
   get endNode(): ChildNode | null;
-  update(data: TData, updater: Updater<TContext>): void;
-  detach(part: ChildNodePart, updater: Updater): void;
+  bind(data: TData, updater: Updater<TContext>): void;
+  unbind(updater: Updater): void;
   mount(part: ChildNodePart): void;
   unmount(part: ChildNodePart): void;
   disconnect(): void;
