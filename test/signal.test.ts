@@ -5,7 +5,12 @@ import { Context } from '../src/context.js';
 import { Hook, usableTag } from '../src/hook.js';
 import { LocalScope } from '../src/localScope.js';
 import { PartType } from '../src/part.js';
-import { AtomSignal, ComputedSignal, SignalBinding } from '../src/signal.js';
+import {
+  AtomSignal,
+  ComputedSignal,
+  ProjectedSignal,
+  SignalBinding,
+} from '../src/signal.js';
 import { SyncUpdater } from '../src/updater.js';
 import { MockComponent } from './mocks.js';
 
@@ -197,19 +202,31 @@ describe('SignalBinding', () => {
 });
 
 describe('AtomSignal', () => {
-  it('should get 0 of the initial version on initalize', () => {
-    const signal = new AtomSignal('foo');
+  describe('.constructor()', () => {
+    it('should get 0 of the initial version on initalize', () => {
+      const signal = new AtomSignal('foo');
 
-    expect(signal.value).toBe('foo');
-    expect(signal.version).toBe(0);
+      expect(signal.value).toBe('foo');
+      expect(signal.version).toBe(0);
+    });
+
+    it('should increment the version on update', () => {
+      const signal = new AtomSignal('foo');
+
+      signal.value = 'bar';
+      expect(signal.value).toBe('bar');
+      expect(signal.version).toBe(1);
+    });
   });
 
-  it('should increment the version on update', () => {
-    const signal = new AtomSignal('foo');
+  describe('.value', () => {
+    it('should increment the version on update', () => {
+      const signal = new AtomSignal('foo');
 
-    signal.value = 'bar';
-    expect(signal.value).toBe('bar');
-    expect(signal.version).toBe(1);
+      signal.value = 'bar';
+      expect(signal.value).toBe('bar');
+      expect(signal.version).toBe(1);
+    });
   });
 
   describe('.forceUpdate()', () => {
@@ -225,8 +242,8 @@ describe('AtomSignal', () => {
 
   describe('.setUntrackedValue()', () => {
     it('should set the new value without invoking the callback', () => {
-      const callback = vi.fn();
       const signal = new AtomSignal('foo');
+      const callback = vi.fn();
 
       signal.subscribe(callback);
       signal.setUntrackedValue('bar');
@@ -238,8 +255,8 @@ describe('AtomSignal', () => {
 
   describe('.subscribe()', () => {
     it('should invoke the callback on update', () => {
-      const callback = vi.fn();
       const signal = new AtomSignal('foo');
+      const callback = vi.fn();
 
       signal.subscribe(callback);
       expect(callback).toHaveBeenCalledTimes(0);
@@ -252,8 +269,8 @@ describe('AtomSignal', () => {
     });
 
     it('should not invoke the unsubscribed callback', () => {
-      const callback = vi.fn();
       const signal = new AtomSignal('foo');
+      const callback = vi.fn();
 
       signal.subscribe(callback)();
       expect(callback).not.toHaveBeenCalled();
@@ -344,57 +361,59 @@ describe('AtomSignal', () => {
 });
 
 describe('ComputedSignal', () => {
-  it('should return a memoized value', () => {
-    const foo = new AtomSignal(1);
-    const bar = new AtomSignal(2);
-    const baz = new AtomSignal(3);
-
-    const signal = new ComputedSignal(
-      (foo, bar, baz) => ({ foo: foo.value, bar: bar.value, baz: baz.value }),
-      [foo, bar, baz],
-    );
-
-    expect(signal.value).toEqual({ foo: 1, bar: 2, baz: 3 });
-    expect(signal.value).toBe(signal.value);
-    expect(signal.version).toBe(0);
-  });
-
-  it('should increment the version when any dependent signal has been updated', () => {
-    const foo = new AtomSignal(1);
-    const bar = new AtomSignal(2);
-    const baz = new AtomSignal(3);
-
-    const signal = new ComputedSignal(
-      (foo, bar, baz) => ({ foo: foo.value, bar: bar.value, baz: baz.value }),
-      [foo, bar, baz],
-    );
-
-    foo.value = 10;
-    expect(signal.value).toEqual({ foo: 10, bar: 2, baz: 3 });
-    expect(signal.version).toBe(1);
-
-    let oldValue = signal.value;
-
-    bar.value = 20;
-    expect(signal.value).toEqual({ foo: 10, bar: 20, baz: 3 });
-    expect(signal.value).not.toBe(oldValue);
-    expect(signal.version).toBe(2);
-
-    oldValue = signal.value;
-
-    baz.value = 30;
-    expect(signal.value).toEqual({ foo: 10, bar: 20, baz: 30 });
-    expect(signal.value).not.toBe(oldValue);
-    expect(signal.version).toBe(3);
-  });
-
-  describe('.lift()', () => {
+  describe('.value', () => {
     it('should return a memoized value', () => {
       const foo = new AtomSignal(1);
       const bar = new AtomSignal(2);
       const baz = new AtomSignal(3);
 
-      const signal = ComputedSignal.lift(
+      const signal = new ComputedSignal(
+        (foo, bar, baz) => ({ foo: foo.value, bar: bar.value, baz: baz.value }),
+        [foo, bar, baz],
+      );
+
+      expect(signal.value).toEqual({ foo: 1, bar: 2, baz: 3 });
+      expect(signal.value).toBe(signal.value);
+      expect(signal.version).toBe(0);
+    });
+
+    it('should increment the version when any dependent signal has been updated', () => {
+      const foo = new AtomSignal(1);
+      const bar = new AtomSignal(2);
+      const baz = new AtomSignal(3);
+
+      const signal = new ComputedSignal(
+        (foo, bar, baz) => ({ foo: foo.value, bar: bar.value, baz: baz.value }),
+        [foo, bar, baz],
+      );
+
+      foo.value = 10;
+      expect(signal.value).toEqual({ foo: 10, bar: 2, baz: 3 });
+      expect(signal.version).toBe(1);
+
+      let oldValue = signal.value;
+
+      bar.value = 20;
+      expect(signal.value).toEqual({ foo: 10, bar: 20, baz: 3 });
+      expect(signal.value).not.toBe(oldValue);
+      expect(signal.version).toBe(2);
+
+      oldValue = signal.value;
+
+      baz.value = 30;
+      expect(signal.value).toEqual({ foo: 10, bar: 20, baz: 30 });
+      expect(signal.value).not.toBe(oldValue);
+      expect(signal.version).toBe(3);
+    });
+  });
+
+  describe('.compose()', () => {
+    it('should return a memoized value', () => {
+      const foo = new AtomSignal(1);
+      const bar = new AtomSignal(2);
+      const baz = new AtomSignal(3);
+
+      const signal = ComputedSignal.compose(
         (foo, bar, baz) => ({ foo, bar, baz }),
         [foo, bar, baz],
       );
@@ -407,10 +426,10 @@ describe('ComputedSignal', () => {
 
   describe('.subscribe()', () => {
     it('should invoke the callback on update', () => {
-      const callback = vi.fn();
       const foo = new AtomSignal(1);
       const bar = new AtomSignal(2);
       const baz = new AtomSignal(3);
+      const callback = vi.fn();
 
       const signal = new ComputedSignal(
         (foo, bar, baz) => ({ foo: foo.value, bar: bar.value, baz: baz.value }),
@@ -431,10 +450,10 @@ describe('ComputedSignal', () => {
     });
 
     it('should not invoke the unsubscribed callback', () => {
-      const callback = vi.fn();
       const foo = new AtomSignal(1);
       const bar = new AtomSignal(2);
       const baz = new AtomSignal(3);
+      const callback = vi.fn();
 
       const signal = new ComputedSignal(
         (foo, bar, baz) => ({ foo: foo.value, bar: bar.value, baz: baz.value }),
@@ -451,6 +470,59 @@ describe('ComputedSignal', () => {
       expect(callback).not.toHaveBeenCalled();
 
       baz.value++;
+      expect(callback).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe('ProjectedSignal', () => {
+  it('should return a projected value', () => {
+    const signal = new AtomSignal(1);
+    const doublySignal = new ProjectedSignal(signal, (n) => n * 2);
+
+    expect(doublySignal.value).toBe(2);
+    expect(doublySignal.version).toBe(0);
+
+    signal.value++;
+
+    expect(doublySignal.value).toBe(4);
+    expect(doublySignal.version).toBe(1);
+  });
+
+  describe('.subscribe()', () => {
+    it('should invoke the callback on update', () => {
+      const signal = new AtomSignal(1);
+      const doublySignal = new ProjectedSignal(signal, (n) => n * 2);
+      const callback = vi.fn();
+
+      doublySignal.subscribe(callback);
+      expect(callback).toHaveBeenCalledTimes(0);
+
+      signal.value++;
+      expect(callback).toHaveBeenCalledTimes(1);
+
+      signal.value++;
+      expect(callback).toHaveBeenCalledTimes(2);
+
+      signal.value++;
+      expect(callback).toHaveBeenCalledTimes(3);
+    });
+
+    it('should not invoke the unsubscribed callback', () => {
+      const signal = new AtomSignal(1);
+      const doublySignal = new ProjectedSignal(signal, (n) => n * 2);
+      const callback = vi.fn();
+
+      doublySignal.subscribe(callback)();
+      expect(callback).not.toHaveBeenCalled();
+
+      signal.value++;
+      expect(callback).not.toHaveBeenCalled();
+
+      signal.value++;
+      expect(callback).not.toHaveBeenCalled();
+
+      signal.value++;
       expect(callback).not.toHaveBeenCalled();
     });
   });

@@ -28,10 +28,8 @@ export abstract class Signal<T> implements Directive, UsableObject<T, Context> {
 
   abstract subscribe(subscriber: Subscriber): Subscription;
 
-  map<TResult>(
-    selector: (value: T) => TResult,
-  ): ComputedSignal<TResult, [Signal<T>]> {
-    return ComputedSignal.lift(selector, [this as Signal<T>]);
+  map<TResult>(selector: (value: T) => TResult): ProjectedSignal<T, TResult> {
+    return new ProjectedSignal(this, selector);
   }
 
   toJSON(): T {
@@ -59,9 +57,9 @@ export abstract class Signal<T> implements Directive, UsableObject<T, Context> {
 }
 
 export class SignalBinding<T> implements Binding<Signal<T>> {
-  private readonly _binding: Binding<T>;
-
   private _signal: Signal<T>;
+
+  private readonly _binding: Binding<T>;
 
   private _subscription: Subscription | null = null;
 
@@ -129,11 +127,11 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
 }
 
 export class AtomSignal<T> extends Signal<T> {
-  private readonly _subscribers = new LinkedList<Subscriber>();
-
   private _value: T;
 
   private _version = 0;
+
+  private readonly _subscribers = new LinkedList<Subscriber>();
 
   constructor(initialValue: T) {
     super();
@@ -155,7 +153,6 @@ export class AtomSignal<T> extends Signal<T> {
 
   forceUpdate() {
     this._version += 1;
-
     for (
       let node = this._subscribers.front();
       node !== null;
@@ -190,15 +187,15 @@ export class ComputedSignal<
 
   private _memoizedVersion = -1; // -1 is indicated an uninitialized signal.
 
-  static lift<TResult, const TDependencies extends Signal<any>[]>(
+  static compose<TResult, const TDependencies extends Signal<any>[]>(
     factory: (...signals: UnwrapSignals<TDependencies>) => TResult,
     dependencies: TDependencies,
   ): ComputedSignal<TResult, TDependencies> {
     return new ComputedSignal((...dependencies) => {
-      const args = dependencies.map(
+      const values = dependencies.map(
         (dependency) => dependency.value,
       ) as UnwrapSignals<TDependencies>;
-      return factory(...args);
+      return factory(...values);
     }, dependencies);
   }
 
@@ -223,13 +220,10 @@ export class ComputedSignal<
 
   get version(): number {
     const dependencies = this._dependencies;
-
     let version = 0;
-
     for (let i = 0, l = dependencies.length; i < l; i++) {
       version += dependencies[i]!.version;
     }
-
     return version;
   }
 
@@ -242,5 +236,30 @@ export class ComputedSignal<
         subscriptions[i]!();
       }
     };
+  }
+}
+
+export class ProjectedSignal<TValue, TResult> extends Signal<TResult> {
+  private readonly _signal: Signal<TValue>;
+
+  private readonly _selector: (value: TValue) => TResult;
+
+  constructor(signal: Signal<TValue>, selector: (value: TValue) => TResult) {
+    super();
+    this._signal = signal;
+    this._selector = selector;
+  }
+
+  get value(): TResult {
+    const selector = this._selector;
+    return selector(this._signal.value)!;
+  }
+
+  get version(): number {
+    return this._signal.version;
+  }
+
+  subscribe(subscriber: Subscriber): Subscription {
+    return this._signal.subscribe(subscriber);
   }
 }
