@@ -285,7 +285,9 @@ export class NodeBinding implements Binding<unknown>, Effect {
 
   commit(): void {
     this._part.node.nodeValue =
-      this._value != null ? this._value.toString() : null;
+      typeof this._value === 'string'
+        ? this._value
+        : this._value?.toString() ?? null;
     this._dirty = false;
   }
 }
