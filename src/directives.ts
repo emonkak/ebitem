@@ -19,6 +19,11 @@ export {
   dynamic,
 } from './directives/dynamic.js';
 export { ListBinding, ListDirective, list } from './directives/list.js';
+export {
+  MemoBinding,
+  MemoDirective,
+  memo,
+} from './directives/memo.js';
 export { RefBinding, RefDirective, ref } from './directives/ref.js';
 export {
   type StyleMap,
