@@ -6,8 +6,9 @@ import {
 } from '../binding.js';
 import { AttributePart, Part, PartType } from '../part.js';
 import type { Effect, Updater } from '../types.js';
+import { shallowEqual } from '../utils.js';
 
-export type StyleMap = { [P in StyleProperty]?: CSSStyleValue | string };
+export type StyleMap = { [P in StyleProperty]?: string | CSSStyleValue };
 
 type StyleProperty = ExtractStringProperty<CSSStyleDeclaration>;
 
@@ -15,11 +16,11 @@ type ExtractStringProperty<T> = {
   [P in keyof T]: P extends string ? (T[P] extends string ? P : never) : never;
 }[keyof T];
 
-export function style(styleDeclaration: StyleMap): StyleDirective {
-  return new StyleDirective(styleDeclaration);
+export function styleMap(styleMap: StyleMap): StyleMapDirective {
+  return new StyleMapDirective(styleMap);
 }
 
-export class StyleDirective implements Directive {
+export class StyleMapDirective implements Directive {
   private readonly _styleMap: StyleMap;
 
   constructor(styleMap: StyleMap) {
@@ -30,22 +31,22 @@ export class StyleDirective implements Directive {
     return this._styleMap;
   }
 
-  [directiveTag](part: Part, _updater: Updater): StyleBinding {
+  [directiveTag](part: Part, _updater: Updater): StyleMapBinding {
     if (part.type !== PartType.Attribute || part.name !== 'style') {
       throw new Error('StyleDirective must be used in the "style" attribute.');
     }
-    return new StyleBinding(this, part);
+    return new StyleMapBinding(this, part);
   }
 }
 
-export class StyleBinding implements Binding<StyleDirective>, Effect {
-  private _directive: StyleDirective;
+export class StyleMapBinding implements Binding<StyleMapDirective>, Effect {
+  private _directive: StyleMapDirective;
 
   private readonly _part: AttributePart;
 
   private _dirty = false;
 
-  constructor(directive: StyleDirective, part: AttributePart) {
+  constructor(directive: StyleMapDirective, part: AttributePart) {
     this._directive = directive;
     this._part = part;
   }
@@ -62,13 +63,13 @@ export class StyleBinding implements Binding<StyleDirective>, Effect {
     return this._part.node;
   }
 
-  get value(): StyleDirective {
+  get value(): StyleMapDirective {
     return this._directive;
   }
 
-  bind(newValue: StyleDirective, updater: Updater): void {
+  bind(newValue: StyleMapDirective, updater: Updater): void {
     DEBUG: {
-      ensureDirective(StyleDirective, newValue);
+      ensureDirective(StyleMapDirective, newValue);
     }
     const oldValue = this._directive;
     if (!shallowEqual(newValue.styleMap, oldValue.styleMap)) {
@@ -87,7 +88,7 @@ export class StyleBinding implements Binding<StyleDirective>, Effect {
   unbind(updater: Updater): void {
     const oldValue = this._directive;
     if (Object.keys(oldValue).length > 0) {
-      this._directive = new StyleDirective({});
+      this._directive = new StyleMapDirective({});
       this.rebind(updater);
     }
   }
@@ -112,29 +113,4 @@ export class StyleBinding implements Binding<StyleDirective>, Effect {
       }
     }
   }
-}
-
-function shallowEqual(
-  first: { [key: string]: unknown },
-  second: { [key: string]: unknown },
-): boolean {
-  if (first === second) {
-    return true;
-  }
-
-  const firstKeys = Object.keys(first);
-  const secondKeys = Object.keys(second);
-
-  if (firstKeys.length !== secondKeys.length) {
-    return false;
-  }
-
-  for (let i = 0; i < firstKeys.length; i++) {
-    const key = firstKeys[i]!;
-    if (!Object.hasOwn(second, key) || first[key] !== second[key]!) {
-      return false;
-    }
-  }
-
-  return true;
 }

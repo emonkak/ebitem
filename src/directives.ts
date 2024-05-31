@@ -14,7 +14,12 @@ export {
 } from './directives/condition.js';
 export { ListDirective, list } from './directives/list.js';
 export { RefDirective, ref } from './directives/ref.js';
-export { type StyleMap, StyleDirective, style } from './directives/style.js';
+export {
+  type StyleMap,
+  StyleMapDirective,
+  StyleMapBinding,
+  styleMap,
+} from './directives/styleMap.js';
 export { TemplateBinding, TemplateDirective } from './directives/template.js';
 export { UnitDirective } from './directives/unit.js';
 export { UnsafeHTMLDirective, unsafeHTML } from './directives/unsafeHTML.js';

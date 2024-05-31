@@ -13,7 +13,7 @@ import {
   condition,
   list,
   ref,
-  style,
+  styleMap,
   unless,
   unsafeHTML,
   unsafeSVG,
@@ -96,7 +96,7 @@ function App(_props: {}, context: Context) {
       <${unsafeHTML('<div style="color: red">Hello World!</div>')} />
       <${context.element(
         'article',
-        { style: style({ color: 'blue' }) },
+        { style: styleMap({ color: 'blue' }) },
         context.html`<span>Hello World!</span>`,
       )} />
     </div>
@@ -174,7 +174,7 @@ function Counter({ count$ }: CounterProps, context: Context) {
       <span class="count-odd">${unless(count % 2 === 0, '(Odd)')}</span>
       <${context.element(
         count % 2 === 0 ? 'strong' : 'em',
-        { style: style({ color: 'blue' }) },
+        { style: styleMap({ color: 'blue' }) },
         context.html`<span>Hello World!</span>`,
       )} />
     </h1>
