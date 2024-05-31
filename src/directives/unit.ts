@@ -56,3 +56,5 @@ export class UnitBinding implements Binding<UnitDirective> {
 
   disconnect(): void {}
 }
+
+export const unit = UnitDirective.instance;

@@ -32,7 +32,7 @@ export {
   styleMap,
 } from './directives/styleMap.js';
 export { TemplateBinding, TemplateDirective } from './directives/template.js';
-export { UnitBinding, UnitDirective } from './directives/unit.js';
+export { unit, UnitBinding, UnitDirective } from './directives/unit.js';
 export {
   UnsafeHTMLBinding,
   UnsafeHTMLDirective,
