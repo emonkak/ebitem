@@ -16,6 +16,7 @@ import type { TaskPriority } from './scheduler.js';
 import { ElementData, ElementTemplate } from './template/elementTemplate.js';
 import { ChildNodeTemplate, TextTemplate } from './template/valueTemplate.js';
 import type { Component, Effect, Scope, Updater } from './types.js';
+import { dependenciesAreChanged } from './utils.js';
 
 export type InitialState<TState> = TState extends Function
   ? () => TState
@@ -320,18 +321,4 @@ class InvokeEffectHook implements Effect {
 
     this._hook.cleanup = callback();
   }
-}
-
-function dependenciesAreChanged(
-  oldDependencies: unknown[] | undefined,
-  newDependencies: unknown[] | undefined,
-): boolean {
-  return (
-    oldDependencies === undefined ||
-    newDependencies === undefined ||
-    oldDependencies.length !== newDependencies.length ||
-    newDependencies.some(
-      (dependencies, index) => !Object.is(dependencies, oldDependencies[index]),
-    )
-  );
 }

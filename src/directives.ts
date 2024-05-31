@@ -1,10 +1,11 @@
 export { BlockDirective, block } from './directives/block.js';
 export { ChoiceDirective, choice } from './directives/choice.js';
 export {
-  type ClassSpecifier,
-  ClassNamesDirective,
-  classNames,
-} from './directives/classNames.js';
+  type ClassMap,
+  ClassMapBinding,
+  ClassMapDirective,
+  classMap,
+} from './directives/classMap.js';
 export {
   ConditionDirective,
   condition,

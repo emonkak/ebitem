@@ -9,7 +9,7 @@ import {
   TemplateDirective,
   block,
   choice,
-  classNames,
+  classMap,
   condition,
   list,
   ref,
@@ -156,7 +156,8 @@ function Counter({ count$ }: CounterProps, context: Context) {
     <h1>
       <span class="count-label" ref=${ref(countLabelRef)}>COUNT: </span>
       <span
-        class=${classNames('count-value', {
+        class=${classMap({
+          'count-value': true,
           'is-odd': count % 2 !== 0,
           'is-even': count % 2 === 0,
         })}
