@@ -9,6 +9,7 @@ import {
   AtomSignal,
   ComputedSignal,
   ProjectedSignal,
+  ScannedSignal,
   SignalBinding,
 } from '../src/signal.js';
 import { SyncUpdater } from '../src/updater.js';
@@ -219,16 +220,6 @@ describe('AtomSignal', () => {
     });
   });
 
-  describe('.value', () => {
-    it('should increment the version on update', () => {
-      const signal = new AtomSignal('foo');
-
-      signal.value = 'bar';
-      expect(signal.value).toBe('bar');
-      expect(signal.version).toBe(1);
-    });
-  });
-
   describe('.forceUpdate()', () => {
     it('should increment the version', () => {
       const signal = new AtomSignal(1);
@@ -237,6 +228,46 @@ describe('AtomSignal', () => {
 
       expect(1).toBe(signal.value);
       expect(1).toBe(signal.version);
+    });
+  });
+
+  describe('.map()', () => {
+    it('should create a new signal by applying the function to each values', () => {
+      const signal = new AtomSignal(1);
+      const projectedSignal = signal.map((n) => n * 2);
+
+      expect(projectedSignal.value).toBe(2);
+      expect(projectedSignal.version).toBe(0);
+
+      signal.value++;
+
+      expect(projectedSignal.value).toBe(4);
+      expect(projectedSignal.version).toBe(1);
+
+      signal.value++;
+
+      expect(projectedSignal.value).toBe(6);
+      expect(projectedSignal.version).toBe(2);
+    });
+  });
+
+  describe('.scan()', () => {
+    it('should create a new signal by applying the accumulator to each values', () => {
+      const signal = new AtomSignal(1);
+      const scannedSignal = signal.scan((result, n) => result + n, 0);
+
+      expect(scannedSignal.value).toBe(1);
+      expect(scannedSignal.version).toBe(0);
+
+      signal.value++;
+
+      expect(scannedSignal.value).toBe(3);
+      expect(scannedSignal.version).toBe(1);
+
+      signal.value++;
+
+      expect(scannedSignal.value).toBe(6);
+      expect(scannedSignal.version).toBe(2);
     });
   });
 
@@ -283,26 +314,21 @@ describe('AtomSignal', () => {
     });
   });
 
-  describe('.map()', () => {
-    it('should create a new signal by applying the function to each values', () => {
-      const signal = new AtomSignal(1);
-      const doublySignal = signal.map((n) => n * 2);
-
-      expect(doublySignal.value).toBe(2);
-      expect(doublySignal.version).toBe(0);
-
-      signal.value++;
-
-      expect(doublySignal.value).toBe(4);
-      expect(doublySignal.version).toBe(1);
-    });
-  });
-
   describe('.toJSON()', () => {
     it('should return the value', () => {
       const signal = new AtomSignal('foo');
 
       expect('foo').toBe(signal.toJSON());
+    });
+  });
+
+  describe('.value', () => {
+    it('should increment the version on update', () => {
+      const signal = new AtomSignal('foo');
+
+      signal.value = 'bar';
+      expect(signal.value).toBe('bar');
+      expect(signal.version).toBe(1);
     });
   });
 
@@ -476,26 +502,13 @@ describe('ComputedSignal', () => {
 });
 
 describe('ProjectedSignal', () => {
-  it('should return a projected value', () => {
-    const signal = new AtomSignal(1);
-    const doublySignal = new ProjectedSignal(signal, (n) => n * 2);
-
-    expect(doublySignal.value).toBe(2);
-    expect(doublySignal.version).toBe(0);
-
-    signal.value++;
-
-    expect(doublySignal.value).toBe(4);
-    expect(doublySignal.version).toBe(1);
-  });
-
   describe('.subscribe()', () => {
     it('should invoke the callback on update', () => {
       const signal = new AtomSignal(1);
-      const doublySignal = new ProjectedSignal(signal, (n) => n * 2);
+      const projectedSignal = new ProjectedSignal(signal, (n) => n * 2);
       const callback = vi.fn();
 
-      doublySignal.subscribe(callback);
+      projectedSignal.subscribe(callback);
       expect(callback).toHaveBeenCalledTimes(0);
 
       signal.value++;
@@ -510,10 +523,58 @@ describe('ProjectedSignal', () => {
 
     it('should not invoke the unsubscribed callback', () => {
       const signal = new AtomSignal(1);
-      const doublySignal = new ProjectedSignal(signal, (n) => n * 2);
+      const projectedSignal = new ProjectedSignal(signal, (n) => n * 2);
       const callback = vi.fn();
 
-      doublySignal.subscribe(callback)();
+      projectedSignal.subscribe(callback)();
+      expect(callback).not.toHaveBeenCalled();
+
+      signal.value++;
+      expect(callback).not.toHaveBeenCalled();
+
+      signal.value++;
+      expect(callback).not.toHaveBeenCalled();
+
+      signal.value++;
+      expect(callback).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe('ScannedSignal', () => {
+  describe('.subscribe()', () => {
+    it('should invoke the callback on update', () => {
+      const signal = new AtomSignal(1);
+      const scannedSignal = new ScannedSignal(
+        signal,
+        (result, n) => result + n,
+        0,
+      );
+      const callback = vi.fn();
+
+      scannedSignal.subscribe(callback);
+      expect(callback).toHaveBeenCalledTimes(0);
+
+      signal.value++;
+      expect(callback).toHaveBeenCalledTimes(1);
+
+      signal.value++;
+      expect(callback).toHaveBeenCalledTimes(2);
+
+      signal.value++;
+      expect(callback).toHaveBeenCalledTimes(3);
+    });
+
+    it('should not invoke the unsubscribed callback', () => {
+      const signal = new AtomSignal(1);
+      const scannedSignal = new ScannedSignal(
+        signal,
+        (result, n) => result + n,
+        0,
+      );
+      const callback = vi.fn();
+
+      scannedSignal.subscribe(callback)();
       expect(callback).not.toHaveBeenCalled();
 
       signal.value++;

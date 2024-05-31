@@ -15,36 +15,49 @@ export type Subscriber = () => void;
 
 export type Subscription = () => void;
 
-type UnwrapSignals<T> = T extends any[]
+type UnwrapSignals<TValue> = TValue extends any[]
   ? {
-      [P in keyof T]: T[P] extends Signal<infer Value> ? Value : never;
+      [P in keyof TValue]: TValue[P] extends Signal<infer Value>
+        ? Value
+        : never;
     }
   : never;
 
-export abstract class Signal<T> implements Directive, UsableObject<T, Context> {
-  abstract get value(): T;
+export abstract class Signal<TValue>
+  implements Directive, UsableObject<TValue, Context>
+{
+  abstract get value(): TValue;
 
   abstract get version(): number;
 
   abstract subscribe(subscriber: Subscriber): Subscription;
 
-  map<TResult>(selector: (value: T) => TResult): ProjectedSignal<T, TResult> {
+  map<TResult>(
+    selector: (value: TValue) => TResult,
+  ): ProjectedSignal<TValue, TResult> {
     return new ProjectedSignal(this, selector);
   }
 
-  toJSON(): T {
+  scan<TResult>(
+    accumulator: (result: TResult, value: TValue) => TResult,
+    seed: TResult,
+  ): ScannedSignal<TValue, TResult> {
+    return new ScannedSignal(this, accumulator, seed);
+  }
+
+  toJSON(): TValue {
     return this.value;
   }
 
-  valueOf(): T {
+  valueOf(): TValue {
     return this.value;
   }
 
-  [directiveTag](part: Part, updater: Updater): SignalBinding<T> {
+  [directiveTag](part: Part, updater: Updater): SignalBinding<TValue> {
     return new SignalBinding(this, part, updater);
   }
 
-  [usableTag](context: Context): T {
+  [usableTag](context: Context): TValue {
     context.useEffect(
       () =>
         this.subscribe(() => {
@@ -56,14 +69,14 @@ export abstract class Signal<T> implements Directive, UsableObject<T, Context> {
   }
 }
 
-export class SignalBinding<T> implements Binding<Signal<T>> {
-  private _signal: Signal<T>;
+export class SignalBinding<TValue> implements Binding<Signal<TValue>> {
+  private _signal: Signal<TValue>;
 
-  private readonly _binding: Binding<T>;
+  private readonly _binding: Binding<TValue>;
 
   private _subscription: Subscription | null = null;
 
-  constructor(signal: Signal<T>, part: Part, updater: Updater) {
+  constructor(signal: Signal<TValue>, part: Part, updater: Updater) {
     this._signal = signal;
     this._binding = resolveBinding(signal.value, part, updater);
   }
@@ -80,15 +93,15 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
     return this._binding.endNode;
   }
 
-  get value(): Signal<T> {
+  get value(): Signal<TValue> {
     return this._signal;
   }
 
-  get binding(): Binding<T> {
+  get binding(): Binding<TValue> {
     return this._binding;
   }
 
-  bind(newValue: Signal<T>, updater: Updater) {
+  bind(newValue: Signal<TValue>, updater: Updater) {
     DEBUG: {
       ensureDirective(Signal, newValue);
     }
@@ -118,7 +131,10 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
     this._subscription = null;
   }
 
-  private _subscribeSignal(signal: Signal<T>, updater: Updater): Subscription {
+  private _subscribeSignal(
+    signal: Signal<TValue>,
+    updater: Updater,
+  ): Subscription {
     return signal.subscribe(() => {
       this._binding.bind(signal.value, updater);
       updater.scheduleUpdate();
@@ -126,23 +142,23 @@ export class SignalBinding<T> implements Binding<Signal<T>> {
   }
 }
 
-export class AtomSignal<T> extends Signal<T> {
-  private _value: T;
+export class AtomSignal<TValue> extends Signal<TValue> {
+  private _value: TValue;
 
   private _version = 0;
 
   private readonly _subscribers = new LinkedList<Subscriber>();
 
-  constructor(initialValue: T) {
+  constructor(initialValue: TValue) {
     super();
     this._value = initialValue;
   }
 
-  get value(): T {
+  get value(): TValue {
     return this._value;
   }
 
-  set value(newValue: T) {
+  set value(newValue: TValue) {
     this._value = newValue;
     this.forceUpdate();
   }
@@ -163,7 +179,7 @@ export class AtomSignal<T> extends Signal<T> {
     }
   }
 
-  setUntrackedValue(newValue: T): void {
+  setUntrackedValue(newValue: TValue): void {
     this._value = newValue;
   }
 
@@ -209,10 +225,10 @@ export class ComputedSignal<
   }
 
   get value(): TResult {
-    const newVersion = this.version;
-    if (this._memoizedVersion < newVersion) {
+    const { version } = this;
+    if (this._memoizedVersion < version) {
       const factory = this._factory;
-      this._memoizedVersion = newVersion;
+      this._memoizedVersion = version;
       this._memoizedValue = factory(...this._dependencies);
     }
     return this._memoizedValue!;
@@ -253,6 +269,49 @@ export class ProjectedSignal<TValue, TResult> extends Signal<TResult> {
   get value(): TResult {
     const selector = this._selector;
     return selector(this._signal.value)!;
+  }
+
+  get version(): number {
+    return this._signal.version;
+  }
+
+  subscribe(subscriber: Subscriber): Subscription {
+    return this._signal.subscribe(subscriber);
+  }
+}
+
+export class ScannedSignal<TValue, TResult> extends Signal<TResult> {
+  private readonly _signal: Signal<TValue>;
+
+  private readonly _accumulator: (result: TResult, value: TValue) => TResult;
+
+  private _memoizedResult: TResult;
+
+  private _memoizedVersion: number;
+
+  constructor(
+    signal: Signal<TValue>,
+    accumulator: (result: TResult, value: TValue) => TResult,
+    seed: TResult,
+  ) {
+    super();
+    this._signal = signal;
+    this._accumulator = accumulator;
+    this._memoizedResult = accumulator(seed, signal.value);
+    this._memoizedVersion = signal.version;
+  }
+
+  get value(): TResult {
+    const { version } = this._signal;
+    if (this._memoizedVersion < version) {
+      const accumulator = this._accumulator;
+      this._memoizedResult = accumulator(
+        this._memoizedResult,
+        this._signal.value,
+      );
+      this._memoizedVersion = version;
+    }
+    return this._memoizedResult;
   }
 
   get version(): number {
