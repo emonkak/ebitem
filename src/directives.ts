@@ -1,5 +1,5 @@
-export { BlockDirective, block } from './directives/block.js';
-export { ChoiceDirective, choice } from './directives/choice.js';
+export { BlockBinding, BlockDirective, block } from './directives/block.js';
+export { ChoiceBinding, ChoiceDirective, choice } from './directives/choice.js';
 export {
   type ClassMap,
   ClassMapBinding,
@@ -7,13 +7,14 @@ export {
   classMap,
 } from './directives/classMap.js';
 export {
+  ConditionBinding,
   ConditionDirective,
   condition,
   unless,
   when,
 } from './directives/condition.js';
-export { ListDirective, list } from './directives/list.js';
-export { RefDirective, ref } from './directives/ref.js';
+export { ListBinding, ListDirective, list } from './directives/list.js';
+export { RefBinding, RefDirective, ref } from './directives/ref.js';
 export {
   type StyleMap,
   StyleMapDirective,
@@ -21,6 +22,14 @@ export {
   styleMap,
 } from './directives/styleMap.js';
 export { TemplateBinding, TemplateDirective } from './directives/template.js';
-export { UnitDirective } from './directives/unit.js';
-export { UnsafeHTMLDirective, unsafeHTML } from './directives/unsafeHTML.js';
-export { UnsafeSVGDirective, unsafeSVG } from './directives/unsafeSVG.js';
+export { UnitBinding, UnitDirective } from './directives/unit.js';
+export {
+  UnsafeHTMLBinding,
+  UnsafeHTMLDirective,
+  unsafeHTML,
+} from './directives/unsafeHTML.js';
+export {
+  UnsafeSVGBinding,
+  UnsafeSVGDirective,
+  unsafeSVG,
+} from './directives/unsafeSVG.js';
