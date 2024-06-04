@@ -37,9 +37,8 @@ export {
 } from './scheduler.js';
 export {
   type Namespace,
-  LocalScope,
-} from './localScope.js';
-export { GlobalScope } from './globalScope.js';
+  Scope,
+} from './scope.js';
 export {
   TaggedTemplate,
   TaggedTemplateFragment,
@@ -56,9 +55,11 @@ export {
 } from './updater.js';
 export type {
   Component,
+  ContextProvider,
   Effect,
-  Scope,
   Template,
   TemplateFragment,
+  TemplateProvider,
   Updater,
+  VariableProvider,
 } from './types.js';

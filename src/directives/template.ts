@@ -8,8 +8,8 @@ import { ChildNodePart, Part, PartType } from '../part.js';
 import { TaskPriority, comparePriorities } from '../scheduler.js';
 import type {
   Component,
+  ContextProvider,
   Effect,
-  Scope,
   Template,
   TemplateFragment,
   Updater,
@@ -111,7 +111,7 @@ export class TemplateBinding<TData, TContext>
     return !!(this._flags & FLAG_UPDATING || this._flags & FLAG_UNMOUNTING);
   }
 
-  render(_scope: Scope<TContext>, updater: Updater<TContext>): void {
+  render(_scope: ContextProvider<TContext>, updater: Updater<TContext>): void {
     if (!(this._flags & FLAG_UPDATING)) {
       return;
     }

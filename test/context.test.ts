@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { Context } from '../src/context.js';
 import { Hook, usableTag } from '../src/hook.js';
-import { LocalScope } from '../src/localScope.js';
+import { Scope } from '../src/scope.js';
 import { ElementTemplate } from '../src/template/elementTemplate.js';
 import { TaggedTemplate } from '../src/template/taggedTemplate.js';
 import {
@@ -17,7 +17,7 @@ describe('Context', () => {
     it('should return TemplateDirective with ChildNodeTemplate set as a template', () => {
       const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new LocalScope();
+      const scope = new Scope();
       const updater = new SyncUpdater(scope);
       const context = new Context(component, hooks, scope, updater);
       const directive = context.childNode('foo');
@@ -31,7 +31,7 @@ describe('Context', () => {
     it('should return TemplateDirective with ElementTemplate set as a template', () => {
       const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new LocalScope();
+      const scope = new Scope();
       const updater = new SyncUpdater(scope);
       const context = new Context(component, hooks, scope, updater);
       const directive = context.element(
@@ -52,7 +52,7 @@ describe('Context', () => {
     it('should get the value from global namespace', () => {
       const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new LocalScope({ foo: 123 });
+      const scope = new Scope({ foo: 123 });
       const updater = new SyncUpdater(scope);
       const context = new Context(component, hooks, scope, updater);
 
@@ -63,7 +63,7 @@ describe('Context', () => {
     it('should get the value set on the component', () => {
       const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new LocalScope({ foo: 123 });
+      const scope = new Scope({ foo: 123 });
       const updater = new SyncUpdater(scope);
 
       {
@@ -92,7 +92,7 @@ describe('Context', () => {
     it('should return TemplateDirective with an HTML-formatted TaggedTemplate set as a template', () => {
       const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new LocalScope();
+      const scope = new Scope();
       const updater = new SyncUpdater(scope);
       const context = new Context(component, hooks, scope, updater);
       const directive = context.html`
@@ -113,7 +113,7 @@ describe('Context', () => {
       const component = new MockComponent();
       const requestUpdateSpy = vi.spyOn(component, 'requestUpdate');
       const hooks: Hook[] = [];
-      const scope = new LocalScope();
+      const scope = new Scope();
       const updater = new SyncUpdater(scope);
       const context = new Context(component, hooks, scope, updater);
 
@@ -128,7 +128,7 @@ describe('Context', () => {
     it('should return TemplateDirective with an SVG-hormatted TaggedTemplate set as a template', () => {
       const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new LocalScope();
+      const scope = new Scope();
       const updater = new SyncUpdater(scope);
       const context = new Context(component, hooks, scope, updater);
       const directive = context.svg`
@@ -148,7 +148,7 @@ describe('Context', () => {
     it('should return TemplateDirective with TextTemplate set as a template', () => {
       const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new LocalScope();
+      const scope = new Scope();
       const updater = new SyncUpdater(scope);
       const context = new Context(component, hooks, scope, updater);
       const directive = context.text('foo');
@@ -162,7 +162,7 @@ describe('Context', () => {
     it('should handle the UsableCallback', () => {
       const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new LocalScope();
+      const scope = new Scope();
       const updater = new SyncUpdater(scope);
       const context = new Context(component, hooks, scope, updater);
       const callback = vi.fn(() => 'foo');
@@ -175,7 +175,7 @@ describe('Context', () => {
     it('should handle the UsableObject', () => {
       const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new LocalScope();
+      const scope = new Scope();
       const updater = new SyncUpdater(scope);
       const context = new Context(component, hooks, scope, updater);
       const usable = { [usableTag]: vi.fn(() => 'foo') };

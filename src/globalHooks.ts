@@ -1,13 +1,13 @@
 import type { Context, InitialState, NewState } from './context.js';
-import { currentContext } from './globalScope.js';
 import type { Cleanup, EffectCallback, RefObject, Usable } from './hook.js';
-import { TaskPriority } from './scheduler.js';
+import type { TaskPriority } from './scheduler.js';
+import { __globalContext } from './scope.js';
 
 export function use<TResult>(usable: Usable<TResult, Context>): TResult {
   DEBUG: {
-    ensureValidContext(currentContext);
+    ensureValidContext(__globalContext);
   }
-  return currentContext.use(usable);
+  return __globalContext.use(usable);
 }
 
 export function useCallback<TCallback extends Function>(
@@ -15,9 +15,9 @@ export function useCallback<TCallback extends Function>(
   dependencies: unknown[],
 ): TCallback {
   DEBUG: {
-    ensureValidContext(currentContext);
+    ensureValidContext(__globalContext);
   }
-  return currentContext.useCallback(callback, dependencies);
+  return __globalContext.useCallback(callback, dependencies);
 }
 
 export function useDeferredValue<TValue>(
@@ -25,9 +25,9 @@ export function useDeferredValue<TValue>(
   initialValue?: TValue,
 ): TValue {
   DEBUG: {
-    ensureValidContext(currentContext);
+    ensureValidContext(__globalContext);
   }
-  return currentContext.useDeferredValue(value, initialValue);
+  return __globalContext.useDeferredValue(value, initialValue);
 }
 
 export function useEffect(
@@ -35,9 +35,9 @@ export function useEffect(
   dependencies?: unknown[],
 ): void {
   DEBUG: {
-    ensureValidContext(currentContext);
+    ensureValidContext(__globalContext);
   }
-  return currentContext.useEffect(callback, dependencies);
+  return __globalContext.useEffect(callback, dependencies);
 }
 
 export function useEvent<THandler extends (...args: any[]) => any>(
@@ -47,9 +47,9 @@ export function useEvent<THandler extends (...args: any[]) => any>(
   ...args: Parameters<THandler>
 ) => ReturnType<THandler> {
   DEBUG: {
-    ensureValidContext(currentContext);
+    ensureValidContext(__globalContext);
   }
-  return currentContext.useEvent(handler);
+  return __globalContext.useEvent(handler);
 }
 
 export function useLayoutEffect(
@@ -57,9 +57,9 @@ export function useLayoutEffect(
   dependencies?: unknown[],
 ): void {
   DEBUG: {
-    ensureValidContext(currentContext);
+    ensureValidContext(__globalContext);
   }
-  return currentContext.useLayoutEffect(callback, dependencies);
+  return __globalContext.useLayoutEffect(callback, dependencies);
 }
 
 export function useMemo<TResult>(
@@ -67,9 +67,9 @@ export function useMemo<TResult>(
   dependencies: unknown[],
 ): TResult {
   DEBUG: {
-    ensureValidContext(currentContext);
+    ensureValidContext(__globalContext);
   }
-  return currentContext.useMemo(factory, dependencies);
+  return __globalContext.useMemo(factory, dependencies);
 }
 
 export function useReducer<TState, TAction>(
@@ -78,16 +78,16 @@ export function useReducer<TState, TAction>(
   priority?: TaskPriority,
 ): [TState, (action: TAction) => void] {
   DEBUG: {
-    ensureValidContext(currentContext);
+    ensureValidContext(__globalContext);
   }
-  return currentContext.useReducer(reducer, initialState, priority);
+  return __globalContext.useReducer(reducer, initialState, priority);
 }
 
 export function useRef<T>(initialValue: T): RefObject<T> {
   DEBUG: {
-    ensureValidContext(currentContext);
+    ensureValidContext(__globalContext);
   }
-  return currentContext.useRef(initialValue);
+  return __globalContext.useRef(initialValue);
 }
 
 export function useState<TState>(
@@ -95,9 +95,9 @@ export function useState<TState>(
   priority?: TaskPriority,
 ): [TState, (newState: NewState<TState>) => void] {
   DEBUG: {
-    ensureValidContext(currentContext);
+    ensureValidContext(__globalContext);
   }
-  return currentContext.useState(initialState, priority);
+  return __globalContext.useState(initialState, priority);
 }
 
 export function useSyncEnternalStore<T>(
@@ -106,9 +106,9 @@ export function useSyncEnternalStore<T>(
   priority?: TaskPriority,
 ): T {
   DEBUG: {
-    ensureValidContext(currentContext);
+    ensureValidContext(__globalContext);
   }
-  return currentContext.useSyncEnternalStore(subscribe, getSnapshot, priority);
+  return __globalContext.useSyncEnternalStore(subscribe, getSnapshot, priority);
 }
 
 function ensureValidContext(

@@ -1,10 +1,4 @@
-import {
-  ConcurrentUpdater,
-  Context,
-  GlobalScope,
-  LocalScope,
-  mountValue,
-} from '@emonkak/ebit';
+import { ConcurrentUpdater, Context, Scope, mountValue } from '@emonkak/ebit';
 import {
   TemplateDirective,
   block,
@@ -202,6 +196,6 @@ function shuffle<T>(elements: T[]): T[] {
   return elements;
 }
 
-const updater = new ConcurrentUpdater(new GlobalScope(new LocalScope()));
+const updater = new ConcurrentUpdater(new Scope());
 
 mountValue(block(App, {}), document.body, updater);

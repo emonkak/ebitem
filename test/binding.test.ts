@@ -11,8 +11,8 @@ import {
   mountValue,
   resolveBinding,
 } from '../src/binding.js';
-import { LocalScope } from '../src/localScope.js';
 import { Part, PartType } from '../src/part.js';
+import { Scope } from '../src/scope.js';
 import { SyncUpdater } from '../src/updater.js';
 import { MockBinding, MockDirective } from './mocks.js';
 
@@ -43,7 +43,7 @@ describe('AttributeBinding', () => {
         name: 'class',
       } as const;
       const binding = new AttributeBinding('foo', part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       binding.rebind(updater);
       updater.flush();
@@ -76,7 +76,7 @@ describe('AttributeBinding', () => {
         name: 'class',
       } as const;
       const binding = new AttributeBinding(obj1, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       binding.rebind(updater);
       updater.flush();
@@ -99,7 +99,7 @@ describe('AttributeBinding', () => {
         name: 'contenteditable',
       } as const;
       const binding = new AttributeBinding(true, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       binding.rebind(updater);
       updater.flush();
@@ -122,7 +122,7 @@ describe('AttributeBinding', () => {
         name: 'contenteditable',
       } as const;
       const binding = new AttributeBinding(null, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       element.toggleAttribute('contenteditable', true);
       binding.rebind(updater);
@@ -140,7 +140,7 @@ describe('AttributeBinding', () => {
         name: 'contenteditable',
       } as const;
       const binding = new AttributeBinding(undefined, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       element.toggleAttribute('contenteditable', true);
       binding.rebind(updater);
@@ -158,7 +158,7 @@ describe('AttributeBinding', () => {
         name: 'class',
       } as const;
       const binding = new AttributeBinding('foo', part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       binding.bind('foo', updater);
 
@@ -174,7 +174,7 @@ describe('AttributeBinding', () => {
         name: 'contenteditable',
       } as const;
       const binding = new AttributeBinding(undefined, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
@@ -195,7 +195,7 @@ describe('AttributeBinding', () => {
           node: document.createElement('div'),
           name: 'class',
         });
-        const updater = new SyncUpdater(new LocalScope());
+        const updater = new SyncUpdater(new Scope());
         binding.bind(new MockDirective(), updater);
       }).toThrow('A value must not be a directive,');
     });
@@ -210,7 +210,7 @@ describe('AttributeBinding', () => {
         name: 'contenteditable',
       } as const;
       const binding = new AttributeBinding(true, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       element.toggleAttribute('contenteditable', true);
       binding.unbind(updater);
@@ -228,7 +228,7 @@ describe('AttributeBinding', () => {
         name: 'contenteditable',
       } as const;
       const binding = new AttributeBinding(undefined, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
@@ -313,7 +313,7 @@ describe('EventBinding', () => {
         name: 'hello',
       } as const;
       const binding = new EventBinding(listener1, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
 
@@ -352,7 +352,7 @@ describe('EventBinding', () => {
         name: 'hello',
       } as const;
       const binding = new EventBinding(listener1, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
       const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
@@ -400,7 +400,7 @@ describe('EventBinding', () => {
         name: 'hello',
       } as const;
       const binding = new EventBinding(listener, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
       const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
@@ -426,7 +426,7 @@ describe('EventBinding', () => {
       const listener = vi.fn();
       const event = new CustomEvent('hello');
       const binding = new EventBinding(listener, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
       const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
@@ -456,7 +456,7 @@ describe('EventBinding', () => {
         name: 'click',
       } as const;
       const binding = new EventBinding(listener, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
@@ -477,7 +477,7 @@ describe('EventBinding', () => {
           node: document.createElement('div'),
           name: 'hello',
         });
-        const updater = new SyncUpdater(new LocalScope());
+        const updater = new SyncUpdater(new Scope());
         binding.bind({}, updater);
       }).toThrow(
         'A value of EventBinding must be EventListener, EventListenerObject or null.',
@@ -488,7 +488,7 @@ describe('EventBinding', () => {
           node: document.createElement('div'),
           name: 'hello',
         });
-        const updater = new SyncUpdater(new LocalScope());
+        const updater = new SyncUpdater(new Scope());
         binding.bind(undefined, updater);
       }).toThrow(
         'A value of EventBinding must be EventListener, EventListenerObject or null.',
@@ -507,7 +507,7 @@ describe('EventBinding', () => {
       } as const;
       const event = new CustomEvent('hello');
       const binding = new EventBinding(listener, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
       const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
@@ -538,7 +538,7 @@ describe('EventBinding', () => {
         name: 'click',
       } as const;
       const binding = new EventBinding(listener, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       binding.rebind(updater);
 
@@ -565,7 +565,7 @@ describe('EventBinding', () => {
         name: 'click',
       } as const;
       const binding = new EventBinding(listener, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
         'enqueueMutationEffect',
@@ -588,7 +588,7 @@ describe('EventBinding', () => {
         name: 'hello',
       } as const;
       const binding = new EventBinding(listener, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
       const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
@@ -624,7 +624,7 @@ describe('EventBinding', () => {
         name: 'hello',
       } as const;
       const binding = new EventBinding(listener, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
       const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
@@ -687,7 +687,7 @@ describe('NodeBinding', () => {
         node,
       } as const;
       const binding = new NodeBinding('foo', part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       binding.rebind(updater);
       updater.flush();
@@ -715,7 +715,7 @@ describe('NodeBinding', () => {
         type: PartType.Node,
         node,
       } as const;
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
       const binding = new NodeBinding('foo', part);
 
       binding.bind('foo', updater);
@@ -731,7 +731,7 @@ describe('NodeBinding', () => {
         node,
       } as const;
       const binding = new NodeBinding(undefined, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
         'enqueueMutationEffect',
@@ -750,7 +750,7 @@ describe('NodeBinding', () => {
           type: PartType.Node,
           node: document.createElement('div'),
         });
-        const updater = new SyncUpdater(new LocalScope());
+        const updater = new SyncUpdater(new Scope());
         binding.bind(new MockDirective(), updater);
       }).toThrow('A value must not be a directive,');
     });
@@ -764,7 +764,7 @@ describe('NodeBinding', () => {
         node,
       } as const;
       const binding = new NodeBinding('foo', part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       binding.rebind(updater);
       updater.flush();
@@ -786,7 +786,7 @@ describe('NodeBinding', () => {
         node,
       } as const;
       const binding = new NodeBinding(undefined, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
         'enqueueMutationEffect',
@@ -841,7 +841,7 @@ describe('PropertyBinding', () => {
         name: 'className',
       } as const;
       const binding = new PropertyBinding('foo', part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       binding.rebind(updater);
       updater.flush();
@@ -863,7 +863,7 @@ describe('PropertyBinding', () => {
         node: element,
         name: 'className',
       } as const;
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
       const binding = new PropertyBinding('foo', part);
 
       binding.bind('foo', updater);
@@ -880,7 +880,7 @@ describe('PropertyBinding', () => {
         name: 'className',
       } as const;
       const binding = new PropertyBinding(undefined, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
       const enqueueMutationEffectSpy = vi.spyOn(
         updater,
         'enqueueMutationEffect',
@@ -900,7 +900,7 @@ describe('PropertyBinding', () => {
           node: document.createElement('div'),
           name: 'className',
         });
-        const updater = new SyncUpdater(new LocalScope());
+        const updater = new SyncUpdater(new Scope());
         binding.bind(new MockDirective(), updater);
       }).toThrow('A value must not be a directive,');
     });
@@ -916,7 +916,7 @@ describe('PropertyBinding', () => {
         name: 'className',
       } as const;
       const binding = new PropertyBinding('foo', part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       binding.unbind(updater);
       updater.flush();
@@ -935,7 +935,7 @@ describe('PropertyBinding', () => {
         name: 'className',
       } as const;
       const binding = new PropertyBinding('foo', part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       binding.disconnect();
       updater.flush();
@@ -982,7 +982,7 @@ describe('SpreadBinding', () => {
             node: document.createElement('div'),
           },
         );
-        const updater = new SyncUpdater(new LocalScope());
+        const updater = new SyncUpdater(new Scope());
         binding.bind(null, updater);
       }).toThrow('A value of SpreadBinding must be an object,');
     });
@@ -1000,7 +1000,7 @@ describe('SpreadBinding', () => {
         node: element,
       } as const;
       const binding = new SpreadBinding(props, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       binding.rebind(updater);
       updater.flush();
@@ -1020,7 +1020,7 @@ describe('SpreadBinding', () => {
         node: element,
       } as const;
       const binding = new SpreadBinding(props, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       binding.rebind(updater);
       updater.flush();
@@ -1041,7 +1041,7 @@ describe('SpreadBinding', () => {
         node: element,
       } as const;
       const binding = new SpreadBinding(props, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       binding.rebind(updater);
       updater.flush();
@@ -1069,7 +1069,7 @@ describe('SpreadBinding', () => {
         node: element,
       } as const;
       const binding = new SpreadBinding(props, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       binding.rebind(updater);
       updater.flush();
@@ -1102,7 +1102,7 @@ describe('SpreadBinding', () => {
         node: element,
       } as const;
       const binding = new SpreadBinding(props, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       binding.rebind(updater);
       updater.flush();
@@ -1127,7 +1127,7 @@ describe('SpreadBinding', () => {
         node: element,
       } as const;
       const binding = new SpreadBinding(props, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       binding.rebind(updater);
       updater.flush();
@@ -1164,7 +1164,7 @@ describe('SpreadBinding', () => {
         node: element,
       } as const;
       const binding = new SpreadBinding(props, part);
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
 
       binding.rebind(updater);
       updater.flush();
@@ -1184,7 +1184,7 @@ describe('resolveBinding()', () => {
     } as const;
     const directive = new MockDirective();
     const directiveSpy = vi.spyOn(directive, directiveTag);
-    const updater = new SyncUpdater(new LocalScope());
+    const updater = new SyncUpdater(new Scope());
     const binding = resolveBinding(directive, part, updater);
 
     expect(binding).toBeInstanceOf(MockBinding);
@@ -1199,7 +1199,7 @@ describe('resolveBinding()', () => {
       node: element,
       name: 'class',
     } as const;
-    const updater = new SyncUpdater(new LocalScope());
+    const updater = new SyncUpdater(new Scope());
     const binding = resolveBinding('foo', part, updater);
 
     expect(binding).toBeInstanceOf(AttributeBinding);
@@ -1215,7 +1215,7 @@ describe('resolveBinding()', () => {
       node: element,
       name: 'hello',
     } as const;
-    const updater = new SyncUpdater(new LocalScope());
+    const updater = new SyncUpdater(new Scope());
     const binding = resolveBinding(listener, part, updater);
 
     expect(binding).toBeInstanceOf(EventBinding);
@@ -1230,7 +1230,7 @@ describe('resolveBinding()', () => {
       node: element,
       name: 'className',
     } as const;
-    const updater = new SyncUpdater(new LocalScope());
+    const updater = new SyncUpdater(new Scope());
     const binding = resolveBinding('foo', part, updater);
 
     expect(binding).toBeInstanceOf(PropertyBinding);
@@ -1244,7 +1244,7 @@ describe('resolveBinding()', () => {
       type: PartType.Node,
       node,
     } as const;
-    const updater = new SyncUpdater(new LocalScope());
+    const updater = new SyncUpdater(new Scope());
     const binding = resolveBinding('foo', part, updater);
 
     expect(binding).toBeInstanceOf(NodeBinding);
@@ -1258,7 +1258,7 @@ describe('resolveBinding()', () => {
       type: PartType.ChildNode,
       node,
     } as const;
-    const updater = new SyncUpdater(new LocalScope());
+    const updater = new SyncUpdater(new Scope());
     const binding = resolveBinding('foo', part, updater);
 
     expect(binding).toBeInstanceOf(NodeBinding);
@@ -1272,7 +1272,7 @@ describe('resolveBinding()', () => {
       type: PartType.Element,
       node: element,
     } as const;
-    const updater = new SyncUpdater(new LocalScope());
+    const updater = new SyncUpdater(new Scope());
     const props = {
       class: 'foo',
       title: 'bar',
@@ -1301,7 +1301,7 @@ describe('mountValue()', () => {
   it('should mount element inside the container', async () => {
     const directive = new MockDirective();
     const container = document.createElement('div');
-    const updater = new SyncUpdater(new LocalScope());
+    const updater = new SyncUpdater(new Scope());
     const directiveSpy = vi.spyOn(directive, directiveTag);
     const isUpdatingSpy = vi.spyOn(updater, 'isUpdating');
     const scheduleUpdateSpy = vi.spyOn(updater, 'scheduleUpdate');
@@ -1321,7 +1321,7 @@ describe('mountValue()', () => {
   it('should not schedule update if it is already running', () => {
     const directive = new MockDirective();
     const container = document.createElement('div');
-    const updater = new SyncUpdater(new LocalScope());
+    const updater = new SyncUpdater(new Scope());
     const directiveSpy = vi.spyOn(directive, directiveTag);
     const isUpdatingSpy = vi.spyOn(updater, 'isUpdating').mockReturnValue(true);
     const scheduleUpdateSpy = vi.spyOn(updater, 'scheduleUpdate');

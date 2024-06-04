@@ -19,23 +19,20 @@ export interface Component<TContext = unknown> {
   get dirty(): boolean;
   get parent(): Component<TContext> | null;
   get priority(): TaskPriority;
-  render(scope: Scope<TContext>, updater: Updater<TContext>): void;
+  render(scope: ContextProvider<TContext>, updater: Updater<TContext>): void;
   requestUpdate(updater: Updater<TContext>, priority: TaskPriority): void;
 }
 
-export interface Scope<TContext> {
-  getVariable(key: PropertyKey, component: Component<TContext>): unknown;
-  setVariable(
-    key: PropertyKey,
-    value: unknown,
-    component: Component<TContext>,
-  ): void;
+export interface ContextProvider<TContext> {
   startContext(
     component: Component<TContext>,
     hooks: Hook[],
     updater: Updater<TContext>,
   ): TContext;
   finishContext(context: TContext): void;
+}
+
+export interface TemplateProvider<TContext> {
   createHTMLTemplate(
     tokens: ReadonlyArray<string>,
     data: unknown[],
@@ -44,6 +41,15 @@ export interface Scope<TContext> {
     tokens: ReadonlyArray<string>,
     data: unknown[],
   ): Template<unknown[], TContext>;
+}
+
+export interface VariableProvider<TContext> {
+  getVariable(key: PropertyKey, component: Component<TContext>): unknown;
+  setVariable(
+    key: PropertyKey,
+    value: unknown,
+    component: Component<TContext>,
+  ): void;
 }
 
 export interface Template<TData, TContext = unknown> {
@@ -65,5 +71,7 @@ export interface TemplateFragment<TData, TContext = unknown> {
 }
 
 export interface Effect {
-  commit(): void;
+  commit(mode: EffectMode): void;
 }
+
+export type EffectMode = 'mutation' | 'layout' | 'passive';

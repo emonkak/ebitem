@@ -15,7 +15,13 @@ import {
 import type { TaskPriority } from './scheduler.js';
 import { ElementData, ElementTemplate } from './template/elementTemplate.js';
 import { ChildNodeTemplate, TextTemplate } from './template/valueTemplate.js';
-import type { Component, Effect, Scope, Updater } from './types.js';
+import type {
+  Component,
+  Effect,
+  TemplateProvider,
+  Updater,
+  VariableProvider,
+} from './types.js';
 import { dependenciesAreChanged } from './utils.js';
 
 export type InitialState<TState> = TState extends Function
@@ -31,7 +37,8 @@ export class Context {
 
   private readonly _hooks: Hook[];
 
-  private readonly _scope: Scope<Context>;
+  private readonly _scope: TemplateProvider<Context> &
+    VariableProvider<Context>;
 
   private readonly _updater: Updater<Context>;
 
@@ -40,7 +47,7 @@ export class Context {
   constructor(
     component: Component<Context>,
     hooks: Hook[],
-    scope: Scope<Context>,
+    scope: TemplateProvider<Context> & VariableProvider<Context>,
     updater: Updater<Context>,
   ) {
     this._component = component;

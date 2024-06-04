@@ -4,7 +4,13 @@ import {
   createDefaultScheduler,
 } from './scheduler.js';
 import { AtomSignal } from './signal.js';
-import { Component, Effect, Scope, Updater } from './types.js';
+import {
+  Component,
+  ContextProvider,
+  Effect,
+  EffectMode,
+  Updater,
+} from './types.js';
 
 export interface ConcurrentUpdaterOptions {
   scheduler?: Scheduler;
@@ -18,7 +24,7 @@ interface Pipeline<TContext> {
 }
 
 export class ConcurrentUpdater<TContext> implements Updater<TContext> {
-  private readonly _scope: Scope<TContext>;
+  private readonly _scope: ContextProvider<TContext>;
 
   private readonly _scheduler: Scheduler;
 
@@ -29,7 +35,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
   private _currentPipeline: Pipeline<TContext> = createPipeline();
 
   constructor(
-    scope: Scope<TContext>,
+    scope: ContextProvider<TContext>,
     { scheduler = createDefaultScheduler() }: ConcurrentUpdaterOptions = {},
   ) {
     this._scope = scope;
@@ -182,8 +188,8 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
       this._scheduler.requestCallback(
         () => {
           try {
-            flushEffects(pendingMutationEffects);
-            flushEffects(pendingLayoutEffects);
+            flushEffects(pendingMutationEffects, 'mutation');
+            flushEffects(pendingLayoutEffects, 'layout');
           } finally {
             this._taskCount.value--;
           }
@@ -203,7 +209,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
       this._scheduler.requestCallback(
         () => {
           try {
-            flushEffects(pendingPassiveEffects);
+            flushEffects(pendingPassiveEffects, 'passive');
           } finally {
             this._taskCount.value--;
           }
@@ -216,7 +222,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
 }
 
 export class SyncUpdater<TContext> implements Updater<TContext> {
-  private readonly _scope: Scope<TContext>;
+  private readonly _scope: ContextProvider<TContext>;
 
   private _currentComponent: Component<TContext> | null = null;
 
@@ -230,7 +236,7 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
 
   private _isUpdating = false;
 
-  constructor(scope: Scope<TContext>) {
+  constructor(scope: ContextProvider<TContext>) {
     this._scope = scope;
   }
 
@@ -322,8 +328,8 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
         this._pendingMutationEffects = [];
         this._pendingLayoutEffects = [];
 
-        flushEffects(pendingMutationEffects);
-        flushEffects(pendingLayoutEffects);
+        flushEffects(pendingMutationEffects, 'mutation');
+        flushEffects(pendingLayoutEffects, 'layout');
       }
 
       if (this._pendingPassiveEffects.length > 0) {
@@ -331,7 +337,7 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
 
         this._pendingPassiveEffects = [];
 
-        flushEffects(pendingPassiveEffects);
+        flushEffects(pendingPassiveEffects, 'passive');
       }
     } while (
       this._pendingComponents.length > 0 ||
@@ -351,9 +357,9 @@ function createPipeline<TContext>(): Pipeline<TContext> {
   };
 }
 
-function flushEffects(effects: Effect[]): void {
+function flushEffects(effects: Effect[], mode: EffectMode): void {
   for (let i = 0, l = effects.length; i < l; i++) {
-    effects[i]!.commit();
+    effects[i]!.commit(mode);
   }
 }
 

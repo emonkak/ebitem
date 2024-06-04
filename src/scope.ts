@@ -1,11 +1,13 @@
 import { Context } from './context.js';
 import type { Hook } from './hook.js';
 import { TaggedTemplate, getMarker } from './template/taggedTemplate.js';
-import type { Component, Scope, Template, Updater } from './types.js';
+import type { Component, ContextProvider, Template, Updater } from './types.js';
 
 export type Namespace = { [key: PropertyKey]: unknown };
 
-export class LocalScope implements Scope<Context> {
+export let __globalContext: Context | null = null;
+
+export class Scope implements ContextProvider<Context> {
   private readonly _globalNamespace: Namespace;
 
   private readonly _marker: string = getMarker();
@@ -51,10 +53,21 @@ export class LocalScope implements Scope<Context> {
     hooks: Hook[],
     updater: Updater<Context>,
   ): Context {
-    return new Context(component, hooks, this, updater);
+    if (__globalContext !== null) {
+      throw new Error('Context can not be started inside a block function.');
+    }
+    __globalContext = new Context(component, hooks, this, updater);
+    return __globalContext;
   }
 
-  finishContext(_context: Context): void {}
+  finishContext(context: Context): void {
+    if (__globalContext !== context) {
+      throw new Error(
+        'Context has not been started or a different context was attempted to be finished.',
+      );
+    }
+    __globalContext = null;
+  }
 
   createHTMLTemplate(
     tokens: ReadonlyArray<string>,

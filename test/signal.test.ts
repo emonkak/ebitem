@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { NodeBinding, directiveTag } from '../src/binding.js';
 import { Context } from '../src/context.js';
 import { Hook, usableTag } from '../src/hook.js';
-import { LocalScope } from '../src/localScope.js';
 import { PartType } from '../src/part.js';
+import { Scope } from '../src/scope.js';
 import {
   AtomSignal,
   ComputedSignal,
@@ -23,7 +23,7 @@ describe('SignalBinding', () => {
         type: PartType.Node,
         node: document.createTextNode(''),
       } as const;
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
       const binding = new SignalBinding(signal, part, updater);
 
       expect(binding.part).toBe(part);
@@ -43,7 +43,7 @@ describe('SignalBinding', () => {
         type: PartType.Node,
         node: document.createTextNode(''),
       } as const;
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
       const binding = new SignalBinding(signal, part, updater);
 
       const unsubscribeSpy = vi.fn();
@@ -71,7 +71,7 @@ describe('SignalBinding', () => {
         type: PartType.Node,
         node: document.createTextNode(''),
       } as const;
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
       const binding = new SignalBinding(signal1, part, updater);
 
       const unsubscribe1Spy = vi.fn();
@@ -99,7 +99,7 @@ describe('SignalBinding', () => {
 
     it('should throw the error if the value is not a signal', () => {
       expect(() => {
-        const updater = new SyncUpdater(new LocalScope());
+        const updater = new SyncUpdater(new Scope());
         const binding = new SignalBinding(
           new AtomSignal('foo'),
           {
@@ -121,7 +121,7 @@ describe('SignalBinding', () => {
         type: PartType.Node,
         node: document.createTextNode(''),
       } as const;
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
       const binding = new SignalBinding(signal, part, updater);
 
       const rebindSpy = vi.spyOn(binding.binding, 'rebind');
@@ -148,7 +148,7 @@ describe('SignalBinding', () => {
         type: PartType.Node,
         node: document.createTextNode(''),
       } as const;
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
       const binding = new SignalBinding(signal, part, updater);
 
       const unsubscribeSpy = vi.fn();
@@ -178,7 +178,7 @@ describe('SignalBinding', () => {
         type: PartType.Node,
         node: document.createTextNode(''),
       } as const;
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
       const binding = new SignalBinding(signal, part, updater);
 
       const unsubscribeSpy = vi.fn();
@@ -347,7 +347,7 @@ describe('AtomSignal', () => {
         type: PartType.Node,
         node: document.createTextNode(''),
       } as const;
-      const updater = new SyncUpdater(new LocalScope());
+      const updater = new SyncUpdater(new Scope());
       const binding = signal[directiveTag](part, updater);
 
       expect(binding.part).toBe(part);
@@ -365,7 +365,7 @@ describe('AtomSignal', () => {
       const signal = new AtomSignal('foo');
       const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new LocalScope();
+      const scope = new Scope();
       const updater = new SyncUpdater(scope);
       const context = new Context(component, hooks, scope, updater);
 

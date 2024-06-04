@@ -9,8 +9,8 @@ import { ChildNodePart, Part, PartType } from '../part.js';
 import { TaskPriority, comparePriorities } from '../scheduler.js';
 import type {
   Component,
+  ContextProvider,
   Effect,
-  Scope,
   Template,
   TemplateFragment,
   Updater,
@@ -134,7 +134,7 @@ export class BlockBinding<TProps, TData, TContext>
     return this._directive;
   }
 
-  render(scope: Scope<TContext>, updater: Updater<TContext>): void {
+  render(scope: ContextProvider<TContext>, updater: Updater<TContext>): void {
     if (!(this._flags & FLAG_UPDATING)) {
       return;
     }
@@ -295,7 +295,7 @@ export class BlockBinding<TProps, TData, TContext>
   private _renderBlock<TProps, TData>(
     type: BlockType<TProps, TData, TContext>,
     props: TProps,
-    scope: Scope<TContext>,
+    scope: ContextProvider<TContext>,
     updater: Updater<TContext>,
   ): TemplateDirective<TData, TContext> {
     const context = scope.startContext(this, this._hooks, updater);
