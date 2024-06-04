@@ -1,23 +1,23 @@
 {
   "name": "@emonkak/ebitem",
   "version": "0.0.0",
-  "main": "dist/index.js",
+  "main": "lib/index.js",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": "./lib/index.js",
+      "types": "./lib/index.d.ts"
     },
     "./directives.js": {
-      "import": "./dist/directives.js",
-      "types": "./dist/directives.d.ts"
+      "import": "./lib/directives.js",
+      "types": "./lib/directives.d.ts"
     },
     "./globalHooks.js": {
-      "import": "./dist/globalHooks.js",
-      "types": "./dist/globalHooks.d.ts"
+      "import": "./lib/globalHooks.js",
+      "types": "./lib/globalHooks.d.ts"
     },
     "./signal.js": {
-      "import": "./dist/signal.js",
-      "types": "./dist/signal.d.ts"
+      "import": "./lib/signal.js",
+      "types": "./lib/signal.d.ts"
     }
   },
   "type": "module",
