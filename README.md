@@ -1,5 +1,5 @@
-# Ebitem
+# Ebit
 
-<img src="ebitem.svg" alt="Logo" width="200" height="300">
+<img src="logo.svg" alt="Logo" width="200" height="300">
 
-**Ebitem**, which stands for **E**fficient **Bi**nding **Tem**plate, is a framework for template rendering.
+**Ebit**, which means **E**fficient **Bi**nding **T**emplate or **Ebi** (Shrimp) **T**empura, is a framework for template rendering.

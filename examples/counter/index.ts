@@ -4,7 +4,7 @@ import {
   GlobalScope,
   LocalScope,
   mountValue,
-} from '@emonkak/ebitem';
+} from '@emonkak/ebit';
 import {
   TemplateDirective,
   block,
@@ -18,15 +18,15 @@ import {
   unsafeHTML,
   unsafeSVG,
   when,
-} from '@emonkak/ebitem/directives.js';
+} from '@emonkak/ebit/directives.js';
 import {
   use,
   useEvent,
   useMemo,
   useRef,
   useState,
-} from '@emonkak/ebitem/globalHooks.js';
-import { AtomSignal, Signal } from '@emonkak/ebitem/signal.js';
+} from '@emonkak/ebit/globalHooks.js';
+import { AtomSignal, Signal } from '@emonkak/ebit/signal.js';
 
 const counterSignal = new AtomSignal(0);
 
