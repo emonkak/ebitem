@@ -4,13 +4,7 @@ import {
   createDefaultScheduler,
 } from './scheduler.js';
 import { AtomSignal } from './signal.js';
-import {
-  Component,
-  ContextProvider,
-  Effect,
-  EffectMode,
-  Updater,
-} from './types.js';
+import { Component, Effect, RenderingEngine, Updater } from './types.js';
 
 export interface ConcurrentUpdaterOptions {
   scheduler?: Scheduler;
@@ -24,7 +18,7 @@ interface Pipeline<TContext> {
 }
 
 export class ConcurrentUpdater<TContext> implements Updater<TContext> {
-  private readonly _scope: ContextProvider<TContext>;
+  private readonly _engine: RenderingEngine<TContext>;
 
   private readonly _scheduler: Scheduler;
 
@@ -35,10 +29,10 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
   private _currentPipeline: Pipeline<TContext> = createPipeline();
 
   constructor(
-    scope: ContextProvider<TContext>,
+    engine: RenderingEngine<TContext>,
     { scheduler = createDefaultScheduler() }: ConcurrentUpdaterOptions = {},
   ) {
-    this._scope = scope;
+    this._engine = engine;
     this._scheduler = scheduler;
   }
 
@@ -123,7 +117,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
     do {
       for (let i = 0, l = pendingComponents.length; i < l; i++) {
         const component = pendingComponents[i]!;
-        if (shouldSkipRender(component)) {
+        if (!shouldUpdate(component)) {
           continue;
         }
 
@@ -141,7 +135,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
         this._currentComponent = component;
         this._currentPipeline = pipeline;
         try {
-          component.render(this._scope, this);
+          component.update(this._engine, this);
         } finally {
           this._currentComponent = null;
           this._currentPipeline = previousPipeline;
@@ -188,8 +182,8 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
       this._scheduler.requestCallback(
         () => {
           try {
-            flushEffects(pendingMutationEffects, 'mutation');
-            flushEffects(pendingLayoutEffects, 'layout');
+            this._engine.flushEffects(pendingMutationEffects, 'mutation');
+            this._engine.flushEffects(pendingLayoutEffects, 'layout');
           } finally {
             this._taskCount.value--;
           }
@@ -209,7 +203,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
       this._scheduler.requestCallback(
         () => {
           try {
-            flushEffects(pendingPassiveEffects, 'passive');
+            this._engine.flushEffects(pendingPassiveEffects, 'passive');
           } finally {
             this._taskCount.value--;
           }
@@ -222,7 +216,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
 }
 
 export class SyncUpdater<TContext> implements Updater<TContext> {
-  private readonly _scope: ContextProvider<TContext>;
+  private readonly _engine: RenderingEngine<TContext>;
 
   private _currentComponent: Component<TContext> | null = null;
 
@@ -236,8 +230,8 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
 
   private _isUpdating = false;
 
-  constructor(scope: ContextProvider<TContext>) {
-    this._scope = scope;
+  constructor(engine: RenderingEngine<TContext>) {
+    this._engine = engine;
   }
 
   getCurrentComponent(): Component<TContext> | null {
@@ -306,38 +300,34 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
 
         for (let i = 0, l = pendingComponents.length; i < l; i++) {
           const pendingComponent = pendingComponents[i]!;
-          if (shouldSkipRender(pendingComponent)) {
+          if (!shouldUpdate(pendingComponent)) {
             continue;
           }
           this._currentComponent = pendingComponent;
           try {
-            pendingComponent.render(this._scope, this);
+            pendingComponent.update(this._engine, this);
           } finally {
             this._currentComponent = null;
           }
         }
       }
 
-      if (
-        this._pendingMutationEffects.length > 0 ||
-        this._pendingLayoutEffects.length > 0
-      ) {
+      if (this._pendingMutationEffects.length > 0) {
         const pendingMutationEffects = this._pendingMutationEffects;
-        const pendingLayoutEffects = this._pendingLayoutEffects;
-
         this._pendingMutationEffects = [];
-        this._pendingLayoutEffects = [];
+        this._engine.flushEffects(pendingMutationEffects, 'mutation');
+      }
 
-        flushEffects(pendingMutationEffects, 'mutation');
-        flushEffects(pendingLayoutEffects, 'layout');
+      if (this._pendingLayoutEffects.length > 0) {
+        const pendingLayoutEffects = this._pendingLayoutEffects;
+        this._pendingLayoutEffects = [];
+        this._engine.flushEffects(pendingLayoutEffects, 'layout');
       }
 
       if (this._pendingPassiveEffects.length > 0) {
         const pendingPassiveEffects = this._pendingPassiveEffects;
-
         this._pendingPassiveEffects = [];
-
-        flushEffects(pendingPassiveEffects, 'passive');
+        this._engine.flushEffects(pendingPassiveEffects, 'passive');
       }
     } while (
       this._pendingComponents.length > 0 ||
@@ -355,12 +345,6 @@ function createPipeline<TContext>(): Pipeline<TContext> {
     pendingMutationEffects: [],
     pendingPassiveEffects: [],
   };
-}
-
-function flushEffects(effects: Effect[], mode: EffectMode): void {
-  for (let i = 0, l = effects.length; i < l; i++) {
-    effects[i]!.commit(mode);
-  }
 }
 
 function isContinuousEvent(event: Event): boolean {
@@ -388,15 +372,15 @@ function isContinuousEvent(event: Event): boolean {
   }
 }
 
-function shouldSkipRender<TContext>(component: Component<TContext>): boolean {
+function shouldUpdate<TContext>(component: Component<TContext>): boolean {
   if (!component.dirty) {
-    return true;
+    return false;
   }
   let parent: Component<TContext> | null = component;
   while ((parent = parent.parent) !== null) {
     if (parent.dirty) {
-      return true;
+      return false;
     }
   }
-  return false;
+  return true;
 }

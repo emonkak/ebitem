@@ -8,10 +8,11 @@ import { ChildNodePart, Part, PartType } from '../part.js';
 import { TaskPriority, comparePriorities } from '../scheduler.js';
 import type {
   Component,
-  ContextProvider,
   Effect,
+  RenderingEngine,
   Template,
   TemplateFragment,
+  TemplateResult,
   Updater,
 } from '../types.js';
 
@@ -21,7 +22,7 @@ const FLAG_MUTATING = 1 << 1;
 const FLAG_UNMOUNTING = 1 << 2;
 
 export class TemplateDirective<TData, TContext = unknown>
-  implements Directive<TContext>
+  implements Directive<TContext>, TemplateResult<TData, TContext>
 {
   private readonly _template: Template<TData, TContext>;
 
@@ -111,7 +112,7 @@ export class TemplateBinding<TData, TContext>
     return !!(this._flags & FLAG_UPDATING || this._flags & FLAG_UNMOUNTING);
   }
 
-  render(_scope: ContextProvider<TContext>, updater: Updater<TContext>): void {
+  update(_engine: RenderingEngine<TContext>, updater: Updater<TContext>): void {
     if (!(this._flags & FLAG_UPDATING)) {
       return;
     }
@@ -136,7 +137,7 @@ export class TemplateBinding<TData, TContext>
     this._flags &= ~FLAG_UPDATING;
   }
 
-  requestUpdate(updater: Updater<TContext>, priority: TaskPriority): void {
+  requestUpdate(priority: TaskPriority, updater: Updater<TContext>): void {
     if (
       !(this._flags & FLAG_UPDATING) ||
       comparePriorities(priority, this._priority) > 0

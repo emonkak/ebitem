@@ -8,19 +8,14 @@ import { Hook, HookType } from '../hook.js';
 import { ChildNodePart, Part, PartType } from '../part.js';
 import { TaskPriority, comparePriorities } from '../scheduler.js';
 import type {
+  Block,
   Component,
-  ContextProvider,
   Effect,
+  RenderingEngine,
   Template,
   TemplateFragment,
   Updater,
 } from '../types.js';
-import type { TemplateDirective } from './template.js';
-
-export type BlockType<TProps, TData, TContext> = (
-  props: TProps,
-  context: TContext,
-) => TemplateDirective<TData, TContext>;
 
 const FLAG_NONE = 0;
 const FLAG_UPDATING = 1 << 0;
@@ -28,7 +23,7 @@ const FLAG_MUTATING = 1 << 1;
 const FLAG_UNMOUNTING = 1 << 2;
 
 export function block<TProps, TData, TContext>(
-  type: BlockType<TProps, TData, TContext>,
+  type: Block<TProps, TData, TContext>,
   props: TProps,
 ): BlockDirective<TProps, TData, TContext> {
   return new BlockDirective(type, props);
@@ -37,16 +32,16 @@ export function block<TProps, TData, TContext>(
 export class BlockDirective<TProps, TData, TContext>
   implements Directive<TContext>
 {
-  private readonly _type: BlockType<TProps, TData, TContext>;
+  private readonly _type: Block<TProps, TData, TContext>;
 
   private readonly _props: TProps;
 
-  constructor(type: BlockType<TProps, TData, TContext>, props: TProps) {
+  constructor(type: Block<TProps, TData, TContext>, props: TProps) {
     this._type = type;
     this._props = props;
   }
 
-  get type(): BlockType<TProps, TData, TContext> {
+  get type(): Block<TProps, TData, TContext> {
     return this._type;
   }
 
@@ -77,7 +72,7 @@ export class BlockBinding<TProps, TData, TContext>
 
   private readonly _parent: Component<TContext> | null;
 
-  private _memoizedType: BlockType<TProps, TData, TContext> | null = null;
+  private _memoizedType: Block<TProps, TData, TContext> | null = null;
 
   private _memoizedTemplate: Template<TData, TContext> | null = null;
 
@@ -134,7 +129,7 @@ export class BlockBinding<TProps, TData, TContext>
     return this._directive;
   }
 
-  render(scope: ContextProvider<TContext>, updater: Updater<TContext>): void {
+  update(engine: RenderingEngine<TContext>, updater: Updater<TContext>): void {
     if (!(this._flags & FLAG_UPDATING)) {
       return;
     }
@@ -145,16 +140,15 @@ export class BlockBinding<TProps, TData, TContext>
       this._cleanHooks();
     }
 
-    const previousNumberOfHooks = this._hooks.length;
-    const { template, data } = this._renderBlock(type, props, scope, updater);
+    const { template, data } = engine.renderBlock(
+      type,
+      props,
+      this._hooks,
+      this,
+      updater,
+    );
 
     if (this._pendingFragment !== null) {
-      if (this._hooks.length !== previousNumberOfHooks) {
-        throw new Error(
-          'The block has been rendered different number of hooks than during the previous render.',
-        );
-      }
-
       if (this._memoizedTemplate !== template) {
         // First, detach of the current fragment.
         this._pendingFragment.unbind(updater);
@@ -200,7 +194,7 @@ export class BlockBinding<TProps, TData, TContext>
     this._flags &= ~FLAG_UPDATING;
   }
 
-  requestUpdate(updater: Updater, priority: TaskPriority): void {
+  requestUpdate(priority: TaskPriority, updater: Updater): void {
     if (
       !(this._flags & FLAG_UPDATING) ||
       comparePriorities(priority, this._priority) > 0
@@ -289,20 +283,6 @@ export class BlockBinding<TProps, TData, TContext>
     if (!(this._flags & FLAG_MUTATING)) {
       updater.enqueueMutationEffect(this);
       this._flags |= FLAG_MUTATING;
-    }
-  }
-
-  private _renderBlock<TProps, TData>(
-    type: BlockType<TProps, TData, TContext>,
-    props: TProps,
-    scope: ContextProvider<TContext>,
-    updater: Updater<TContext>,
-  ): TemplateDirective<TData, TContext> {
-    const context = scope.startContext(this, this._hooks, updater);
-    try {
-      return type(props, context);
-    } finally {
-      scope.finishContext(context);
     }
   }
 }

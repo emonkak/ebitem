@@ -11,6 +11,10 @@ export {
   Context,
 } from './context.js';
 export {
+  type Variables,
+  Engine,
+} from './engine.js';
+export {
   type Cleanup,
   type EffectCallback,
   type Ref,
@@ -36,10 +40,6 @@ export {
   createDefaultScheduler,
 } from './scheduler.js';
 export {
-  type Namespace,
-  Scope,
-} from './scope.js';
-export {
   TaggedTemplate,
   TaggedTemplateFragment,
 } from './template/taggedTemplate.js';
@@ -55,11 +55,9 @@ export {
 } from './updater.js';
 export type {
   Component,
-  ContextProvider,
+  RenderingEngine,
   Effect,
   Template,
   TemplateFragment,
-  TemplateProvider,
   Updater,
-  VariableProvider,
 } from './types.js';

@@ -3,6 +3,7 @@ import {
   Cleanup,
   EffectCallback,
   EffectHook,
+  EndHook,
   Hook,
   HookType,
   MemoHook,
@@ -15,13 +16,7 @@ import {
 import type { TaskPriority } from './scheduler.js';
 import { ElementData, ElementTemplate } from './template/elementTemplate.js';
 import { ChildNodeTemplate, TextTemplate } from './template/valueTemplate.js';
-import type {
-  Component,
-  Effect,
-  TemplateProvider,
-  Updater,
-  VariableProvider,
-} from './types.js';
+import type { Component, Effect, RenderingEngine, Updater } from './types.js';
 import { dependenciesAreChanged } from './utils.js';
 
 export type InitialState<TState> = TState extends Function
@@ -33,26 +28,25 @@ export type NewState<TState> = TState extends Function
   : ((prevState: TState) => TState) | TState;
 
 export class Context {
-  private readonly _component: Component<Context>;
-
   private readonly _hooks: Hook[];
 
-  private readonly _scope: TemplateProvider<Context> &
-    VariableProvider<Context>;
+  private readonly _component: Component<Context>;
+
+  private readonly _engine: RenderingEngine<Context>;
 
   private readonly _updater: Updater<Context>;
 
   private _hookIndex = 0;
 
   constructor(
-    component: Component<Context>,
     hooks: Hook[],
-    scope: TemplateProvider<Context> & VariableProvider<Context>,
+    component: Component<Context>,
+    engine: RenderingEngine<Context>,
     updater: Updater<Context>,
   ) {
-    this._component = component;
     this._hooks = hooks;
-    this._scope = scope;
+    this._component = component;
+    this._engine = engine;
     this._updater = updater;
   }
 
@@ -70,41 +64,44 @@ export class Context {
     return new TemplateDirective(template, { elementValue, childNodeValue });
   }
 
+  finalize(): void {
+    const currentHook = this._hooks[this._hookIndex];
+
+    if (currentHook !== undefined) {
+      ensureHookType<EndHook>(HookType.End, currentHook);
+    } else {
+      this._hooks.push({ type: HookType.End });
+    }
+  }
+
   getContextValue<T>(key: PropertyKey): T | undefined {
-    let component: Component<Context> | null = this._component;
-    do {
-      const value = this._scope.getVariable(key, component);
-      if (value !== undefined) {
-        return value as T;
-      }
-    } while ((component = component.parent));
-    return undefined;
+    return this._engine.getVariable(key, this._component) as T | undefined;
   }
 
   html(
     tokens: ReadonlyArray<string>,
     ...data: unknown[]
   ): TemplateDirective<unknown[], Context> {
-    const template = this._scope.createHTMLTemplate(tokens, data);
+    const template = this._engine.getHTMLTemplate(tokens, data);
     return new TemplateDirective(template, data);
   }
 
   requestUpdate(): void {
     this._component.requestUpdate(
-      this._updater,
       this._updater.getCurrentPriority(),
+      this._updater,
     );
   }
 
   setContextValue(key: PropertyKey, value: unknown): void {
-    this._scope.setVariable(key, value, this._component);
+    this._engine.setVariable(key, value, this._component);
   }
 
   svg(
     tokens: ReadonlyArray<string>,
     ...data: unknown[]
   ): TemplateDirective<unknown[], Context> {
-    const template = this._scope.createSVGTemplate(tokens, data);
+    const template = this._engine.getSVGTemplate(tokens, data);
     return new TemplateDirective(template, data);
   }
 
@@ -258,8 +255,8 @@ export class Context {
           if (!Object.is(hook.state, nextState)) {
             hook.state = nextState;
             this._component.requestUpdate(
-              this._updater,
               priority ?? this._updater.getCurrentPriority(),
+              this._updater,
             );
           }
         },
@@ -298,8 +295,8 @@ export class Context {
       () =>
         subscribe(() => {
           this._component.requestUpdate(
-            this._updater,
             priority ?? this._updater.getCurrentPriority(),
+            this._updater,
           );
         }),
       [subscribe, priority],

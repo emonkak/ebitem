@@ -2,6 +2,31 @@ import type { Hook } from './hook.js';
 import type { ChildNodePart } from './part.js';
 import type { TaskPriority } from './scheduler.js';
 
+export interface RenderingEngine<TContext> {
+  flushEffects(effects: Effect[], mode: EffectMode): void;
+  getHTMLTemplate(
+    tokens: ReadonlyArray<string>,
+    data: unknown[],
+  ): Template<unknown[], TContext>;
+  getSVGTemplate(
+    tokens: ReadonlyArray<string>,
+    data: unknown[],
+  ): Template<unknown[], TContext>;
+  getVariable(key: PropertyKey, component: Component<TContext>): unknown;
+  renderBlock<TProps, TData>(
+    block: Block<TProps, TData, TContext>,
+    props: TProps,
+    hooks: Hook[],
+    component: Component<TContext>,
+    updater: Updater<TContext>,
+  ): TemplateResult<TData, TContext>;
+  setVariable(
+    key: PropertyKey,
+    value: unknown,
+    component: Component<TContext>,
+  ): void;
+}
+
 export interface Updater<TContext = unknown> {
   getCurrentComponent(): Component<TContext> | null;
   getCurrentPriority(): TaskPriority;
@@ -19,38 +44,14 @@ export interface Component<TContext = unknown> {
   get dirty(): boolean;
   get parent(): Component<TContext> | null;
   get priority(): TaskPriority;
-  render(scope: ContextProvider<TContext>, updater: Updater<TContext>): void;
-  requestUpdate(updater: Updater<TContext>, priority: TaskPriority): void;
+  update(engine: RenderingEngine<TContext>, updater: Updater<TContext>): void;
+  requestUpdate(priority: TaskPriority, updater: Updater<TContext>): void;
 }
 
-export interface ContextProvider<TContext> {
-  startContext(
-    component: Component<TContext>,
-    hooks: Hook[],
-    updater: Updater<TContext>,
-  ): TContext;
-  finishContext(context: TContext): void;
-}
-
-export interface TemplateProvider<TContext> {
-  createHTMLTemplate(
-    tokens: ReadonlyArray<string>,
-    data: unknown[],
-  ): Template<unknown[], TContext>;
-  createSVGTemplate(
-    tokens: ReadonlyArray<string>,
-    data: unknown[],
-  ): Template<unknown[], TContext>;
-}
-
-export interface VariableProvider<TContext> {
-  getVariable(key: PropertyKey, component: Component<TContext>): unknown;
-  setVariable(
-    key: PropertyKey,
-    value: unknown,
-    component: Component<TContext>,
-  ): void;
-}
+export type Block<TProps, TData, TContext> = (
+  props: TProps,
+  context: TContext,
+) => TemplateResult<TData, TContext>;
 
 export interface Template<TData, TContext = unknown> {
   hydrate(
@@ -68,6 +69,11 @@ export interface TemplateFragment<TData, TContext = unknown> {
   mount(part: ChildNodePart): void;
   unmount(part: ChildNodePart): void;
   disconnect(): void;
+}
+
+export interface TemplateResult<TData, TContext> {
+  get template(): Template<TData, TContext>;
+  get data(): TData;
 }
 
 export interface Effect {

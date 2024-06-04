@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { Context } from '../src/context.js';
+import { Engine } from '../src/engine.js';
 import { Hook, usableTag } from '../src/hook.js';
-import { Scope } from '../src/scope.js';
 import { ElementTemplate } from '../src/template/elementTemplate.js';
 import { TaggedTemplate } from '../src/template/taggedTemplate.js';
 import {
@@ -15,11 +15,11 @@ import { MockComponent } from './mocks.js';
 describe('Context', () => {
   describe('.childNode()', () => {
     it('should return TemplateDirective with ChildNodeTemplate set as a template', () => {
-      const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new Scope();
-      const updater = new SyncUpdater(scope);
-      const context = new Context(component, hooks, scope, updater);
+      const component = new MockComponent();
+      const engine = new Engine();
+      const updater = new SyncUpdater(engine);
+      const context = new Context(hooks, component, engine, updater);
       const directive = context.childNode('foo');
 
       expect(directive.template).toBeInstanceOf(ChildNodeTemplate);
@@ -29,11 +29,11 @@ describe('Context', () => {
 
   describe('.element()', () => {
     it('should return TemplateDirective with ElementTemplate set as a template', () => {
-      const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new Scope();
-      const updater = new SyncUpdater(scope);
-      const context = new Context(component, hooks, scope, updater);
+      const component = new MockComponent();
+      const engine = new Engine();
+      const updater = new SyncUpdater(engine);
+      const context = new Context(hooks, component, engine, updater);
       const directive = context.element(
         'div',
         { class: 'foo', id: 'bar' },
@@ -50,24 +50,24 @@ describe('Context', () => {
 
   describe('.getContextValue()', () => {
     it('should get the value from global namespace', () => {
-      const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new Scope({ foo: 123 });
-      const updater = new SyncUpdater(scope);
-      const context = new Context(component, hooks, scope, updater);
+      const component = new MockComponent();
+      const engine = new Engine({ foo: 123 });
+      const updater = new SyncUpdater(engine);
+      const context = new Context(hooks, component, engine, updater);
 
       expect(context.getContextValue('foo')).toBe(123);
       expect(context.getContextValue('bar')).toBeUndefined();
     });
 
     it('should get the value set on the component', () => {
-      const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new Scope({ foo: 123 });
-      const updater = new SyncUpdater(scope);
+      const component = new MockComponent();
+      const engine = new Engine({ foo: 123 });
+      const updater = new SyncUpdater(engine);
 
       {
-        const context = new Context(component, hooks, scope, updater);
+        const context = new Context(hooks, component, engine, updater);
         context.setContextValue('foo', 456);
         context.setContextValue('bar', 789);
         expect(context.getContextValue('foo')).toBe(456);
@@ -75,13 +75,18 @@ describe('Context', () => {
       }
 
       {
-        const context = new Context(component, hooks, scope, updater);
+        const context = new Context(hooks, component, engine, updater);
         expect(context.getContextValue('foo')).toBe(456);
         expect(context.getContextValue('bar')).toBe(789);
       }
 
       {
-        const context = new Context(new MockComponent(), hooks, scope, updater);
+        const context = new Context(
+          hooks,
+          new MockComponent(),
+          engine,
+          updater,
+        );
         expect(context.getContextValue('foo')).toBe(123);
         expect(context.getContextValue('bar')).toBeUndefined();
       }
@@ -90,11 +95,11 @@ describe('Context', () => {
 
   describe('.html()', () => {
     it('should return TemplateDirective with an HTML-formatted TaggedTemplate set as a template', () => {
-      const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new Scope();
-      const updater = new SyncUpdater(scope);
-      const context = new Context(component, hooks, scope, updater);
+      const component = new MockComponent();
+      const engine = new Engine();
+      const updater = new SyncUpdater(engine);
+      const context = new Context(hooks, component, engine, updater);
       const directive = context.html`
         <div class=${0}>Hello, ${1}!</div>
       `;
@@ -110,27 +115,27 @@ describe('Context', () => {
 
   describe('.requestUpdate()', () => {
     it('should request update for the component', () => {
+      const hooks: Hook[] = [];
       const component = new MockComponent();
       const requestUpdateSpy = vi.spyOn(component, 'requestUpdate');
-      const hooks: Hook[] = [];
-      const scope = new Scope();
-      const updater = new SyncUpdater(scope);
-      const context = new Context(component, hooks, scope, updater);
+      const engine = new Engine();
+      const updater = new SyncUpdater(engine);
+      const context = new Context(hooks, component, engine, updater);
 
       context.requestUpdate();
 
       expect(requestUpdateSpy).toHaveBeenCalledOnce();
-      expect(requestUpdateSpy).toHaveBeenCalledWith(updater, 'user-blocking');
+      expect(requestUpdateSpy).toHaveBeenCalledWith('user-blocking', updater);
     });
   });
 
   describe('.svg()', () => {
     it('should return TemplateDirective with an SVG-hormatted TaggedTemplate set as a template', () => {
-      const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new Scope();
-      const updater = new SyncUpdater(scope);
-      const context = new Context(component, hooks, scope, updater);
+      const component = new MockComponent();
+      const engine = new Engine();
+      const updater = new SyncUpdater(engine);
+      const context = new Context(hooks, component, engine, updater);
       const directive = context.svg`
         <text x=${0} y=${1}>Hello, ${2}!</text>
       `;
@@ -146,11 +151,11 @@ describe('Context', () => {
 
   describe('.text()', () => {
     it('should return TemplateDirective with TextTemplate set as a template', () => {
-      const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new Scope();
-      const updater = new SyncUpdater(scope);
-      const context = new Context(component, hooks, scope, updater);
+      const component = new MockComponent();
+      const engine = new Engine();
+      const updater = new SyncUpdater(engine);
+      const context = new Context(hooks, component, engine, updater);
       const directive = context.text('foo');
 
       expect(directive.template).toBeInstanceOf(TextTemplate);
@@ -162,9 +167,9 @@ describe('Context', () => {
     it('should handle the UsableCallback', () => {
       const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new Scope();
-      const updater = new SyncUpdater(scope);
-      const context = new Context(component, hooks, scope, updater);
+      const engine = new Engine();
+      const updater = new SyncUpdater(engine);
+      const context = new Context(hooks, component, engine, updater);
       const callback = vi.fn(() => 'foo');
 
       expect(context.use(callback)).toBe('foo');
@@ -173,11 +178,11 @@ describe('Context', () => {
     });
 
     it('should handle the UsableObject', () => {
-      const component = new MockComponent();
       const hooks: Hook[] = [];
-      const scope = new Scope();
-      const updater = new SyncUpdater(scope);
-      const context = new Context(component, hooks, scope, updater);
+      const component = new MockComponent();
+      const engine = new Engine();
+      const updater = new SyncUpdater(engine);
+      const context = new Context(hooks, component, engine, updater);
       const usable = { [usableTag]: vi.fn(() => 'foo') };
 
       expect(context.use(usable)).toBe('foo');

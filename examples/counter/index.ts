@@ -1,4 +1,4 @@
-import { ConcurrentUpdater, Context, Scope, mountValue } from '@emonkak/ebit';
+import { ConcurrentUpdater, Context, Engine, mountValue } from '@emonkak/ebit';
 import {
   TemplateDirective,
   block,
@@ -13,23 +13,22 @@ import {
   unsafeSVG,
   when,
 } from '@emonkak/ebit/directives.js';
-import {
-  use,
-  useEvent,
-  useMemo,
-  useRef,
-  useState,
-} from '@emonkak/ebit/globalHooks.js';
 import { AtomSignal, Signal } from '@emonkak/ebit/signal.js';
 
 const counterSignal = new AtomSignal(0);
 
 function App(_props: {}, context: Context) {
-  const [items, setItems] = useState(['foo', 'bar', 'baz', 'qux', 'quux']);
+  const [items, setItems] = context.useState([
+    'foo',
+    'bar',
+    'baz',
+    'qux',
+    'quux',
+  ]);
 
   context.setContextValue('state', 'My Env');
 
-  const itemsList = useMemo(
+  const itemsList = context.useMemo(
     () =>
       list(
         items,
@@ -65,13 +64,13 @@ function App(_props: {}, context: Context) {
     [items],
   );
 
-  const onIncrement = useEvent((_event) => {
+  const onIncrement = context.useEvent((_event) => {
     counterSignal.value += 1;
   });
-  const onDecrement = useEvent((_event) => {
+  const onDecrement = context.useEvent((_event) => {
     counterSignal.value -= 1;
   });
-  const onShuffle = useEvent((_event) => {
+  const onShuffle = context.useEvent((_event) => {
     const newItems = shuffle(items.slice());
     setItems(newItems);
   });
@@ -130,9 +129,9 @@ function Item({ title, onUp, onDown, onDelete }: ItemProps, context: Context) {
   return context.html`
     <li>
       <span>${title} (${state})</span>
-      <button type="button" @click=${useEvent(onUp)}>Up</button>
-      <button type="button" @click=${useEvent(onDown)}>Down</button>
-      <button type="button" @click=${useEvent(onDelete)}>Delete</button>
+      <button type="button" @click=${context.useEvent(onUp)}>Up</button>
+      <button type="button" @click=${context.useEvent(onDown)}>Down</button>
+      <button type="button" @click=${context.useEvent(onDelete)}>Delete</button>
     </li>
   `;
 }
@@ -142,9 +141,9 @@ interface CounterProps {
 }
 
 function Counter({ count$ }: CounterProps, context: Context) {
-  const countLabelRef = useRef<Element | null>(null);
+  const countLabelRef = context.useRef<Element | null>(null);
 
-  const count = use(count$);
+  const count = context.use(count$);
 
   return context.html`
     <h1>
@@ -196,6 +195,6 @@ function shuffle<T>(elements: T[]): T[] {
   return elements;
 }
 
-const updater = new ConcurrentUpdater(new Scope());
+const updater = new ConcurrentUpdater(new Engine());
 
 mountValue(block(App, {}), document.body, updater);
