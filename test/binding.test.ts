@@ -163,7 +163,7 @@ describe('AttributeBinding', () => {
       binding.bind('foo', updater);
 
       expect(binding.value).toBe('foo');
-      expect(updater.isNothingScheduled()).toBe(true);
+      expect(updater.isScheduled()).toBe(false);
     });
 
     it('should do nothing if called twice', () => {
@@ -413,7 +413,7 @@ describe('EventBinding', () => {
 
       binding.bind(listener, updater);
 
-      expect(updater.isNothingScheduled()).toBe(true);
+      expect(updater.isScheduled()).toBe(false);
     });
 
     it('should detach the active event listener when null is passed', () => {
@@ -721,7 +721,7 @@ describe('NodeBinding', () => {
       binding.bind('foo', updater);
 
       expect(binding.value).toBe('foo');
-      expect(updater.isNothingScheduled()).toBe(true);
+      expect(updater.isScheduled()).toBe(false);
     });
 
     it('should do nothing if called twice', () => {
@@ -869,7 +869,7 @@ describe('PropertyBinding', () => {
       binding.bind('foo', updater);
 
       expect(binding.value).toBe('foo');
-      expect(updater.isNothingScheduled()).toBe(true);
+      expect(updater.isScheduled()).toBe(false);
     });
 
     it('should do nothing if called twice', () => {
@@ -1204,7 +1204,7 @@ describe('resolveBinding()', () => {
 
     expect(binding).toBeInstanceOf(AttributeBinding);
     expect(binding.value).toBe('foo');
-    expect(updater.isNothingScheduled()).toBe(true);
+    expect(updater.isScheduled()).toBe(false);
   });
 
   it('should resolve the value as a EventBinding if the part is a EventPart', () => {
@@ -1220,7 +1220,7 @@ describe('resolveBinding()', () => {
 
     expect(binding).toBeInstanceOf(EventBinding);
     expect(binding.value).toBe(listener);
-    expect(updater.isNothingScheduled()).toBe(true);
+    expect(updater.isScheduled()).toBe(false);
   });
 
   it('should resolve the value as a PropertyBinding if the part is a PropertyPart', () => {
@@ -1235,7 +1235,7 @@ describe('resolveBinding()', () => {
 
     expect(binding).toBeInstanceOf(PropertyBinding);
     expect(binding.value).toBe('foo');
-    expect(updater.isNothingScheduled()).toBe(true);
+    expect(updater.isScheduled()).toBe(false);
   });
 
   it('should resolve the value as a NodeBinding if the part is a NodePart', () => {
@@ -1249,7 +1249,7 @@ describe('resolveBinding()', () => {
 
     expect(binding).toBeInstanceOf(NodeBinding);
     expect(binding.value).toBe('foo');
-    expect(updater.isNothingScheduled()).toBe(true);
+    expect(updater.isScheduled()).toBe(false);
   });
 
   it('should resolve the value as a NodeBinding if the part is a ChildNodePart', () => {
@@ -1263,7 +1263,7 @@ describe('resolveBinding()', () => {
 
     expect(binding).toBeInstanceOf(NodeBinding);
     expect(binding.value).toBe('foo');
-    expect(updater.isNothingScheduled()).toBe(true);
+    expect(updater.isScheduled()).toBe(false);
   });
 
   it('should resolve the value as a SpreadBinding if the part is a ElementPart', () => {
@@ -1284,7 +1284,7 @@ describe('resolveBinding()', () => {
 
     expect(binding).toBeInstanceOf(SpreadBinding);
     expect(binding.value).toBe(props);
-    expect(updater.isNothingScheduled()).toBe(true);
+    expect(updater.isScheduled()).toBe(false);
   });
 });
 

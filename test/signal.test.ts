@@ -32,7 +32,7 @@ describe('SignalBinding', () => {
       expect(binding.value).toBe(signal);
       expect(binding.binding).toBeInstanceOf(NodeBinding);
       expect(binding.binding.value).toBe('foo');
-      expect(updater.isNothingScheduled()).toBe(true);
+      expect(updater.isScheduled()).toBe(false);
     });
   });
 
@@ -356,7 +356,7 @@ describe('AtomSignal', () => {
       expect(binding.value).toBe(signal);
       expect(binding.binding).toBeInstanceOf(NodeBinding);
       expect(binding.binding.value).toBe('foo');
-      expect(updater.isNothingScheduled()).toBe(true);
+      expect(updater.isScheduled()).toBe(false);
     });
   });
 

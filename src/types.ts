@@ -30,7 +30,7 @@ export interface RenderingEngine<TContext> {
 export interface Updater<TContext = unknown> {
   getCurrentComponent(): Component<TContext> | null;
   getCurrentPriority(): TaskPriority;
-  isNothingScheduled(): boolean;
+  isScheduled(): boolean;
   isUpdating(): boolean;
   waitForUpdate(): Promise<void>;
   enqueueComponent(component: Component<TContext>): void;
