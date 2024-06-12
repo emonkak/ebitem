@@ -7,7 +7,6 @@ import type {
   Effect,
   EffectMode,
   RenderingEngine,
-  Template,
   TemplateResult,
   Updater,
 } from './types.js';
@@ -24,7 +23,7 @@ export class Engine implements RenderingEngine<Context> {
 
   private readonly _cachedTemplates: WeakMap<
     ReadonlyArray<string>,
-    Template<unknown, Context>
+    TaggedTemplate
   > = new WeakMap();
 
   constructor(globalVariables: Variables = {}) {
@@ -40,7 +39,7 @@ export class Engine implements RenderingEngine<Context> {
   getHTMLTemplate(
     tokens: ReadonlyArray<string>,
     _data: unknown[],
-  ): Template<unknown[], Context> {
+  ): TaggedTemplate {
     let template = this._cachedTemplates.get(tokens);
 
     if (template === undefined) {
@@ -54,7 +53,7 @@ export class Engine implements RenderingEngine<Context> {
   getSVGTemplate(
     tokens: ReadonlyArray<string>,
     _data: unknown[],
-  ): Template<unknown[], Context> {
+  ): TaggedTemplate {
     let template = this._cachedTemplates.get(tokens);
 
     if (template === undefined) {

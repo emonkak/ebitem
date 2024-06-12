@@ -3,7 +3,7 @@ import {
   Cleanup,
   EffectCallback,
   EffectHook,
-  EndHook,
+  FinilizerHook,
   Hook,
   HookType,
   MemoHook,
@@ -68,9 +68,9 @@ export class Context {
     const currentHook = this._hooks[this._hookIndex];
 
     if (currentHook !== undefined) {
-      ensureHookType<EndHook>(HookType.End, currentHook);
+      ensureHookType<FinilizerHook>(HookType.Finalizer, currentHook);
     } else {
-      this._hooks.push({ type: HookType.End });
+      this._hooks.push({ type: HookType.Finalizer });
     }
   }
 

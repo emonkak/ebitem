@@ -1,7 +1,14 @@
 import { Binding, Directive, directiveTag } from '../src/binding.js';
-import { Part } from '../src/part.js';
+import { ChildNodePart, Part } from '../src/part.js';
 import { TaskPriority } from '../src/scheduler.js';
-import type { Component, RenderingEngine, Updater } from '../src/types.js';
+import type {
+  Component,
+  RenderingEngine,
+  Template,
+  TemplateFragment,
+  TemplateResult,
+  Updater,
+} from '../src/types.js';
 
 export class MockDirective implements Directive {
   [directiveTag](part: Part, _updater: Updater): MockBinding {
@@ -47,12 +54,18 @@ export class MockBinding implements Binding<MockDirective> {
 }
 
 export class MockComponent<TContext> implements Component<TContext> {
+  private _parent: Component<TContext> | null;
+
+  constructor(parent: Component<TContext> | null = null) {
+    this._parent = parent;
+  }
+
   get dirty(): boolean {
     return false;
   }
 
   get parent(): Component<TContext> | null {
-    return null;
+    return this._parent;
   }
 
   get priority(): TaskPriority {
@@ -69,4 +82,61 @@ export class MockComponent<TContext> implements Component<TContext> {
     _engine: RenderingEngine<TContext>,
     _updater: Updater<TContext>,
   ): void {}
+}
+
+export class MockTemplate<TData, TContext>
+  implements Template<TData, TContext>
+{
+  hydrate(
+    _data: TData,
+    _updater: Updater<TContext>,
+  ): MockTemplateFragment<TData, TContext> {
+    return new MockTemplateFragment();
+  }
+
+  isSameTemplate(other: Template<TData, TContext>): boolean {
+    return this === other;
+  }
+}
+
+export class MockTemplateFragment<TData, TContext>
+  implements TemplateFragment<TData, TContext>
+{
+  get startNode(): ChildNode | null {
+    return null;
+  }
+
+  get endNode(): ChildNode | null {
+    return null;
+  }
+
+  bind(_data: TData, _updater: Updater<TContext>): void {}
+
+  unbind(_updater: Updater): void {}
+
+  mount(_part: ChildNodePart): void {}
+
+  unmount(_part: ChildNodePart): void {}
+
+  disconnect(): void {}
+}
+
+export class MockTemplateResult<TData, TContext>
+  implements TemplateResult<TData, TContext>
+{
+  private _template: Template<TData, TContext>;
+
+  private _data: TData;
+
+  constructor(template: Template<TData, TContext>, data: TData) {
+    this._template = template;
+    this._data = data;
+  }
+
+  get template(): Template<TData, TContext> {
+    return this._template;
+  }
+  get data(): TData {
+    return this._data;
+  }
 }

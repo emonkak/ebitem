@@ -1,4 +1,8 @@
-export type Hook = EffectHook | MemoHook<any> | ReducerHook<any, any> | EndHook;
+export type Hook =
+  | EffectHook
+  | MemoHook<any>
+  | ReducerHook<any, any>
+  | FinilizerHook;
 
 export interface EffectHook {
   type: HookType.Effect;
@@ -18,8 +22,8 @@ export interface ReducerHook<TState, TAction> {
   state: TState;
 }
 
-export interface EndHook {
-  type: HookType.End;
+export interface FinilizerHook {
+  type: HookType.Finalizer;
 }
 
 export type Usable<TResult, TContext> =
@@ -50,7 +54,7 @@ export enum HookType {
   Effect,
   Memo,
   Reducer,
-  End,
+  Finalizer,
 }
 
 export function ensureHookType<TExpectedHook extends Hook>(
