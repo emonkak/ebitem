@@ -75,7 +75,7 @@ export class Context {
   }
 
   getContextValue<T>(key: PropertyKey): T | undefined {
-    return this._engine.getVariable(key, this._component) as T | undefined;
+    return this._engine.getVariable(this._component, key) as T | undefined;
   }
 
   html(
@@ -94,7 +94,7 @@ export class Context {
   }
 
   setContextValue(key: PropertyKey, value: unknown): void {
-    this._engine.setVariable(key, value, this._component);
+    this._engine.setVariable(this._component, key, value);
   }
 
   svg(

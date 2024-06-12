@@ -65,7 +65,7 @@ export class Engine implements RenderingEngine<Context> {
     return template;
   }
 
-  getVariable(key: PropertyKey, component: Component<Context>): unknown {
+  getVariable(component: Component<Context>, key: PropertyKey): unknown {
     let current: Component<Context> | null = component;
     do {
       const value = this._namespaces.get(current)?.[key];
@@ -90,9 +90,9 @@ export class Engine implements RenderingEngine<Context> {
   }
 
   setVariable(
+    component: Component<Context>,
     key: PropertyKey,
     value: unknown,
-    component: Component<Context>,
   ): void {
     const variables = this._namespaces.get(component);
     if (variables !== undefined) {

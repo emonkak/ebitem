@@ -12,7 +12,7 @@ export interface RenderingEngine<TContext> {
     tokens: ReadonlyArray<string>,
     data: unknown[],
   ): Template<unknown[], TContext>;
-  getVariable(key: PropertyKey, component: Component<TContext>): unknown;
+  getVariable(component: Component<TContext>, key: PropertyKey): unknown;
   renderBlock<TProps, TData>(
     block: Block<TProps, TData, TContext>,
     props: TProps,
@@ -21,9 +21,9 @@ export interface RenderingEngine<TContext> {
     updater: Updater<TContext>,
   ): TemplateResult<TData, TContext>;
   setVariable(
+    component: Component<TContext>,
     key: PropertyKey,
     value: unknown,
-    component: Component<TContext>,
   ): void;
 }
 
