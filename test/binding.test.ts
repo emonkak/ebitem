@@ -1057,7 +1057,29 @@ describe('SpreadBinding', () => {
       );
     });
 
-    it('should skip bindings that are passed the same value as last time', () => {
+    it('should not update any binding if the new and old properities are the same', () => {
+      const props = {
+        class: 'foo',
+        title: 'bar',
+      };
+      const element = document.createElement('div');
+      const part = {
+        type: PartType.Element,
+        node: element,
+      } as const;
+      const binding = new SpreadBinding(props, part);
+      const updater = new SyncUpdater(new Engine());
+
+      binding.rebind(updater);
+      updater.flush();
+
+      binding.bind(props, updater);
+      updater.flush();
+
+      expect(updater.isScheduled()).toBe(false);
+    });
+
+    it('should skip properties that are passed the same value as last time', () => {
       const props = {
         class: 'foo',
         title: 'bar',

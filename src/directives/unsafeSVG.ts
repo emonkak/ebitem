@@ -100,7 +100,7 @@ export class UnsafeSVGBinding implements Binding<UnsafeSVGDirective> {
       template.innerHTML = '<svg>' + unsafeContent + '</svg>';
 
       const fragment = template.content;
-      this._childNodes = [...(fragment.firstChild?.childNodes ?? [])];
+      this._childNodes = [...fragment.firstChild!.childNodes];
 
       const reference = this._part.node;
       reference.before(...this._childNodes);

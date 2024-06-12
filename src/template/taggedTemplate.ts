@@ -75,7 +75,7 @@ export class TaggedTemplate implements Template<unknown[]> {
     const template = document.createElement('template');
     template.innerHTML = '<svg>' + tokens.join(marker).trim() + '</svg>';
     template.content.replaceChildren(
-      ...(template.content.firstChild?.childNodes ?? []),
+      ...template.content.firstChild!.childNodes,
     );
     const holes = parseChildren(template.content, marker);
     return new TaggedTemplate(template, holes);
