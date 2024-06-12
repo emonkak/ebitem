@@ -117,7 +117,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
     do {
       for (let i = 0, l = pendingComponents.length; i < l; i++) {
         const component = pendingComponents[i]!;
-        if (!shouldUpdate(component)) {
+        if (!component.shouldUpdate()) {
           continue;
         }
 
@@ -299,13 +299,13 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
         this._pendingComponents = [];
 
         for (let i = 0, l = pendingComponents.length; i < l; i++) {
-          const pendingComponent = pendingComponents[i]!;
-          if (!shouldUpdate(pendingComponent)) {
+          const component = pendingComponents[i]!;
+          if (!component.shouldUpdate()) {
             continue;
           }
-          this._currentComponent = pendingComponent;
+          this._currentComponent = component;
           try {
-            pendingComponent.update(this._engine, this);
+            component.update(this._engine, this);
           } finally {
             this._currentComponent = null;
           }
@@ -370,17 +370,4 @@ function isContinuousEvent(event: Event): boolean {
     default:
       return false;
   }
-}
-
-function shouldUpdate<TContext>(component: Component<TContext>): boolean {
-  if (!component.dirty) {
-    return false;
-  }
-  let parent: Component<TContext> | null = component;
-  while ((parent = parent.parent) !== null) {
-    if (parent.dirty) {
-      return false;
-    }
-  }
-  return true;
 }

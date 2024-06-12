@@ -112,6 +112,19 @@ export class TemplateBinding<TData, TContext>
     return !!(this._flags & FLAG_UPDATING || this._flags & FLAG_UNMOUNTING);
   }
 
+  shouldUpdate(): boolean {
+    if (!this.dirty) {
+      return false;
+    }
+    let current: Component<TContext> | null = this;
+    while ((current = current.parent) !== null) {
+      if (current.dirty) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   update(_engine: RenderingEngine<TContext>, updater: Updater<TContext>): void {
     if (!(this._flags & FLAG_UPDATING)) {
       return;

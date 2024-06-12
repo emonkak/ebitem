@@ -129,6 +129,19 @@ export class BlockBinding<TProps, TData, TContext>
     return this._directive;
   }
 
+  shouldUpdate(): boolean {
+    if (!this.dirty) {
+      return false;
+    }
+    let current: Component<TContext> | null = this;
+    while ((current = current.parent) !== null) {
+      if (current.dirty) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   update(engine: RenderingEngine<TContext>, updater: Updater<TContext>): void {
     if (!(this._flags & FLAG_UPDATING)) {
       return;

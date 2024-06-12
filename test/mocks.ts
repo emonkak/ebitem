@@ -59,6 +59,10 @@ export class MockComponent<TContext> implements Component<TContext> {
     return 'user-visible';
   }
 
+  shouldUpdate(): boolean {
+    return true;
+  }
+
   requestUpdate(_priority: TaskPriority, _updater: Updater<TContext>): void {}
 
   update(

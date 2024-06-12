@@ -44,6 +44,7 @@ export interface Component<TContext = unknown> {
   get dirty(): boolean;
   get parent(): Component<TContext> | null;
   get priority(): TaskPriority;
+  shouldUpdate(): boolean;
   update(engine: RenderingEngine<TContext>, updater: Updater<TContext>): void;
   requestUpdate(priority: TaskPriority, updater: Updater<TContext>): void;
 }
