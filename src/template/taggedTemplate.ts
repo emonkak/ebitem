@@ -1,6 +1,12 @@
-import { Binding, resolveBinding } from '../binding.js';
-import { ChildNodePart, Part, PartType } from '../part.js';
-import type { Template, TemplateFragment, Updater } from '../types.js';
+import { type Binding, resolveBinding } from '../binding.js';
+import {
+  type ChildNodePart,
+  type Part,
+  PartType,
+  type Template,
+  type TemplateFragment,
+  type Updater,
+} from '../types.js';
 
 export type Hole =
   | AttributeHole

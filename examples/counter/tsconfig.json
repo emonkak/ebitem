@@ -3,8 +3,5 @@
   "compilerOptions": {
     "outDir": "."
   },
-  "files": [
-    "index.ts"
-  ]
+  "files": ["index.ts"]
 }
-

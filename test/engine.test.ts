@@ -2,8 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { Context } from '../src/context.js';
 import { Engine } from '../src/engine.js';
-import { Hook, HookType } from '../src/hook.js';
-import { PartType } from '../src/part.js';
+import { type Hook, HookType, PartType } from '../src/types.js';
 import { SyncUpdater } from '../src/updater.js';
 import { MockComponent, MockTemplate, MockTemplateResult } from './mocks.js';
 

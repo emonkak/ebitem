@@ -1,6 +1,11 @@
-import { Binding, resolveBinding } from '../binding.js';
-import { ChildNodePart, PartType } from '../part.js';
-import { Template, TemplateFragment, Updater } from '../types.js';
+import { type Binding, resolveBinding } from '../binding.js';
+import {
+  type ChildNodePart,
+  PartType,
+  type Template,
+  type TemplateFragment,
+  type Updater,
+} from '../types.js';
 
 export class ChildNodeTemplate<T> implements Template<T> {
   static instance: ChildNodeTemplate<any> = new ChildNodeTemplate<any>();

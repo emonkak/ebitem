@@ -1,10 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { NodeBinding, directiveTag } from '../src/binding.js';
-import { Context } from '../src/context.js';
+import { Context, usableTag } from '../src/context.js';
 import { Engine } from '../src/engine.js';
-import { Hook, usableTag } from '../src/hook.js';
-import { PartType } from '../src/part.js';
 import {
   AtomSignal,
   ComputedSignal,
@@ -12,6 +10,7 @@ import {
   ScannedSignal,
   SignalBinding,
 } from '../src/signal.js';
+import { type Hook, PartType } from '../src/types.js';
 import { SyncUpdater } from '../src/updater.js';
 import { MockComponent } from './mocks.js';
 

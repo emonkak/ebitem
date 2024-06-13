@@ -1,14 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Context } from '../src/context.js';
+import { Context, usableTag } from '../src/context.js';
 import { Engine } from '../src/engine.js';
-import { Hook, usableTag } from '../src/hook.js';
 import { ElementTemplate } from '../src/template/elementTemplate.js';
 import { TaggedTemplate } from '../src/template/taggedTemplate.js';
 import {
   ChildNodeTemplate,
   TextTemplate,
 } from '../src/template/valueTemplate.js';
+import type { Hook } from '../src/types.js';
 import { SyncUpdater } from '../src/updater.js';
 import { MockComponent } from './mocks.js';
 

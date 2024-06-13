@@ -9,14 +9,13 @@ import {
   directiveTag,
 } from '../../src/binding.js';
 import { Engine } from '../../src/engine.js';
-import { Part, PartType } from '../../src/part.js';
 import {
   TaggedTemplate,
   TaggedTemplateFragment,
   getMarker,
   isValidMarker,
 } from '../../src/template/taggedTemplate.js';
-import { Template } from '../../src/types.js';
+import { type Part, PartType, type Template } from '../../src/types.js';
 import { SyncUpdater } from '../../src/updater.js';
 import { MockBinding, MockDirective } from '../mocks.js';
 

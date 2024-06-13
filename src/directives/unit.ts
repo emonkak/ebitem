@@ -1,11 +1,10 @@
 import {
-  Binding,
-  Directive,
+  type Binding,
+  type Directive,
   directiveTag,
   ensureDirective,
 } from '../binding.js';
-import type { Part } from '../part.js';
-import type { Updater } from '../types.js';
+import type { Part, Updater } from '../types.js';
 
 export class UnitDirective implements Directive {
   static instance: UnitDirective = new UnitDirective();

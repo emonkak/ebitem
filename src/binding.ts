@@ -1,12 +1,13 @@
 import {
-  AttributePart,
-  ElementPart,
-  EventPart,
-  Part,
+  type AttributePart,
+  type Effect,
+  type ElementPart,
+  type EventPart,
+  type Part,
   PartType,
-  PropertyPart,
-} from './part.js';
-import type { Effect, Updater } from './types.js';
+  type PropertyPart,
+  type Updater,
+} from './types.js';
 
 export interface Binding<TValue, TContext = unknown> {
   get part(): Part;

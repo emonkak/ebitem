@@ -1,11 +1,16 @@
 import {
-  Binding,
-  Directive,
+  type Binding,
+  type Directive,
   directiveTag,
   ensureDirective,
 } from '../binding.js';
-import { AttributePart, Part, PartType } from '../part.js';
-import type { Effect, Updater } from '../types.js';
+import {
+  type AttributePart,
+  type Effect,
+  type Part,
+  PartType,
+  type Updater,
+} from '../types.js';
 import { shallowEqual } from '../utils.js';
 
 export type ClassMap = { [key: string]: boolean };
@@ -67,9 +72,8 @@ export class ClassMapBinding implements Effect, Binding<ClassMapDirective> {
     DEBUG: {
       ensureDirective(ClassMapDirective, newValue);
     }
-    const oldClassMap = this._directive.classMap;
-    const newClassMap = newValue.classMap;
-    if (!shallowEqual(oldClassMap, newClassMap)) {
+    const oldValue = this._directive;
+    if (!shallowEqual(oldValue.classMap, newValue.classMap)) {
       this._directive = newValue;
       this.rebind(updater);
     }

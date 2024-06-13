@@ -1,15 +1,13 @@
 import {
-  Binding,
-  Directive,
+  type Binding,
+  type Directive,
   directiveTag,
   ensureDirective,
   resolveBinding,
 } from './binding.js';
-import { Context } from './context.js';
-import { UsableObject, usableTag } from './hook.js';
+import { type Context, type UsableObject, usableTag } from './context.js';
 import { LinkedList } from './linkedList.js';
-import type { Part } from './part.js';
-import type { Updater } from './types.js';
+import type { Part, Updater } from './types.js';
 
 export type Subscriber = () => void;
 

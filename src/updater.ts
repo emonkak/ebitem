@@ -1,10 +1,12 @@
-import {
-  Scheduler,
-  TaskPriority,
-  createDefaultScheduler,
-} from './scheduler.js';
+import { type Scheduler, createDefaultScheduler } from './scheduler.js';
 import { AtomSignal } from './signal.js';
-import { Component, Effect, RenderingEngine, Updater } from './types.js';
+import type {
+  Component,
+  Effect,
+  RenderingEngine,
+  TaskPriority,
+  Updater,
+} from './types.js';
 
 export interface ConcurrentUpdaterOptions {
   scheduler?: Scheduler;

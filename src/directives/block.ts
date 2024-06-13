@@ -1,20 +1,24 @@
 import {
-  Binding,
-  Directive,
+  type Binding,
+  type Directive,
   directiveTag,
   ensureDirective,
 } from '../binding.js';
-import { Hook, HookType } from '../hook.js';
-import { ChildNodePart, Part, PartType } from '../part.js';
-import { TaskPriority, comparePriorities } from '../scheduler.js';
-import type {
-  Block,
-  Component,
-  Effect,
-  RenderingEngine,
-  Template,
-  TemplateFragment,
-  Updater,
+import { comparePriorities } from '../scheduler.js';
+import {
+  type Block,
+  type ChildNodePart,
+  type Component,
+  type Effect,
+  type Hook,
+  HookType,
+  type Part,
+  PartType,
+  type RenderingEngine,
+  type TaskPriority,
+  type Template,
+  type TemplateFragment,
+  type Updater,
 } from '../types.js';
 
 const FLAG_NONE = 0;

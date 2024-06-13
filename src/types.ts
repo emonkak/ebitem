@@ -1,7 +1,3 @@
-import type { Hook } from './hook.js';
-import type { ChildNodePart } from './part.js';
-import type { TaskPriority } from './scheduler.js';
-
 export interface RenderingEngine<TContext> {
   flushEffects(effects: Effect[], mode: EffectMode): void;
   getHTMLTemplate(
@@ -82,3 +78,103 @@ export interface Effect {
 }
 
 export type EffectMode = 'mutation' | 'layout' | 'passive';
+
+export type Part =
+  | AttributePart
+  | ChildNodePart
+  | ElementPart
+  | EventPart
+  | NodePart
+  | PropertyPart;
+
+export enum PartType {
+  Attribute,
+  ChildNode,
+  Element,
+  Event,
+  Node,
+  Property,
+}
+
+export interface AttributePart {
+  type: PartType.Attribute;
+  node: Element;
+  name: string;
+}
+
+export interface ChildNodePart {
+  type: PartType.ChildNode;
+  node: ChildNode;
+}
+
+export interface ElementPart {
+  type: PartType.Element;
+  node: Element;
+}
+
+export interface EventPart {
+  type: PartType.Event;
+  node: Element;
+  name: string;
+}
+
+export interface PropertyPart {
+  type: PartType.Property;
+  node: Element;
+  name: string;
+}
+
+export interface NodePart {
+  type: PartType.Node;
+  node: ChildNode;
+}
+
+export type Hook =
+  | EffectHook
+  | MemoHook<any>
+  | ReducerHook<any, any>
+  | FinilizerHook;
+
+export enum HookType {
+  Effect,
+  Memo,
+  Reducer,
+  Finalizer,
+}
+
+export interface EffectHook {
+  type: HookType.Effect;
+  cleanup: Cleanup | void;
+  dependencies: unknown[] | undefined;
+}
+
+export interface MemoHook<TResult> {
+  type: HookType.Memo;
+  value: TResult;
+  dependencies: unknown[] | undefined;
+}
+
+export interface ReducerHook<TState, TAction> {
+  type: HookType.Reducer;
+  dispatch: (action: TAction) => void;
+  state: TState;
+}
+
+export interface FinilizerHook {
+  type: HookType.Finalizer;
+}
+
+export type Cleanup = () => void;
+
+export type EffectCallback = () => Cleanup | void;
+
+export type Ref<T> = RefCallback<T> | RefObject<T>;
+
+export type RefCallback<T> = (value: T) => void;
+
+export interface RefObject<T> {
+  current: T;
+}
+
+// Reexport TaskPriority in Scheduler API.
+export type TaskPriority = 'user-blocking' | 'user-visible' | 'background';

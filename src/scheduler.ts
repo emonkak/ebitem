@@ -1,3 +1,5 @@
+import type { TaskPriority } from './types.js';
+
 export interface Scheduler {
   getCurrentTime(): number;
   requestCallback<T>(
@@ -15,9 +17,6 @@ export interface RequestCallbackOptions {
 export interface YieldToMainOptions {
   priority: TaskPriority | 'inherit';
 }
-
-// Reexport TaskPriority in Scheduler API.
-export type TaskPriority = 'user-blocking' | 'user-visible' | 'background';
 
 const FRAME_YIELD_INTERVAL = 5;
 const CONTINUOUS_INPUT_INTERVAL = 50;

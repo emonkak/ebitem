@@ -8,33 +8,16 @@ export {
 export {
   type InitialState,
   type NewState,
+  type Usable,
+  type UsableCallback,
+  type UsableObject,
   Context,
+  usableTag,
 } from './context.js';
 export {
   type Variables,
   Engine,
 } from './engine.js';
-export {
-  type Cleanup,
-  type EffectCallback,
-  type Ref,
-  type RefCallback,
-  type RefObject,
-  type Usable,
-  type UsableCallback,
-  type UsableObject,
-  usableTag,
-} from './hook.js';
-export {
-  type Part,
-  type AttributePart,
-  type PropertyPart,
-  type NodePart,
-  type ChildNodePart,
-  type EventPart,
-  type ElementPart,
-  PartType,
-} from './part.js';
 export {
   type Scheduler,
   createDefaultScheduler,
@@ -53,11 +36,24 @@ export {
   ConcurrentUpdater,
   SyncUpdater,
 } from './updater.js';
-export type {
-  Component,
-  RenderingEngine,
-  Effect,
-  Template,
-  TemplateFragment,
-  Updater,
+export {
+  type AttributePart,
+  type ChildNodePart,
+  type Cleanup,
+  type Component,
+  type Effect,
+  type EffectCallback,
+  type ElementPart,
+  type EventPart,
+  type NodePart,
+  type Part,
+  type PropertyPart,
+  type Ref,
+  type RefCallback,
+  type RefObject,
+  type RenderingEngine,
+  type Template,
+  type TemplateFragment,
+  type Updater,
+  PartType,
 } from './types.js';

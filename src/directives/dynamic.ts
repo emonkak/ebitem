@@ -1,14 +1,13 @@
 import {
-  Binding,
-  Directive,
+  type Binding,
+  type Directive,
   directiveTag,
   ensureDirective,
   isDirective,
   resolveBinding,
   resolvePrimitiveBinding,
 } from '../binding.js';
-import type { Part } from '../part.js';
-import type { Updater } from '../types.js';
+import type { Part, Updater } from '../types.js';
 
 export function dynamic(value: unknown): DynamicDirective {
   return new DynamicDirective(value);

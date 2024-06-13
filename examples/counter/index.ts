@@ -1,6 +1,11 @@
-import { ConcurrentUpdater, Context, Engine, mountValue } from '@emonkak/ebit';
 import {
-  TemplateDirective,
+  ConcurrentUpdater,
+  type Context,
+  Engine,
+  mountValue,
+} from '@emonkak/ebit';
+import {
+  type TemplateDirective,
   block,
   choice,
   classMap,
@@ -13,7 +18,7 @@ import {
   unsafeSVG,
   when,
 } from '@emonkak/ebit/directives.js';
-import { AtomSignal, Signal } from '@emonkak/ebit/signal.js';
+import { AtomSignal, type Signal } from '@emonkak/ebit/signal.js';
 
 const counterSignal = new AtomSignal(0);
 

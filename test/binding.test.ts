@@ -12,7 +12,7 @@ import {
   resolveBinding,
 } from '../src/binding.js';
 import { Engine } from '../src/engine.js';
-import { Part, PartType } from '../src/part.js';
+import { type Part, PartType } from '../src/types.js';
 import { SyncUpdater } from '../src/updater.js';
 import { MockBinding, MockDirective } from './mocks.js';
 

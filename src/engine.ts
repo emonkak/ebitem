@@ -1,11 +1,11 @@
 import { Context } from './context.js';
-import type { Hook } from './hook.js';
 import { TaggedTemplate, getMarker } from './template/taggedTemplate.js';
 import type {
   Block,
   Component,
   Effect,
   EffectMode,
+  Hook,
   RenderingEngine,
   TemplateResult,
   Updater,

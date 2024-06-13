@@ -1,9 +1,10 @@
-import { Binding, Directive, directiveTag } from '../src/binding.js';
-import { ChildNodePart, Part } from '../src/part.js';
-import { TaskPriority } from '../src/scheduler.js';
+import { type Binding, type Directive, directiveTag } from '../src/binding.js';
 import type {
+  ChildNodePart,
   Component,
+  Part,
   RenderingEngine,
+  TaskPriority,
   Template,
   TemplateFragment,
   TemplateResult,

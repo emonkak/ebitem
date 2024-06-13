@@ -1,6 +1,11 @@
-import { Binding, resolveBinding } from '../binding.js';
-import { ChildNodePart, PartType } from '../part.js';
-import type { Template, TemplateFragment, Updater } from '../types.js';
+import { type Binding, resolveBinding } from '../binding.js';
+import {
+  type ChildNodePart,
+  PartType,
+  type Template,
+  type TemplateFragment,
+  type Updater,
+} from '../types.js';
 
 export interface ElementData<TElementValue, TChildNodeValue> {
   elementValue: TElementValue;

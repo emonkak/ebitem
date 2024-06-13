@@ -1,21 +1,21 @@
 import { TemplateDirective } from './directives/template.js';
 import {
-  Cleanup,
-  EffectCallback,
-  EffectHook,
-  FinilizerHook,
-  Hook,
-  HookType,
-  MemoHook,
-  ReducerHook,
-  RefObject,
-  Usable,
-  ensureHookType,
-  usableTag,
-} from './hook.js';
-import type { TaskPriority } from './scheduler.js';
-import { ElementData, ElementTemplate } from './template/elementTemplate.js';
+  type ElementData,
+  ElementTemplate,
+} from './template/elementTemplate.js';
 import { ChildNodeTemplate, TextTemplate } from './template/valueTemplate.js';
+import {
+  type Cleanup,
+  type EffectCallback,
+  type EffectHook,
+  type FinilizerHook,
+  type Hook,
+  HookType,
+  type MemoHook,
+  type ReducerHook,
+  type RefObject,
+  type TaskPriority,
+} from './types.js';
 import type { Component, Effect, RenderingEngine, Updater } from './types.js';
 import { dependenciesAreChanged } from './utils.js';
 
@@ -26,6 +26,18 @@ export type InitialState<TState> = TState extends Function
 export type NewState<TState> = TState extends Function
   ? (prevState: TState) => TState
   : ((prevState: TState) => TState) | TState;
+
+export type Usable<TResult, TContext> =
+  | UsableCallback<TResult, TContext>
+  | UsableObject<TResult, TContext>;
+
+export type UsableCallback<TResult, TContext> = (context: TContext) => TResult;
+
+export interface UsableObject<TResult, TContext> {
+  [usableTag](context: TContext): TResult;
+}
+
+export const usableTag = Symbol('Usable');
 
 export class Context {
   private readonly _hooks: Hook[];
@@ -324,5 +336,16 @@ class InvokeEffectHook implements Effect {
     const callback = this._callback;
 
     this._hook.cleanup = callback();
+  }
+}
+
+export function ensureHookType<TExpectedHook extends Hook>(
+  expectedType: TExpectedHook['type'],
+  hook: Hook,
+): asserts hook is TExpectedHook {
+  if (hook.type !== expectedType) {
+    throw new Error(
+      `Unexpected hook type. Expected "${expectedType}" but got "${hook.type}".`,
+    );
   }
 }
