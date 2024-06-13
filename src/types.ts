@@ -88,12 +88,12 @@ export type Part =
   | PropertyPart;
 
 export enum PartType {
-  Attribute,
-  ChildNode,
-  Element,
-  Event,
-  Node,
-  Property,
+  Attribute = 0,
+  ChildNode = 1,
+  Element = 2,
+  Event = 3,
+  Node = 4,
+  Property = 5,
 }
 
 export interface AttributePart {
@@ -136,10 +136,10 @@ export type Hook =
   | FinilizerHook;
 
 export enum HookType {
-  Effect,
-  Memo,
-  Reducer,
-  Finalizer,
+  Effect = 0,
+  Memo = 1,
+  Reducer = 2,
+  Finalizer = 3,
 }
 
 export interface EffectHook {

@@ -13,15 +13,15 @@ export function dependenciesAreChanged(
 }
 
 export function shallowEqual(
-  first: { [key: string]: unknown },
-  second: { [key: string]: unknown },
+  firstProps: { [key: string]: unknown },
+  secondProps: { [key: string]: unknown },
 ): boolean {
-  if (first === second) {
+  if (firstProps === secondProps) {
     return true;
   }
 
-  const firstKeys = Object.keys(first);
-  const secondKeys = Object.keys(second);
+  const firstKeys = Object.keys(firstProps);
+  const secondKeys = Object.keys(secondProps);
 
   if (firstKeys.length !== secondKeys.length) {
     return false;
@@ -29,7 +29,10 @@ export function shallowEqual(
 
   for (let i = 0, l = firstKeys.length; i < l; i++) {
     const key = firstKeys[i]!;
-    if (!Object.hasOwn(second, key) || first[key] !== second[key]!) {
+    if (
+      !Object.hasOwn(secondProps, key) ||
+      firstProps[key] !== secondProps[key]!
+    ) {
       return false;
     }
   }

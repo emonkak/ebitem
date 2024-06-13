@@ -43,8 +43,9 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
   }
 
   getCurrentPriority(): TaskPriority {
-    if (window.event !== undefined) {
-      return isContinuousEvent(window.event) ? 'user-visible' : 'user-blocking';
+    const currentEvent = window.event;
+    if (currentEvent !== undefined) {
+      return isContinuousEvent(currentEvent) ? 'user-visible' : 'user-blocking';
     } else {
       return 'user-visible';
     }

@@ -76,6 +76,9 @@ export class Context {
     return new TemplateDirective(template, { elementValue, childNodeValue });
   }
 
+  /**
+   * @internal
+   */
   finalize(): void {
     const currentHook = this._hooks[this._hookIndex];
 
@@ -138,11 +141,10 @@ export class Context {
   useDeferredValue<TValue>(value: TValue, initialValue?: TValue): TValue {
     const [deferredValue, setDeferredValue] = this.useState<TValue>(
       (() => initialValue ?? value) as InitialState<TValue>,
-      'background',
     );
 
     this.useEffect(() => {
-      setDeferredValue((() => value) as NewState<TValue>);
+      setDeferredValue((() => value) as NewState<TValue>, 'background');
     }, [value]);
 
     return deferredValue;
@@ -176,15 +178,12 @@ export class Context {
 
   useEvent<THandler extends (...args: any[]) => any>(
     handler: THandler,
-  ): (
-    this: ThisType<THandler>,
-    ...args: Parameters<THandler>
-  ) => ReturnType<THandler> {
+  ): (...args: Parameters<THandler>) => ReturnType<THandler> {
     const handlerRef = this.useRef<THandler | null>(null);
 
     this.useLayoutEffect(() => {
       handlerRef.current = handler;
-    });
+    }, [handler]);
 
     return this.useCallback(function (
       this: ThisType<THandler>,
@@ -248,8 +247,7 @@ export class Context {
   useReducer<TState, TAction>(
     reducer: (state: TState, action: TAction) => TState,
     initialState: InitialState<TState>,
-    priority?: TaskPriority,
-  ): [TState, (action: TAction) => void] {
+  ): [TState, (action: TAction, priority?: TaskPriority) => void] {
     let currentHook = this._hooks[this._hookIndex];
 
     if (currentHook !== undefined) {
@@ -262,7 +260,7 @@ export class Context {
         type: HookType.Reducer,
         state:
           typeof initialState === 'function' ? initialState() : initialState,
-        dispatch: (action: TAction) => {
+        dispatch: (action: TAction, priority?: TaskPriority) => {
           const nextState = reducer(hook.state, action);
           if (!Object.is(hook.state, nextState)) {
             hook.state = nextState;
@@ -288,13 +286,11 @@ export class Context {
 
   useState<TState>(
     initialState: InitialState<TState>,
-    priority?: TaskPriority,
-  ): [TState, (newState: NewState<TState>) => void] {
+  ): [TState, (newState: NewState<TState>, priority?: TaskPriority) => void] {
     return this.useReducer(
       (state, action) =>
         typeof action === 'function' ? action(state) : action,
       initialState,
-      priority,
     );
   }
 

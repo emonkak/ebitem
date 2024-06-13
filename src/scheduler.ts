@@ -57,7 +57,7 @@ export function createDefaultScheduler(): Scheduler {
     };
   }
 
-  if (typeof globalThis.navigator?.scheduling.isInputPending === 'function') {
+  if (typeof globalThis.navigator?.scheduling?.isInputPending === 'function') {
     shouldYieldToMain = (elapsedTime) => {
       if (elapsedTime < FRAME_YIELD_INTERVAL) {
         return false;
