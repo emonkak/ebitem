@@ -20,6 +20,8 @@ import {
 import type { Component, Effect, Updater } from './types.js';
 import { dependenciesAreChanged } from './utils.js';
 
+export const usableTag = Symbol('Usable');
+
 export type InitialState<TState> = TState extends Function
   ? () => TState
   : (() => TState) | TState;
@@ -37,8 +39,6 @@ export type UsableCallback<TResult, TContext> = (context: TContext) => TResult;
 export interface UsableObject<TResult, TContext> {
   [usableTag](context: TContext): TResult;
 }
-
-export const usableTag = Symbol('Usable');
 
 export class RenderingContext {
   private readonly _hooks: Hook[];

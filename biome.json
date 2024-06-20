@@ -1,6 +1,6 @@
 {
   "files": {
-    "ignore": ["node_modules"]
+    "ignore": ["coverage", "lib", "node_modules"]
   },
   "javascript": {
     "formatter": {
@@ -12,16 +12,36 @@
   },
   "linter": {
     "rules": {
+      "complexity": {
+        "noBannedTypes": "off"
+      },
       "correctness": {
         "noUnusedLabels": "off"
       },
       "style": {
         "noNonNullAssertion": "off",
-        "useEnumInitializers": "off"
+        "noUselessElse": "off",
+        "useEnumInitializers": "off",
+        "useTemplate": "off"
       },
       "suspicious": {
-        "noAssignInExpressions": "off"
+        "noAssignInExpressions": "off",
+        "noConfusingLabels": "off",
+        "noConfusingVoidType": "off",
+        "noExplicitAny": "off"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "include": ["**/*.d.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noVar": "off"
+          }
+        }
+      }
+    }
+  ]
 }

@@ -96,8 +96,8 @@ describe('requestCallback()', () => {
       const scheduler = createDefaultScheduler();
       scheduler.requestCallback(callback, {
         priority: 'user-blocking',
-      }),
-        expect(queueMicrotaskSpy).toHaveBeenCalledOnce();
+      });
+      expect(queueMicrotaskSpy).toHaveBeenCalledOnce();
       expect(queueMicrotaskSpy).toHaveBeenCalledWith(callback);
     });
   });

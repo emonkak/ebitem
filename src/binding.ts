@@ -9,6 +9,8 @@ import {
   type Updater,
 } from './types.js';
 
+export const directiveTag = Symbol('Directive');
+
 export interface Binding<TValue, TContext = unknown> {
   get part(): Part;
   get startNode(): ChildNode;
@@ -26,8 +28,6 @@ export interface Directive<TContext = unknown> {
     updater: Updater<TContext>,
   ): Binding<ThisType<this>>;
 }
-
-export const directiveTag = Symbol('Directive');
 
 export class AttributeBinding implements Binding<unknown>, Effect {
   private _value: unknown;

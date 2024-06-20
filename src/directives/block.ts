@@ -173,12 +173,13 @@ export class BlockBinding<TProps, TData, TContext>
         // We need to mount child nodes before hydration.
         this._requestMutation(updater);
 
-        let nextFragment;
+        let nextFragment: TemplateFragment<TData, TContext>;
 
         if (this._cachedFragments !== null) {
-          nextFragment = this._cachedFragments.get(template);
-          if (nextFragment !== undefined) {
-            nextFragment.bind(data, updater);
+          const cachedFragment = this._cachedFragments.get(template);
+          if (cachedFragment !== undefined) {
+            cachedFragment.bind(data, updater);
+            nextFragment = cachedFragment;
           } else {
             nextFragment = template.hydrate(data, updater);
           }
