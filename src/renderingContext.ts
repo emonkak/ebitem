@@ -1,4 +1,5 @@
 import { TemplateDirective } from './directives/template.js';
+import type { RenderingEngine } from './renderingEngine.js';
 import {
   type ElementData,
   ElementTemplate,
@@ -16,7 +17,7 @@ import {
   type RefObject,
   type TaskPriority,
 } from './types.js';
-import type { Component, Effect, RenderingEngine, Updater } from './types.js';
+import type { Component, Effect, Updater } from './types.js';
 import { dependenciesAreChanged } from './utils.js';
 
 export type InitialState<TState> = TState extends Function
@@ -39,22 +40,22 @@ export interface UsableObject<TResult, TContext> {
 
 export const usableTag = Symbol('Usable');
 
-export class Context {
+export class RenderingContext {
   private readonly _hooks: Hook[];
 
-  private readonly _component: Component<Context>;
+  private readonly _component: Component<RenderingContext>;
 
-  private readonly _engine: RenderingEngine<Context>;
+  private readonly _engine: RenderingEngine;
 
-  private readonly _updater: Updater<Context>;
+  private readonly _updater: Updater<RenderingContext>;
 
   private _hookIndex = 0;
 
   constructor(
     hooks: Hook[],
-    component: Component<Context>,
-    engine: RenderingEngine<Context>,
-    updater: Updater<Context>,
+    component: Component<RenderingContext>,
+    engine: RenderingEngine,
+    updater: Updater<RenderingContext>,
   ) {
     this._hooks = hooks;
     this._component = component;
@@ -62,7 +63,7 @@ export class Context {
     this._updater = updater;
   }
 
-  childNode<T>(value: T): TemplateDirective<T, Context> {
+  childNode<T>(value: T): TemplateDirective<T, RenderingContext> {
     const template = ChildNodeTemplate.instance;
     return new TemplateDirective(template, value);
   }
@@ -71,7 +72,10 @@ export class Context {
     type: string,
     elementValue: TElementValue,
     childNodeValue: TChildNodeValue,
-  ): TemplateDirective<ElementData<TElementValue, TChildNodeValue>, Context> {
+  ): TemplateDirective<
+    ElementData<TElementValue, TChildNodeValue>,
+    RenderingContext
+  > {
     const template = new ElementTemplate<TElementValue, TChildNodeValue>(type);
     return new TemplateDirective(template, { elementValue, childNodeValue });
   }
@@ -96,7 +100,7 @@ export class Context {
   html(
     tokens: ReadonlyArray<string>,
     ...data: unknown[]
-  ): TemplateDirective<unknown[], Context> {
+  ): TemplateDirective<unknown[], RenderingContext> {
     const template = this._engine.getHTMLTemplate(tokens, data);
     return new TemplateDirective(template, data);
   }
@@ -115,17 +119,17 @@ export class Context {
   svg(
     tokens: ReadonlyArray<string>,
     ...data: unknown[]
-  ): TemplateDirective<unknown[], Context> {
+  ): TemplateDirective<unknown[], RenderingContext> {
     const template = this._engine.getSVGTemplate(tokens, data);
     return new TemplateDirective(template, data);
   }
 
-  text<T>(value: T): TemplateDirective<T, Context> {
+  text<T>(value: T): TemplateDirective<T, RenderingContext> {
     const template = TextTemplate.instance;
     return new TemplateDirective(template, value);
   }
 
-  use<TResult>(usable: Usable<TResult, Context>): TResult {
+  use<TResult>(usable: Usable<TResult, RenderingContext>): TResult {
     return typeof usable === 'function'
       ? usable(this)
       : usable[usableTag](this);
@@ -335,7 +339,7 @@ class InvokeEffectHook implements Effect {
   }
 }
 
-export function ensureHookType<TExpectedHook extends Hook>(
+function ensureHookType<TExpectedHook extends Hook>(
   expectedType: TExpectedHook['type'],
   hook: Hook,
 ): asserts hook is TExpectedHook {

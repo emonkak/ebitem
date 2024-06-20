@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { NodeBinding, directiveTag } from '../src/binding.js';
-import { Context, usableTag } from '../src/context.js';
-import { Engine } from '../src/engine.js';
+import { RenderingContext, usableTag } from '../src/renderingContext.js';
+import { RenderingEngine } from '../src/renderingEngine.js';
 import {
   AtomSignal,
   ComputedSignal,
@@ -22,7 +22,7 @@ describe('SignalBinding', () => {
         type: PartType.Node,
         node: document.createTextNode(''),
       } as const;
-      const updater = new SyncUpdater(new Engine());
+      const updater = new SyncUpdater(new RenderingEngine());
       const binding = new SignalBinding(signal, part, updater);
 
       expect(binding.part).toBe(part);
@@ -42,7 +42,7 @@ describe('SignalBinding', () => {
         type: PartType.Node,
         node: document.createTextNode(''),
       } as const;
-      const updater = new SyncUpdater(new Engine());
+      const updater = new SyncUpdater(new RenderingEngine());
       const binding = new SignalBinding(signal, part, updater);
 
       const unsubscribeSpy = vi.fn();
@@ -70,7 +70,7 @@ describe('SignalBinding', () => {
         type: PartType.Node,
         node: document.createTextNode(''),
       } as const;
-      const updater = new SyncUpdater(new Engine());
+      const updater = new SyncUpdater(new RenderingEngine());
       const binding = new SignalBinding(signal1, part, updater);
 
       const unsubscribe1Spy = vi.fn();
@@ -98,7 +98,7 @@ describe('SignalBinding', () => {
 
     it('should throw the error if the value is not a signal', () => {
       expect(() => {
-        const updater = new SyncUpdater(new Engine());
+        const updater = new SyncUpdater(new RenderingEngine());
         const binding = new SignalBinding(
           new AtomSignal('foo'),
           {
@@ -120,7 +120,7 @@ describe('SignalBinding', () => {
         type: PartType.Node,
         node: document.createTextNode(''),
       } as const;
-      const updater = new SyncUpdater(new Engine());
+      const updater = new SyncUpdater(new RenderingEngine());
       const binding = new SignalBinding(signal, part, updater);
 
       const rebindSpy = vi.spyOn(binding.binding, 'rebind');
@@ -147,7 +147,7 @@ describe('SignalBinding', () => {
         type: PartType.Node,
         node: document.createTextNode(''),
       } as const;
-      const updater = new SyncUpdater(new Engine());
+      const updater = new SyncUpdater(new RenderingEngine());
       const binding = new SignalBinding(signal, part, updater);
 
       const unsubscribeSpy = vi.fn();
@@ -177,7 +177,7 @@ describe('SignalBinding', () => {
         type: PartType.Node,
         node: document.createTextNode(''),
       } as const;
-      const updater = new SyncUpdater(new Engine());
+      const updater = new SyncUpdater(new RenderingEngine());
       const binding = new SignalBinding(signal, part, updater);
 
       const unsubscribeSpy = vi.fn();
@@ -346,7 +346,7 @@ describe('AtomSignal', () => {
         type: PartType.Node,
         node: document.createTextNode(''),
       } as const;
-      const updater = new SyncUpdater(new Engine());
+      const updater = new SyncUpdater(new RenderingEngine());
       const binding = signal[directiveTag](part, updater);
 
       expect(binding.part).toBe(part);
@@ -364,9 +364,9 @@ describe('AtomSignal', () => {
       const signal = new AtomSignal('foo');
       const component = new MockComponent();
       const hooks: Hook[] = [];
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
-      const context = new Context(hooks, component, engine, updater);
+      const context = new RenderingContext(hooks, component, engine, updater);
 
       const requestUpdateSpy = vi.spyOn(component, 'requestUpdate');
       const value = signal[usableTag](context);

@@ -5,8 +5,12 @@ import {
   ensureDirective,
   resolveBinding,
 } from './binding.js';
-import { type Context, type UsableObject, usableTag } from './context.js';
 import { LinkedList } from './linkedList.js';
+import {
+  type RenderingContext,
+  type UsableObject,
+  usableTag,
+} from './renderingContext.js';
 import type { Part, Updater } from './types.js';
 
 export type Subscriber = () => void;
@@ -22,7 +26,7 @@ type UnwrapSignals<TValue> = TValue extends any[]
   : never;
 
 export abstract class Signal<TValue>
-  implements Directive, UsableObject<TValue, Context>
+  implements Directive, UsableObject<TValue, RenderingContext>
 {
   abstract get value(): TValue;
 
@@ -55,7 +59,7 @@ export abstract class Signal<TValue>
     return new SignalBinding(this, part, updater);
   }
 
-  [usableTag](context: Context): TValue {
+  [usableTag](context: RenderingContext): TValue {
     context.useEffect(
       () =>
         this.subscribe(() => {

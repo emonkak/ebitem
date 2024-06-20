@@ -1,4 +1,4 @@
-import { Context } from './context.js';
+import { RenderingContext } from './renderingContext.js';
 import { TaggedTemplate, getMarker } from './template/taggedTemplate.js';
 import type {
   Block,
@@ -6,20 +6,22 @@ import type {
   Effect,
   EffectMode,
   Hook,
-  RenderingEngine,
   TemplateResult,
+  UpdateContext,
   Updater,
 } from './types.js';
 
 export type Variables = { [key: PropertyKey]: unknown };
 
-export class Engine implements RenderingEngine<Context> {
+export class RenderingEngine implements UpdateContext<RenderingContext> {
   private readonly _globalVariables: Variables;
 
   private readonly _marker: string = getMarker();
 
-  private readonly _namespaces: WeakMap<Component<Context>, Variables> =
-    new WeakMap();
+  private readonly _namespaces: WeakMap<
+    Component<RenderingContext>,
+    Variables
+  > = new WeakMap();
 
   private readonly _cachedTemplates: WeakMap<
     ReadonlyArray<string>,
@@ -64,8 +66,11 @@ export class Engine implements RenderingEngine<Context> {
     return template;
   }
 
-  getVariable(component: Component<Context>, key: PropertyKey): unknown {
-    let current: Component<Context> | null = component;
+  getVariable(
+    component: Component<RenderingContext>,
+    key: PropertyKey,
+  ): unknown {
+    let current: Component<RenderingContext> | null = component;
     do {
       const value = this._namespaces.get(current)?.[key];
       if (value !== undefined) {
@@ -76,20 +81,20 @@ export class Engine implements RenderingEngine<Context> {
   }
 
   renderBlock<TProps, TData>(
-    block: Block<TProps, TData, Context>,
+    block: Block<TProps, TData, RenderingContext>,
     props: TProps,
     hooks: Hook[],
-    component: Component<Context>,
-    updater: Updater<Context>,
-  ): TemplateResult<TData, Context> {
-    const context = new Context(hooks, component, this, updater);
+    component: Component<RenderingContext>,
+    updater: Updater<RenderingContext>,
+  ): TemplateResult<TData, RenderingContext> {
+    const context = new RenderingContext(hooks, component, this, updater);
     const result = block(props, context);
     context.finalize();
     return result;
   }
 
   setVariable(
-    component: Component<Context>,
+    component: Component<RenderingContext>,
     key: PropertyKey,
     value: unknown,
   ): void {

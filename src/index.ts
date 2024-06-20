@@ -11,13 +11,13 @@ export {
   type Usable,
   type UsableCallback,
   type UsableObject,
-  Context,
+  RenderingContext,
   usableTag,
-} from './context.js';
+} from './renderingContext.js';
 export {
   type Variables,
-  Engine,
-} from './engine.js';
+  RenderingEngine,
+} from './renderingEngine.js';
 export {
   type Scheduler,
   createDefaultScheduler,
@@ -51,7 +51,7 @@ export {
   type Ref,
   type RefCallback,
   type RefObject,
-  type RenderingEngine,
+  type UpdateContext,
   type Template,
   type TemplateFragment,
   type Updater,

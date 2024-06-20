@@ -1,28 +1,3 @@
-export interface RenderingEngine<TContext> {
-  flushEffects(effects: Effect[], mode: EffectMode): void;
-  getHTMLTemplate(
-    tokens: ReadonlyArray<string>,
-    data: unknown[],
-  ): Template<unknown[], TContext>;
-  getSVGTemplate(
-    tokens: ReadonlyArray<string>,
-    data: unknown[],
-  ): Template<unknown[], TContext>;
-  getVariable(component: Component<TContext>, key: PropertyKey): unknown;
-  renderBlock<TProps, TData>(
-    block: Block<TProps, TData, TContext>,
-    props: TProps,
-    hooks: Hook[],
-    component: Component<TContext>,
-    updater: Updater<TContext>,
-  ): TemplateResult<TData, TContext>;
-  setVariable(
-    component: Component<TContext>,
-    key: PropertyKey,
-    value: unknown,
-  ): void;
-}
-
 export interface Updater<TContext = unknown> {
   getCurrentComponent(): Component<TContext> | null;
   getCurrentPriority(): TaskPriority;
@@ -36,12 +11,23 @@ export interface Updater<TContext = unknown> {
   scheduleUpdate(): void;
 }
 
+export interface UpdateContext<TContext> {
+  flushEffects(effects: Effect[], mode: EffectMode): void;
+  renderBlock<TProps, TData>(
+    block: Block<TProps, TData, TContext>,
+    props: TProps,
+    hooks: Hook[],
+    component: Component<TContext>,
+    updater: Updater<TContext>,
+  ): TemplateResult<TData, TContext>;
+}
+
 export interface Component<TContext = unknown> {
   get dirty(): boolean;
   get parent(): Component<TContext> | null;
   get priority(): TaskPriority;
   shouldUpdate(): boolean;
-  update(engine: RenderingEngine<TContext>, updater: Updater<TContext>): void;
+  update(context: UpdateContext<TContext>, updater: Updater<TContext>): void;
   requestUpdate(priority: TaskPriority, updater: Updater<TContext>): void;
 }
 

@@ -11,11 +11,11 @@ import {
   type Effect,
   type Part,
   PartType,
-  type RenderingEngine,
   type TaskPriority,
   type Template,
   type TemplateFragment,
   type TemplateResult,
+  type UpdateContext,
   type Updater,
 } from '../types.js';
 
@@ -128,7 +128,7 @@ export class TemplateBinding<TData, TContext>
     return true;
   }
 
-  update(_engine: RenderingEngine<TContext>, updater: Updater<TContext>): void {
+  update(_context: UpdateContext<TContext>, updater: Updater<TContext>): void {
     if (!(this._flags & FLAG_UPDATING)) {
       return;
     }

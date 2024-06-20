@@ -1,7 +1,7 @@
 import {
   ConcurrentUpdater,
-  type Context,
-  Engine,
+  type RenderingContext,
+  RenderingEngine,
   mountValue,
 } from '@emonkak/ebit';
 import {
@@ -22,7 +22,7 @@ import { AtomSignal, type Signal } from '@emonkak/ebit/signal.js';
 
 const counterSignal = new AtomSignal(0);
 
-function App(_props: {}, context: Context) {
+function App(_props: {}, context: RenderingContext) {
   const [items, setItems] = context.useState([
     'foo',
     'bar',
@@ -115,7 +115,7 @@ interface CircleProps {
   fill: string;
 }
 
-function Circle({ cx, cy, r, fill }: CircleProps, context: Context) {
+function Circle({ cx, cy, r, fill }: CircleProps, context: RenderingContext) {
   return context.svg`
     <circle cx=${cx} cy=${cy} r=${r} fill=${fill} />
   `;
@@ -128,7 +128,10 @@ interface ItemProps {
   onDelete: () => void;
 }
 
-function Item({ title, onUp, onDown, onDelete }: ItemProps, context: Context) {
+function Item(
+  { title, onUp, onDown, onDelete }: ItemProps,
+  context: RenderingContext,
+) {
   const state = context.getContextValue('state');
 
   return context.html`
@@ -145,7 +148,7 @@ interface CounterProps {
   count$: Signal<number>;
 }
 
-function Counter({ count$ }: CounterProps, context: Context) {
+function Counter({ count$ }: CounterProps, context: RenderingContext) {
   const countLabelRef = context.useRef<Element | null>(null);
 
   const count = context.use(count$);
@@ -181,8 +184,8 @@ function Counter({ count$ }: CounterProps, context: Context) {
 
 function SingleText<T>(
   { value }: { value: T },
-  context: Context,
-): TemplateDirective<T, Context> {
+  context: RenderingContext,
+): TemplateDirective<T, RenderingContext> {
   return context.text(value);
 }
 
@@ -200,6 +203,6 @@ function shuffle<T>(elements: T[]): T[] {
   return elements;
 }
 
-const updater = new ConcurrentUpdater(new Engine());
+const updater = new ConcurrentUpdater(new RenderingEngine());
 
 mountValue(block(App, {}), document.body, updater);

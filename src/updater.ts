@@ -3,8 +3,8 @@ import { AtomSignal } from './signal.js';
 import type {
   Component,
   Effect,
-  RenderingEngine,
   TaskPriority,
+  UpdateContext,
   Updater,
 } from './types.js';
 
@@ -20,7 +20,7 @@ interface Pipeline<TContext> {
 }
 
 export class ConcurrentUpdater<TContext> implements Updater<TContext> {
-  private readonly _engine: RenderingEngine<TContext>;
+  private readonly _context: UpdateContext<TContext>;
 
   private readonly _scheduler: Scheduler;
 
@@ -31,10 +31,10 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
   private _currentPipeline: Pipeline<TContext> = createPipeline();
 
   constructor(
-    engine: RenderingEngine<TContext>,
+    context: UpdateContext<TContext>,
     { scheduler = createDefaultScheduler() }: ConcurrentUpdaterOptions = {},
   ) {
-    this._engine = engine;
+    this._context = context;
     this._scheduler = scheduler;
   }
 
@@ -138,7 +138,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
         this._currentComponent = component;
         this._currentPipeline = pipeline;
         try {
-          component.update(this._engine, this);
+          component.update(this._context, this);
         } finally {
           this._currentComponent = null;
           this._currentPipeline = previousPipeline;
@@ -185,8 +185,8 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
       this._scheduler.requestCallback(
         () => {
           try {
-            this._engine.flushEffects(pendingMutationEffects, 'mutation');
-            this._engine.flushEffects(pendingLayoutEffects, 'layout');
+            this._context.flushEffects(pendingMutationEffects, 'mutation');
+            this._context.flushEffects(pendingLayoutEffects, 'layout');
           } finally {
             this._taskCount.value--;
           }
@@ -206,7 +206,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
       this._scheduler.requestCallback(
         () => {
           try {
-            this._engine.flushEffects(pendingPassiveEffects, 'passive');
+            this._context.flushEffects(pendingPassiveEffects, 'passive');
           } finally {
             this._taskCount.value--;
           }
@@ -219,7 +219,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
 }
 
 export class SyncUpdater<TContext> implements Updater<TContext> {
-  private readonly _engine: RenderingEngine<TContext>;
+  private readonly _context: UpdateContext<TContext>;
 
   private _currentComponent: Component<TContext> | null = null;
 
@@ -233,8 +233,8 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
 
   private _isUpdating = false;
 
-  constructor(engine: RenderingEngine<TContext>) {
-    this._engine = engine;
+  constructor(context: UpdateContext<TContext>) {
+    this._context = context;
   }
 
   getCurrentComponent(): Component<TContext> | null {
@@ -308,7 +308,7 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
           }
           this._currentComponent = component;
           try {
-            component.update(this._engine, this);
+            component.update(this._context, this);
           } finally {
             this._currentComponent = null;
           }
@@ -318,19 +318,19 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
       if (this._pendingMutationEffects.length > 0) {
         const pendingMutationEffects = this._pendingMutationEffects;
         this._pendingMutationEffects = [];
-        this._engine.flushEffects(pendingMutationEffects, 'mutation');
+        this._context.flushEffects(pendingMutationEffects, 'mutation');
       }
 
       if (this._pendingLayoutEffects.length > 0) {
         const pendingLayoutEffects = this._pendingLayoutEffects;
         this._pendingLayoutEffects = [];
-        this._engine.flushEffects(pendingLayoutEffects, 'layout');
+        this._context.flushEffects(pendingLayoutEffects, 'layout');
       }
 
       if (this._pendingPassiveEffects.length > 0) {
         const pendingPassiveEffects = this._pendingPassiveEffects;
         this._pendingPassiveEffects = [];
-        this._engine.flushEffects(pendingPassiveEffects, 'passive');
+        this._context.flushEffects(pendingPassiveEffects, 'passive');
       }
     } while (
       this._pendingComponents.length > 0 ||

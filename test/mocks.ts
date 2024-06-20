@@ -3,11 +3,11 @@ import type {
   ChildNodePart,
   Component,
   Part,
-  RenderingEngine,
   TaskPriority,
   Template,
   TemplateFragment,
   TemplateResult,
+  UpdateContext,
   Updater,
 } from '../src/types.js';
 
@@ -80,7 +80,7 @@ export class MockComponent<TContext> implements Component<TContext> {
   requestUpdate(_priority: TaskPriority, _updater: Updater<TContext>): void {}
 
   update(
-    _engine: RenderingEngine<TContext>,
+    _context: UpdateContext<TContext>,
     _updater: Updater<TContext>,
   ): void {}
 }

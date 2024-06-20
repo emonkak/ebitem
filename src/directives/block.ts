@@ -14,10 +14,10 @@ import {
   HookType,
   type Part,
   PartType,
-  type RenderingEngine,
   type TaskPriority,
   type Template,
   type TemplateFragment,
+  type UpdateContext,
   type Updater,
 } from '../types.js';
 
@@ -146,7 +146,7 @@ export class BlockBinding<TProps, TData, TContext>
     return true;
   }
 
-  update(engine: RenderingEngine<TContext>, updater: Updater<TContext>): void {
+  update(context: UpdateContext<TContext>, updater: Updater<TContext>): void {
     if (!(this._flags & FLAG_UPDATING)) {
       return;
     }
@@ -157,7 +157,7 @@ export class BlockBinding<TProps, TData, TContext>
       this._cleanHooks();
     }
 
-    const { template, data } = engine.renderBlock(
+    const { template, data } = context.renderBlock(
       type,
       props,
       this._hooks,

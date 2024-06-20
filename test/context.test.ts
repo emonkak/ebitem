@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { Context, usableTag } from '../src/context.js';
-import { Engine } from '../src/engine.js';
+import { RenderingContext, usableTag } from '../src/renderingContext.js';
+import { RenderingEngine } from '../src/renderingEngine.js';
 import { ElementTemplate } from '../src/template/elementTemplate.js';
 import { TaggedTemplate } from '../src/template/taggedTemplate.js';
 
@@ -18,10 +18,10 @@ describe('Context', () => {
     it('should return TemplateDirective with ChildNodeTemplate set as a template', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
-      const context = new Context(hooks, component, engine, updater);
+      const context = new RenderingContext(hooks, component, engine, updater);
       const directive = context.childNode('foo');
 
       expect(directive.template).toBeInstanceOf(ChildNodeTemplate);
@@ -33,10 +33,10 @@ describe('Context', () => {
     it('should return TemplateDirective with ElementTemplate set as a template', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
-      const context = new Context(hooks, component, engine, updater);
+      const context = new RenderingContext(hooks, component, engine, updater);
       const directive = context.element(
         'div',
         { class: 'foo', id: 'bar' },
@@ -55,14 +55,14 @@ describe('Context', () => {
     it('should enqueue a Finalizer hook', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
-      let context = new Context(hooks, component, engine, updater);
+      let context = new RenderingContext(hooks, component, engine, updater);
       context.finalize();
       expect(hooks).toEqual([{ type: HookType.Finalizer }]);
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       context.finalize();
       expect(hooks).toEqual([{ type: HookType.Finalizer }]);
     });
@@ -70,15 +70,15 @@ describe('Context', () => {
     it('should throw an error if fewer hooks are used than last time.', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
-      const context = new Context(hooks, component, engine, updater);
+      const context = new RenderingContext(hooks, component, engine, updater);
       context.useEffect(() => {});
       context.finalize();
 
       expect(() => {
-        const context = new Context(hooks, component, engine, updater);
+        const context = new RenderingContext(hooks, component, engine, updater);
         context.finalize();
       }).toThrow('Unexpected hook type.');
     });
@@ -86,14 +86,14 @@ describe('Context', () => {
     it('should throw an error if more hooks are used than last time.', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
-      const context = new Context(hooks, component, engine, updater);
+      const context = new RenderingContext(hooks, component, engine, updater);
       context.finalize();
 
       expect(() => {
-        const context = new Context(hooks, component, engine, updater);
+        const context = new RenderingContext(hooks, component, engine, updater);
         context.useEffect(() => {});
       }).toThrow('Unexpected hook type.');
     });
@@ -103,10 +103,10 @@ describe('Context', () => {
     it('should get the value from global namespace', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine({ foo: 123 });
+      const engine = new RenderingEngine({ foo: 123 });
       const updater = new SyncUpdater(engine);
 
-      const context = new Context(hooks, component, engine, updater);
+      const context = new RenderingContext(hooks, component, engine, updater);
       expect(context.getContextValue('foo')).toBe(123);
       expect(context.getContextValue('bar')).toBeUndefined();
     });
@@ -114,20 +114,25 @@ describe('Context', () => {
     it('should get the value set on the component', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine({ foo: 123 });
+      const engine = new RenderingEngine({ foo: 123 });
       const updater = new SyncUpdater(engine);
 
-      let context = new Context(hooks, component, engine, updater);
+      let context = new RenderingContext(hooks, component, engine, updater);
       context.setContextValue('foo', 456);
       context.setContextValue('bar', 789);
       expect(context.getContextValue('foo')).toBe(456);
       expect(context.getContextValue('bar')).toBe(789);
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       expect(context.getContextValue('foo')).toBe(456);
       expect(context.getContextValue('bar')).toBe(789);
 
-      context = new Context(hooks, new MockComponent(), engine, updater);
+      context = new RenderingContext(
+        hooks,
+        new MockComponent(),
+        engine,
+        updater,
+      );
       expect(context.getContextValue('foo')).toBe(123);
       expect(context.getContextValue('bar')).toBeUndefined();
     });
@@ -137,10 +142,10 @@ describe('Context', () => {
     it('should return TemplateDirective with an HTML-formatted TaggedTemplate set as a template', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
-      const context = new Context(hooks, component, engine, updater);
+      const context = new RenderingContext(hooks, component, engine, updater);
       const directive = context.html`
         <div class=${0}>Hello, ${1}!</div>
       `;
@@ -159,10 +164,10 @@ describe('Context', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
       const requestUpdateSpy = vi.spyOn(component, 'requestUpdate');
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
-      const context = new Context(hooks, component, engine, updater);
+      const context = new RenderingContext(hooks, component, engine, updater);
       context.requestUpdate();
 
       expect(requestUpdateSpy).toHaveBeenCalledOnce();
@@ -174,10 +179,10 @@ describe('Context', () => {
     it('should return TemplateDirective with an SVG-hormatted TaggedTemplate set as a template', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
-      const context = new Context(hooks, component, engine, updater);
+      const context = new RenderingContext(hooks, component, engine, updater);
       const directive = context.svg`
         <text x=${0} y=${1}>Hello, ${2}!</text>
       `;
@@ -195,10 +200,10 @@ describe('Context', () => {
     it('should return TemplateDirective with TextTemplate set as a template', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
-      const context = new Context(hooks, component, engine, updater);
+      const context = new RenderingContext(hooks, component, engine, updater);
       const directive = context.text('foo');
 
       expect(directive.template).toBeInstanceOf(TextTemplate);
@@ -210,10 +215,10 @@ describe('Context', () => {
     it('should handle the UsableCallback', () => {
       const component = new MockComponent();
       const hooks: Hook[] = [];
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
-      const context = new Context(hooks, component, engine, updater);
+      const context = new RenderingContext(hooks, component, engine, updater);
       const callback = vi.fn(() => 'foo');
 
       expect(context.use(callback)).toBe('foo');
@@ -224,10 +229,10 @@ describe('Context', () => {
     it('should handle the UsableObject', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
-      const context = new Context(hooks, component, engine, updater);
+      const context = new RenderingContext(hooks, component, engine, updater);
       const usable = { [usableTag]: vi.fn(() => 'foo') };
 
       expect(context.use(usable)).toBe('foo');
@@ -240,18 +245,18 @@ describe('Context', () => {
     it('should return a memoized callback', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
-      let context = new Context(hooks, component, engine, updater);
+      let context = new RenderingContext(hooks, component, engine, updater);
       const callback1 = () => {};
       expect(context.useCallback(callback1, ['foo'])).toBe(callback1);
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       const callback2 = () => {};
       expect(context.useCallback(callback2, ['foo'])).toBe(callback1);
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       const callback3 = () => {};
       expect(context.useCallback(callback3, ['bar'])).toBe(callback3);
     });
@@ -261,24 +266,24 @@ describe('Context', () => {
     it('should return a value deferred until next rendering', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
       const requestUpdateSpy = vi.spyOn(component, 'requestUpdate');
 
-      let context = new Context(hooks, component, engine, updater);
+      let context = new RenderingContext(hooks, component, engine, updater);
       expect(context.useDeferredValue('foo')).toBe('foo');
 
       updater.flush();
       expect(requestUpdateSpy).toHaveBeenCalledTimes(0);
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       expect(context.useDeferredValue('bar')).toBe('foo');
 
       updater.flush();
       expect(requestUpdateSpy).toHaveBeenCalledTimes(1);
       expect(requestUpdateSpy).toHaveBeenCalledWith('background', updater);
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       expect(context.useDeferredValue('bar')).toBe('bar');
 
       updater.flush();
@@ -288,20 +293,20 @@ describe('Context', () => {
     it('should return a initial value if it is presented', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
-      let context = new Context(hooks, component, engine, updater);
+      let context = new RenderingContext(hooks, component, engine, updater);
       expect(context.useDeferredValue('bar', 'foo')).toBe('foo');
 
       updater.flush();
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       expect(context.useDeferredValue('baz')).toBe('bar');
 
       updater.flush();
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       expect(context.useDeferredValue('baz')).toBe('baz');
     });
   });
@@ -310,20 +315,20 @@ describe('Context', () => {
     it('should enqueue a callback as a passive effect', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
       const enqueuePassiveEffectSpy = vi.spyOn(updater, 'enqueuePassiveEffect');
 
       const effect = vi.fn();
 
-      let context = new Context(hooks, component, engine, updater);
+      let context = new RenderingContext(hooks, component, engine, updater);
       context.useEffect(effect);
       updater.flush();
 
       expect(effect).toHaveBeenCalledTimes(1);
       expect(enqueuePassiveEffectSpy).toHaveBeenCalledTimes(1);
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       context.useEffect(effect);
       updater.flush();
 
@@ -334,20 +339,20 @@ describe('Context', () => {
     it('should perform a cleanup function when a new effect is enqueued', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
       const cleanup = vi.fn();
       const effect = vi.fn().mockReturnValue(cleanup);
 
-      let context = new Context(hooks, component, engine, updater);
+      let context = new RenderingContext(hooks, component, engine, updater);
       context.useEffect(effect);
       updater.flush();
 
       expect(cleanup).not.toHaveBeenCalled();
       expect(effect).toHaveBeenCalledTimes(1);
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       context.useEffect(effect);
       updater.flush();
 
@@ -358,18 +363,18 @@ describe('Context', () => {
     it('should not perform an effect function if dependencies are not changed', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
       const effect = vi.fn();
 
-      let context = new Context(hooks, component, engine, updater);
+      let context = new RenderingContext(hooks, component, engine, updater);
       context.useEffect(effect, []);
       updater.flush();
 
       expect(effect).toHaveBeenCalledOnce();
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       context.useEffect(effect, []);
       updater.flush();
 
@@ -381,13 +386,13 @@ describe('Context', () => {
     it('should always return a stable function', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
       const handler1 = vi.fn();
       const handler2 = vi.fn();
 
-      let context = new Context(hooks, component, engine, updater);
+      let context = new RenderingContext(hooks, component, engine, updater);
       const stableHandler1 = context.useEvent(handler1);
       updater.flush();
       stableHandler1();
@@ -395,7 +400,7 @@ describe('Context', () => {
       expect(handler1).toHaveBeenCalledOnce();
       expect(handler2).not.toHaveBeenCalled();
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       const stableHandler2 = context.useEvent(handler2);
       updater.flush();
       stableHandler1();
@@ -410,20 +415,20 @@ describe('Context', () => {
     it('should enqueue a callback as a layout effect', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
       const enqueueLayoutEffectSpy = vi.spyOn(updater, 'enqueueLayoutEffect');
 
       const effect = vi.fn();
 
-      let context = new Context(hooks, component, engine, updater);
+      let context = new RenderingContext(hooks, component, engine, updater);
       context.useLayoutEffect(effect);
       updater.flush();
 
       expect(effect).toHaveBeenCalledTimes(1);
       expect(enqueueLayoutEffectSpy).toHaveBeenCalledTimes(1);
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       context.useLayoutEffect(effect);
       updater.flush();
 
@@ -434,20 +439,20 @@ describe('Context', () => {
     it('should perform a cleanup function when a new effect is enqueued', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
       const cleanup = vi.fn();
       const effect = vi.fn().mockReturnValue(cleanup);
 
-      let context = new Context(hooks, component, engine, updater);
+      let context = new RenderingContext(hooks, component, engine, updater);
       context.useLayoutEffect(effect);
       updater.flush();
 
       expect(cleanup).not.toHaveBeenCalled();
       expect(effect).toHaveBeenCalledTimes(1);
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       context.useLayoutEffect(effect);
       updater.flush();
 
@@ -458,18 +463,18 @@ describe('Context', () => {
     it('should not perform an effect function if dependencies are not changed', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
       const effect = vi.fn();
 
-      let context = new Context(hooks, component, engine, updater);
+      let context = new RenderingContext(hooks, component, engine, updater);
       context.useLayoutEffect(effect, []);
       updater.flush();
 
       expect(effect).toHaveBeenCalledOnce();
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       context.useLayoutEffect(effect, []);
       updater.flush();
 
@@ -481,19 +486,19 @@ describe('Context', () => {
     it('should return a memoized value until dependencies is changed', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
       const factory1 = vi.fn().mockReturnValue('foo');
       const factory2 = vi.fn().mockReturnValue('bar');
 
-      let context = new Context(hooks, component, engine, updater);
+      let context = new RenderingContext(hooks, component, engine, updater);
       expect(context.useMemo(factory1, ['foo'])).toBe('foo');
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       expect(context.useMemo(factory2, ['foo'])).toBe('foo');
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       expect(context.useMemo(factory2, ['bar'])).toBe('bar');
     });
   });
@@ -502,14 +507,14 @@ describe('Context', () => {
     it('should update the state by the current priority', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
       const getCurrentPrioritySpy = vi
         .spyOn(updater, 'getCurrentPriority')
         .mockReturnValue('user-blocking');
       const requestUpdateSpy = vi.spyOn(component, 'requestUpdate');
 
-      let context = new Context(hooks, component, engine, updater);
+      let context = new RenderingContext(hooks, component, engine, updater);
       let [message, addMessage] = context.useReducer<string[], string>(
         (messages, message) => [...messages, message],
         [],
@@ -521,7 +526,7 @@ describe('Context', () => {
       expect(requestUpdateSpy).toHaveBeenCalledTimes(1);
       expect(requestUpdateSpy).toHaveBeenCalledWith('user-blocking', updater);
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       [message] = context.useReducer<string[], string>(
         (messages, message) => [...messages, message],
         [],
@@ -533,7 +538,7 @@ describe('Context', () => {
       expect(requestUpdateSpy).toHaveBeenCalledTimes(2);
       expect(requestUpdateSpy).toHaveBeenCalledWith('user-blocking', updater);
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       [message] = context.useReducer<string[], string>(
         (messages, message) => [...messages, message],
         [],
@@ -545,14 +550,14 @@ describe('Context', () => {
     it('should update the state by the priority specified by user', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
       const getCurrentPrioritySpy = vi
         .spyOn(updater, 'getCurrentPriority')
         .mockReturnValue('user-blocking');
       const requestUpdateSpy = vi.spyOn(component, 'requestUpdate');
 
-      let context = new Context(hooks, component, engine, updater);
+      let context = new RenderingContext(hooks, component, engine, updater);
       let [message, addMessage] = context.useReducer<string[], string>(
         (messages, message) => [...messages, message],
         [],
@@ -564,7 +569,7 @@ describe('Context', () => {
       expect(requestUpdateSpy).toHaveBeenCalledTimes(1);
       expect(requestUpdateSpy).toHaveBeenCalledWith('background', updater);
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       [message] = context.useReducer<string[], string>(
         (messages, message) => [...messages, message],
         [],
@@ -576,7 +581,7 @@ describe('Context', () => {
       expect(requestUpdateSpy).toHaveBeenCalledTimes(2);
       expect(requestUpdateSpy).toHaveBeenCalledWith('background', updater);
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       [message] = context.useReducer<string[], string>(
         (messages, message) => [...messages, message],
         [],
@@ -588,11 +593,11 @@ describe('Context', () => {
     it('should skip update the state when the state has not changed', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
       const requestUpdateSpy = vi.spyOn(component, 'requestUpdate');
 
-      let context = new Context(hooks, component, engine, updater);
+      let context = new RenderingContext(hooks, component, engine, updater);
       let [count, addCount] = context.useReducer<number, number>(
         (count, n) => count + n,
         0,
@@ -603,7 +608,7 @@ describe('Context', () => {
       expect(requestUpdateSpy).toHaveBeenCalledOnce();
       expect(requestUpdateSpy).toHaveBeenCalledWith(expect.anything(), updater);
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       [count] = context.useReducer<number, number>((count, n) => count + n, 0);
       addCount(0);
 
@@ -615,10 +620,10 @@ describe('Context', () => {
     it('should return the result of the function as an initial state', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
-      const engine = new Engine();
+      const engine = new RenderingEngine();
       const updater = new SyncUpdater(engine);
 
-      let context = new Context(hooks, component, engine, updater);
+      let context = new RenderingContext(hooks, component, engine, updater);
       let [message, addMessage] = context.useReducer<string[], string>(
         (messages, message) => [...messages, message],
         () => ['foo', 'bar'],
@@ -627,7 +632,7 @@ describe('Context', () => {
 
       addMessage('baz');
 
-      context = new Context(hooks, component, engine, updater);
+      context = new RenderingContext(hooks, component, engine, updater);
       [message] = context.useReducer<string[], string>(
         (messages, message) => [...messages, message],
         () => ['foo', 'bar'],
