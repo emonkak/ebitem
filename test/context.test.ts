@@ -160,7 +160,7 @@ describe('Context', () => {
   });
 
   describe('.requestUpdate()', () => {
-    it('should request update for the component', () => {
+    it('should request update to the current component', () => {
       const hooks: Hook[] = [];
       const component = new MockComponent();
       const requestUpdateSpy = vi.spyOn(component, 'requestUpdate');
@@ -527,7 +527,7 @@ describe('Context', () => {
       expect(requestUpdateSpy).toHaveBeenCalledWith('user-blocking', updater);
 
       context = new RenderingContext(hooks, component, engine, updater);
-      [message] = context.useReducer<string[], string>(
+      [message, addMessage] = context.useReducer<string[], string>(
         (messages, message) => [...messages, message],
         [],
       );
@@ -539,7 +539,7 @@ describe('Context', () => {
       expect(requestUpdateSpy).toHaveBeenCalledWith('user-blocking', updater);
 
       context = new RenderingContext(hooks, component, engine, updater);
-      [message] = context.useReducer<string[], string>(
+      [message, addMessage] = context.useReducer<string[], string>(
         (messages, message) => [...messages, message],
         [],
       );
@@ -570,7 +570,7 @@ describe('Context', () => {
       expect(requestUpdateSpy).toHaveBeenCalledWith('background', updater);
 
       context = new RenderingContext(hooks, component, engine, updater);
-      [message] = context.useReducer<string[], string>(
+      [message, addMessage] = context.useReducer<string[], string>(
         (messages, message) => [...messages, message],
         [],
       );
@@ -582,7 +582,7 @@ describe('Context', () => {
       expect(requestUpdateSpy).toHaveBeenCalledWith('background', updater);
 
       context = new RenderingContext(hooks, component, engine, updater);
-      [message] = context.useReducer<string[], string>(
+      [message, addMessage] = context.useReducer<string[], string>(
         (messages, message) => [...messages, message],
         [],
       );
@@ -602,19 +602,148 @@ describe('Context', () => {
         (count, n) => count + n,
         0,
       );
-      addCount(1);
+      addCount(0);
 
       expect(count).toEqual(0);
-      expect(requestUpdateSpy).toHaveBeenCalledOnce();
-      expect(requestUpdateSpy).toHaveBeenCalledWith(expect.anything(), updater);
+      expect(requestUpdateSpy).not.toHaveBeenCalled();
 
       context = new RenderingContext(hooks, component, engine, updater);
       [count] = context.useReducer<number, number>((count, n) => count + n, 0);
       addCount(0);
 
+      expect(count).toEqual(0);
+      expect(requestUpdateSpy).not.toHaveBeenCalled();
+    });
+
+    it('should return the result of the function as an initial state', () => {
+      const hooks: Hook[] = [];
+      const component = new MockComponent();
+      const engine = new RenderingEngine();
+      const updater = new SyncUpdater(engine);
+
+      let context = new RenderingContext(hooks, component, engine, updater);
+      let [message, addMessage] = context.useReducer<string[], string>(
+        (messages, message) => [...messages, message],
+        () => ['foo', 'bar'],
+      );
+      expect(message).toEqual(['foo', 'bar']);
+
+      addMessage('baz');
+
+      context = new RenderingContext(hooks, component, engine, updater);
+      [message, addMessage] = context.useReducer<string[], string>(
+        (messages, message) => [...messages, message],
+        () => ['foo', 'bar'],
+      );
+      expect(message).toEqual(['foo', 'bar', 'baz']);
+    });
+  });
+
+  describe('.useRef()', () => {
+    it('should return a same object', () => {
+      const hooks: Hook[] = [];
+      const component = new MockComponent();
+      const engine = new RenderingEngine();
+      const updater = new SyncUpdater(engine);
+
+      let context = new RenderingContext(hooks, component, engine, updater);
+      const ref = context.useRef('foo');
+      expect(ref).toEqual({ current: 'foo' });
+
+      context = new RenderingContext(hooks, component, engine, updater);
+      expect(context.useRef('foo')).toBe(ref);
+    });
+  });
+
+  describe('.useState()', () => {
+    it('should update the state by the current priority', () => {
+      const hooks: Hook[] = [];
+      const component = new MockComponent();
+      const engine = new RenderingEngine();
+      const updater = new SyncUpdater(engine);
+      const getCurrentPrioritySpy = vi
+        .spyOn(updater, 'getCurrentPriority')
+        .mockReturnValue('user-blocking');
+      const requestUpdateSpy = vi.spyOn(component, 'requestUpdate');
+
+      let context = new RenderingContext(hooks, component, engine, updater);
+      let [count, setCount] = context.useState(0);
+      setCount(1);
+
+      expect(count).toEqual(0);
+      expect(getCurrentPrioritySpy).toHaveBeenCalledTimes(1);
+      expect(requestUpdateSpy).toHaveBeenCalledTimes(1);
+      expect(requestUpdateSpy).toHaveBeenCalledWith('user-blocking', updater);
+
+      context = new RenderingContext(hooks, component, engine, updater);
+      [count, setCount] = context.useState(0);
+      setCount((n) => n + 2);
+
       expect(count).toEqual(1);
-      expect(requestUpdateSpy).toHaveBeenCalledOnce();
-      expect(requestUpdateSpy).toHaveBeenCalledWith(expect.anything(), updater);
+      expect(getCurrentPrioritySpy).toHaveBeenCalledTimes(2);
+      expect(requestUpdateSpy).toHaveBeenCalledTimes(2);
+      expect(requestUpdateSpy).toHaveBeenCalledWith('user-blocking', updater);
+
+      context = new RenderingContext(hooks, component, engine, updater);
+      [count, setCount] = context.useState(0);
+
+      expect(count).toEqual(3);
+    });
+
+    it('should update the state by the priority specified by user', () => {
+      const hooks: Hook[] = [];
+      const component = new MockComponent();
+      const engine = new RenderingEngine();
+      const updater = new SyncUpdater(engine);
+      const getCurrentPrioritySpy = vi
+        .spyOn(updater, 'getCurrentPriority')
+        .mockReturnValue('user-blocking');
+      const requestUpdateSpy = vi.spyOn(component, 'requestUpdate');
+
+      let context = new RenderingContext(hooks, component, engine, updater);
+      let [count, setCount] = context.useState(0);
+      setCount(1, 'background');
+
+      expect(count).toEqual(0);
+      expect(getCurrentPrioritySpy).not.toHaveBeenCalled();
+      expect(requestUpdateSpy).toHaveBeenCalledTimes(1);
+      expect(requestUpdateSpy).toHaveBeenCalledWith('background', updater);
+
+      context = new RenderingContext(hooks, component, engine, updater);
+      [count, setCount] = context.useState(0);
+      setCount((n) => n + 2, 'background');
+
+      expect(count).toEqual(1);
+      expect(getCurrentPrioritySpy).not.toHaveBeenCalled();
+      expect(requestUpdateSpy).toHaveBeenCalledTimes(2);
+      expect(requestUpdateSpy).toHaveBeenCalledWith('background', updater);
+
+      context = new RenderingContext(hooks, component, engine, updater);
+      [count, setCount] = context.useState(0);
+
+      expect(count).toEqual(3);
+    });
+
+    it('should skip update the state when the state has not changed', () => {
+      const hooks: Hook[] = [];
+      const component = new MockComponent();
+      const engine = new RenderingEngine();
+      const updater = new SyncUpdater(engine);
+      const requestUpdateSpy = vi.spyOn(component, 'requestUpdate');
+
+      let context = new RenderingContext(hooks, component, engine, updater);
+      let [count, setCount] = context.useState(0);
+      setCount(0);
+
+      expect(count).toEqual(0);
+      expect(requestUpdateSpy).not.toHaveBeenCalled();
+
+      context = new RenderingContext(hooks, component, engine, updater);
+      [count, setCount] = context.useState(0);
+      setCount(0);
+
+      expect(count).toEqual(0);
+      expect(requestUpdateSpy).not.toHaveBeenCalled();
     });
 
     it('should return the result of the function as an initial state', () => {
@@ -638,6 +767,103 @@ describe('Context', () => {
         () => ['foo', 'bar'],
       );
       expect(message).toEqual(['foo', 'bar', 'baz']);
+    });
+  });
+
+  describe('.useSyncEnternalStore()', () => {
+    it('should return the snapshot value', () => {
+      const hooks: Hook[] = [];
+      const component = new MockComponent();
+      const engine = new RenderingEngine();
+      const updater = new SyncUpdater(engine);
+
+      const snapshot = 'foo';
+      const subscribers: (() => void)[] = [];
+      const subscribe = (subscriber: () => void) => {
+        const index = subscribers.push(subscriber) - 1;
+        return () => {
+          subscribers.splice(index, 1);
+        };
+      };
+      const getSnapshot = () => snapshot;
+
+      const context = new RenderingContext(hooks, component, engine, updater);
+
+      expect(context.useSyncEnternalStore(subscribe, getSnapshot)).toBe('foo');
+    });
+
+    it('should request update to the component by the current priority when changes are notified to subscribers', () => {
+      const hooks: Hook[] = [];
+      const component = new MockComponent();
+      const engine = new RenderingEngine();
+      const updater = new SyncUpdater(engine);
+      const requestUpdateSpy = vi.spyOn(component, 'requestUpdate');
+      const getCurrentPrioritySpy = vi
+        .spyOn(updater, 'getCurrentPriority')
+        .mockReturnValue('user-blocking');
+
+      const snapshot = 'foo';
+      const subscribers: (() => void)[] = [];
+      const subscribe = (subscriber: () => void) => {
+        const index = subscribers.push(subscriber) - 1;
+        return () => {
+          subscribers.splice(index, 1);
+        };
+      };
+      const getSnapshot = () => snapshot;
+
+      const context = new RenderingContext(hooks, component, engine, updater);
+
+      expect(context.useSyncEnternalStore(subscribe, getSnapshot)).toBe('foo');
+
+      updater.flush();
+      subscribers.forEach((f) => f());
+
+      expect(requestUpdateSpy).toHaveBeenCalledOnce();
+      expect(requestUpdateSpy).toHaveBeenCalledWith('user-blocking', updater);
+      expect(getCurrentPrioritySpy).toHaveBeenCalledOnce();
+    });
+
+    it('should request update to the component by the priority specified by user when changes are notified to subscribers', () => {
+      const hooks: Hook[] = [];
+      const component = new MockComponent();
+      const engine = new RenderingEngine();
+      const updater = new SyncUpdater(engine);
+      const requestUpdateSpy = vi.spyOn(component, 'requestUpdate');
+
+      const snapshot = 'foo';
+      const subscribers: (() => void)[] = [];
+      const subscribe = (subscriber: () => void) => {
+        const index = subscribers.push(subscriber) - 1;
+        return () => {
+          subscribers.splice(index, 1);
+        };
+      };
+      const getSnapshot = () => snapshot;
+
+      let context = new RenderingContext(hooks, component, engine, updater);
+
+      expect(
+        context.useSyncEnternalStore(subscribe, getSnapshot, 'user-blocking'),
+      ).toBe('foo');
+
+      updater.flush();
+      subscribers.forEach((f) => f());
+
+      expect(requestUpdateSpy).toHaveBeenCalledTimes(1);
+      expect(requestUpdateSpy).toHaveBeenCalledWith('user-blocking', updater);
+
+      context = new RenderingContext(hooks, component, engine, updater);
+
+      expect(
+        context.useSyncEnternalStore(subscribe, getSnapshot, 'background'),
+      ).toBe('foo');
+
+      updater.flush();
+      subscribers.forEach((f) => f());
+
+      expect(requestUpdateSpy).toHaveBeenCalledTimes(2);
+      expect(requestUpdateSpy).toHaveBeenCalledWith('background', updater);
     });
   });
 });
