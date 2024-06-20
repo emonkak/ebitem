@@ -2,26 +2,30 @@ export function dependenciesAreChanged(
   oldDependencies: unknown[] | undefined,
   newDependencies: unknown[] | undefined,
 ): boolean {
-  return (
+  if (
     oldDependencies === undefined ||
     newDependencies === undefined ||
-    oldDependencies.length !== newDependencies.length ||
-    newDependencies.some(
-      (dependencies, index) => !Object.is(dependencies, oldDependencies[index]),
-    )
-  );
+    oldDependencies.length !== newDependencies.length
+  ) {
+    return true;
+  }
+
+  for (let i = 0, l = oldDependencies.length; i < l; i++) {
+    if (!Object.is(oldDependencies[i], newDependencies[i])) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
-export function shallowEqual(
-  firstProps: { [key: string]: unknown },
-  secondProps: { [key: string]: unknown },
-): boolean {
+export function shallowEqual(firstProps: {}, secondProps: {}): boolean {
   if (firstProps === secondProps) {
     return true;
   }
 
-  const firstKeys = Object.keys(firstProps);
-  const secondKeys = Object.keys(secondProps);
+  const firstKeys = Object.keys(firstProps) as (keyof typeof firstProps)[];
+  const secondKeys = Object.keys(secondProps) as (keyof typeof secondProps)[];
 
   if (firstKeys.length !== secondKeys.length) {
     return false;
@@ -31,7 +35,7 @@ export function shallowEqual(
     const key = firstKeys[i]!;
     if (
       !Object.hasOwn(secondProps, key) ||
-      firstProps[key] !== secondProps[key]!
+      !Object.is(firstProps[key], secondProps[key])
     ) {
       return false;
     }
