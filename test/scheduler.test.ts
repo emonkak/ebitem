@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { comparePriorities, createDefaultScheduler } from '../src/scheduler.js';
+import { comparePriorities, getDefaultScheduler } from '../src/scheduler.js';
 
 describe('getCurrentTime()', () => {
   afterEach(() => {
@@ -23,7 +23,7 @@ describe('getCurrentTime()', () => {
     it('should return the current time', () => {
       const now = Date.now();
       const spy = vi.spyOn(performance, 'now').mockReturnValue(now);
-      const scheduler = createDefaultScheduler();
+      const scheduler = getDefaultScheduler();
       expect(scheduler.getCurrentTime()).toBe(now);
       expect(spy).toHaveBeenCalledOnce();
     });
@@ -41,7 +41,7 @@ describe('getCurrentTime()', () => {
     it('should return the current time', () => {
       const now = Date.now();
       const spy = vi.spyOn(Date, 'now').mockReturnValue(now);
-      const scheduler = createDefaultScheduler();
+      const scheduler = getDefaultScheduler();
       expect(scheduler.getCurrentTime()).toBe(now);
       expect(spy).toHaveBeenCalledOnce();
     });
@@ -70,7 +70,7 @@ describe('requestCallback()', () => {
       const callback = () => {};
       const options = { priority: 'user-blocking' } as const;
       const postTaskSpy = vi.spyOn(globalThis.scheduler, 'postTask');
-      const scheduler = createDefaultScheduler();
+      const scheduler = getDefaultScheduler();
       scheduler.requestCallback(callback, options);
       expect(postTaskSpy).toHaveBeenCalledOnce();
       expect(postTaskSpy).toHaveBeenCalledWith(callback, options);
@@ -93,7 +93,7 @@ describe('requestCallback()', () => {
         .mockImplementation((callback) => {
           callback();
         });
-      const scheduler = createDefaultScheduler();
+      const scheduler = getDefaultScheduler();
       scheduler.requestCallback(callback, {
         priority: 'user-blocking',
       });
@@ -116,7 +116,7 @@ describe('requestCallback()', () => {
           callback();
           return 0 as any;
         });
-      const scheduler = createDefaultScheduler();
+      const scheduler = getDefaultScheduler();
       scheduler.requestCallback(callback);
       expect(setTimeoutSpy).toHaveBeenCalledOnce();
       expect(setTimeoutSpy).toHaveBeenCalledWith(callback);
@@ -130,7 +130,7 @@ describe('requestCallback()', () => {
           callback();
           return 0 as any;
         });
-      const scheduler = createDefaultScheduler();
+      const scheduler = getDefaultScheduler();
       scheduler.requestCallback(callback, {
         priority: 'user-visible',
       });
@@ -146,7 +146,7 @@ describe('requestCallback()', () => {
           callback();
           return 0 as any;
         });
-      const scheduler = createDefaultScheduler();
+      const scheduler = getDefaultScheduler();
       scheduler.requestCallback(callback, {
         priority: 'background',
       });
@@ -174,7 +174,7 @@ describe('requestCallback()', () => {
         globalThis,
         'requestIdleCallback',
       );
-      const scheduler = createDefaultScheduler();
+      const scheduler = getDefaultScheduler();
       scheduler.requestCallback(callback, { priority: 'background' });
       expect(requestIdleCallbackSpy).toHaveBeenCalledOnce();
       expect(requestIdleCallbackSpy).toHaveBeenCalledWith(callback);
@@ -203,14 +203,14 @@ describe('shouldYieldToMain()', () => {
     });
 
     it('should return false if the elapsed time is less than 5ms', () => {
-      const scheduler = createDefaultScheduler();
+      const scheduler = getDefaultScheduler();
 
       expect(scheduler.shouldYieldToMain(0)).toBe(false);
       expect(scheduler.shouldYieldToMain(4)).toBe(false);
     });
 
     it('should return the result of isInputPending() without continuous events if the elapsed time is between 5ms and 49ms', () => {
-      const scheduler = createDefaultScheduler();
+      const scheduler = getDefaultScheduler();
       const isInputPendingSpy = vi
         .spyOn(navigator.scheduling, 'isInputPending')
         .mockReturnValue(false);
@@ -229,7 +229,7 @@ describe('shouldYieldToMain()', () => {
     });
 
     it('should return the result of isInputPending() with continuous events if the elapsed time is between 50ms and 299ms', () => {
-      const scheduler = createDefaultScheduler();
+      const scheduler = getDefaultScheduler();
       const isInputPendingSpy = vi
         .spyOn(navigator.scheduling, 'isInputPending')
         .mockReturnValue(false);
@@ -248,7 +248,7 @@ describe('shouldYieldToMain()', () => {
     });
 
     it('should return true if the elapsed time is greater than or equal to 300ms', () => {
-      const scheduler = createDefaultScheduler();
+      const scheduler = getDefaultScheduler();
       expect(scheduler.shouldYieldToMain(300)).toBe(true);
     });
   });
@@ -265,7 +265,7 @@ describe('shouldYieldToMain()', () => {
     });
 
     it('should return true if the elapsed time is greater than or equal to 5ms', () => {
-      const scheduler = createDefaultScheduler();
+      const scheduler = getDefaultScheduler();
 
       expect(scheduler.shouldYieldToMain(0)).toBe(false);
       expect(scheduler.shouldYieldToMain(4)).toBe(false);
@@ -293,7 +293,7 @@ describe('yieldToMain()', () => {
     });
 
     it('should return the promise by scheduler.yield()', () => {
-      const scheduler = createDefaultScheduler();
+      const scheduler = getDefaultScheduler();
       const yieldSpy = vi.spyOn(globalThis.scheduler, 'yield');
       const options = { priority: 'inherit' } as const;
       expect(scheduler.yieldToMain(options)).resolves.toBeUndefined();
@@ -312,7 +312,7 @@ describe('yieldToMain()', () => {
     });
 
     it('should wait until the current callback has completed', () => {
-      const scheduler = createDefaultScheduler();
+      const scheduler = getDefaultScheduler();
       const queueMicrotaskSpy = vi
         .spyOn(globalThis, 'queueMicrotask')
         .mockImplementation((callback) => {

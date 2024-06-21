@@ -3,7 +3,7 @@ export {
   type Directive,
   directiveTag,
   isDirective,
-  mountValue,
+  mount,
 } from './binding.js';
 export {
   type InitialState,
@@ -20,7 +20,7 @@ export {
 } from './renderingEngine.js';
 export {
   type Scheduler,
-  createDefaultScheduler,
+  getDefaultScheduler,
 } from './scheduler.js';
 export {
   TaggedTemplate,
@@ -34,8 +34,8 @@ export {
 export {
   type ConcurrentUpdaterOptions,
   ConcurrentUpdater,
-  SyncUpdater,
-} from './updater.js';
+} from './updater/concurrentUpdater.js';
+export { SyncUpdater } from './updater/syncUpdater.js';
 export {
   type AttributePart,
   type ChildNodePart,

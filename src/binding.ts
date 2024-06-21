@@ -452,7 +452,7 @@ export function isDirective(value: unknown): value is Directive<unknown> {
   return value !== null && typeof value === 'object' && directiveTag in value;
 }
 
-export function mountValue<TValue, TContext>(
+export function mount<TValue, TContext>(
   value: TValue,
   container: ChildNode,
   updater: Updater<TContext>,
@@ -472,7 +472,7 @@ export function mountValue<TValue, TContext>(
 
   binding.rebind(updater);
 
-  if (!updater.isUpdating()) {
+  if (!updater.isScheduled()) {
     updater.scheduleUpdate();
   }
 

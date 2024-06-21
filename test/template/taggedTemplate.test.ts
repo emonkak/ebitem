@@ -16,7 +16,7 @@ import {
   isValidMarker,
 } from '../../src/template/taggedTemplate.js';
 import { type Part, PartType, type Template } from '../../src/types.js';
-import { SyncUpdater } from '../../src/updater.js';
+import { SyncUpdater } from '../../src/updater/syncUpdater.js';
 import { MockBinding, MockDirective } from '../mocks.js';
 
 const MARKER = getMarker();

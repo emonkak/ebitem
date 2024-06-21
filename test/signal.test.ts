@@ -11,7 +11,7 @@ import {
   SignalBinding,
 } from '../src/signal.js';
 import { type Hook, PartType } from '../src/types.js';
-import { SyncUpdater } from '../src/updater.js';
+import { SyncUpdater } from '../src/updater/syncUpdater.js';
 import { MockComponent } from './mocks.js';
 
 describe('SignalBinding', () => {
@@ -31,6 +31,7 @@ describe('SignalBinding', () => {
       expect(binding.value).toBe(signal);
       expect(binding.binding).toBeInstanceOf(NodeBinding);
       expect(binding.binding.value).toBe('foo');
+      expect(updater.isPending()).toBe(false);
       expect(updater.isScheduled()).toBe(false);
     });
   });
@@ -355,6 +356,7 @@ describe('AtomSignal', () => {
       expect(binding.value).toBe(signal);
       expect(binding.binding).toBeInstanceOf(NodeBinding);
       expect(binding.binding.value).toBe('foo');
+      expect(updater.isPending()).toBe(false);
       expect(updater.isScheduled()).toBe(false);
     });
   });

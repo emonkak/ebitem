@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { RenderingContext } from '../src/renderingContext.js';
 import { RenderingEngine } from '../src/renderingEngine.js';
 import { type Hook, HookType, PartType } from '../src/types.js';
-import { SyncUpdater } from '../src/updater.js';
+import { SyncUpdater } from '../src/updater/syncUpdater.js';
 import { MockComponent, MockTemplate, MockTemplateResult } from './mocks.js';
 
 describe('RenderingEngine', () => {

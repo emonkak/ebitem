@@ -8,12 +8,12 @@ import {
   SpreadBinding,
   directiveTag,
   isDirective,
-  mountValue,
+  mount,
   resolveBinding,
 } from '../src/binding.js';
 import { RenderingEngine } from '../src/renderingEngine.js';
 import { type Part, PartType } from '../src/types.js';
-import { SyncUpdater } from '../src/updater.js';
+import { SyncUpdater } from '../src/updater/syncUpdater.js';
 import { MockBinding, MockDirective } from './mocks.js';
 
 describe('AttributeBinding', () => {
@@ -163,6 +163,7 @@ describe('AttributeBinding', () => {
       binding.bind('foo', updater);
 
       expect(binding.value).toBe('foo');
+      expect(updater.isPending()).toBe(false);
       expect(updater.isScheduled()).toBe(false);
     });
 
@@ -413,6 +414,7 @@ describe('EventBinding', () => {
 
       binding.bind(listener, updater);
 
+      expect(updater.isPending()).toBe(false);
       expect(updater.isScheduled()).toBe(false);
     });
 
@@ -721,6 +723,7 @@ describe('NodeBinding', () => {
       binding.bind('foo', updater);
 
       expect(binding.value).toBe('foo');
+      expect(updater.isPending()).toBe(false);
       expect(updater.isScheduled()).toBe(false);
     });
 
@@ -869,6 +872,7 @@ describe('PropertyBinding', () => {
       binding.bind('foo', updater);
 
       expect(binding.value).toBe('foo');
+      expect(updater.isPending()).toBe(false);
       expect(updater.isScheduled()).toBe(false);
     });
 
@@ -1076,6 +1080,7 @@ describe('SpreadBinding', () => {
       binding.bind(props, updater);
       updater.flush();
 
+      expect(updater.isPending()).toBe(false);
       expect(updater.isScheduled()).toBe(false);
     });
 
@@ -1226,6 +1231,7 @@ describe('resolveBinding()', () => {
 
     expect(binding).toBeInstanceOf(AttributeBinding);
     expect(binding.value).toBe('foo');
+    expect(updater.isPending()).toBe(false);
     expect(updater.isScheduled()).toBe(false);
   });
 
@@ -1242,6 +1248,7 @@ describe('resolveBinding()', () => {
 
     expect(binding).toBeInstanceOf(EventBinding);
     expect(binding.value).toBe(listener);
+    expect(updater.isPending()).toBe(false);
     expect(updater.isScheduled()).toBe(false);
   });
 
@@ -1257,6 +1264,7 @@ describe('resolveBinding()', () => {
 
     expect(binding).toBeInstanceOf(PropertyBinding);
     expect(binding.value).toBe('foo');
+    expect(updater.isPending()).toBe(false);
     expect(updater.isScheduled()).toBe(false);
   });
 
@@ -1271,6 +1279,7 @@ describe('resolveBinding()', () => {
 
     expect(binding).toBeInstanceOf(NodeBinding);
     expect(binding.value).toBe('foo');
+    expect(updater.isPending()).toBe(false);
     expect(updater.isScheduled()).toBe(false);
   });
 
@@ -1285,6 +1294,7 @@ describe('resolveBinding()', () => {
 
     expect(binding).toBeInstanceOf(NodeBinding);
     expect(binding.value).toBe('foo');
+    expect(updater.isPending()).toBe(false);
     expect(updater.isScheduled()).toBe(false);
   });
 
@@ -1306,6 +1316,7 @@ describe('resolveBinding()', () => {
 
     expect(binding).toBeInstanceOf(SpreadBinding);
     expect(binding.value).toBe(props);
+    expect(updater.isPending()).toBe(false);
     expect(updater.isScheduled()).toBe(false);
   });
 });
@@ -1319,20 +1330,18 @@ describe('isDirective()', () => {
   });
 });
 
-describe('mountValue()', () => {
+describe('mount()', () => {
   it('should mount element inside the container', async () => {
     const directive = new MockDirective();
     const container = document.createElement('div');
     const updater = new SyncUpdater(new RenderingEngine());
     const directiveSpy = vi.spyOn(directive, directiveTag);
-    const isUpdatingSpy = vi.spyOn(updater, 'isUpdating');
+    const isScheduledSpy = vi.spyOn(updater, 'isScheduled');
     const scheduleUpdateSpy = vi.spyOn(updater, 'scheduleUpdate');
 
-    expect(mountValue(directive, container, updater)).toBeInstanceOf(
-      MockBinding,
-    );
+    expect(mount(directive, container, updater)).toBeInstanceOf(MockBinding);
     expect(directiveSpy).toHaveBeenCalledOnce();
-    expect(isUpdatingSpy).toHaveBeenCalledOnce();
+    expect(isScheduledSpy).toHaveBeenCalledOnce();
     expect(scheduleUpdateSpy).toHaveBeenCalled();
 
     await updater.waitForUpdate();
@@ -1340,20 +1349,20 @@ describe('mountValue()', () => {
     expect(container.innerHTML).toBe('<!---->');
   });
 
-  it('should not schedule update if it is already running', () => {
+  it('should not schedule update if it is already scheduled', () => {
     const directive = new MockDirective();
     const container = document.createElement('div');
     const updater = new SyncUpdater(new RenderingEngine());
     const directiveSpy = vi.spyOn(directive, directiveTag);
-    const isUpdatingSpy = vi.spyOn(updater, 'isUpdating').mockReturnValue(true);
+    const isScheduledSpy = vi
+      .spyOn(updater, 'isScheduled')
+      .mockReturnValue(true);
     const scheduleUpdateSpy = vi.spyOn(updater, 'scheduleUpdate');
 
-    expect(mountValue(directive, container, updater)).toBeInstanceOf(
-      MockBinding,
-    );
+    expect(mount(directive, container, updater)).toBeInstanceOf(MockBinding);
     expect(container.innerHTML).toBe('');
     expect(directiveSpy).toHaveBeenCalledOnce();
-    expect(isUpdatingSpy).toHaveBeenCalledOnce();
+    expect(isScheduledSpy).toHaveBeenCalledOnce();
     expect(scheduleUpdateSpy).not.toHaveBeenCalled();
   });
 });

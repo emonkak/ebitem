@@ -22,7 +22,7 @@ const FRAME_YIELD_INTERVAL = 5;
 const CONTINUOUS_INPUT_INTERVAL = 50;
 const MAX_YIELD_INTERVAL = 300;
 
-export function createDefaultScheduler(): Scheduler {
+export function getDefaultScheduler(): Scheduler {
   let getCurrentTime: Scheduler['getCurrentTime'];
   let requestCallback: Scheduler['requestCallback'];
   let shouldYieldToMain: Scheduler['shouldYieldToMain'];

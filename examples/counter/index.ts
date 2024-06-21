@@ -2,7 +2,7 @@ import {
   ConcurrentUpdater,
   type RenderingContext,
   RenderingEngine,
-  mountValue,
+  mount,
 } from '@emonkak/ebit';
 import {
   type TemplateDirective,
@@ -205,4 +205,4 @@ function shuffle<T>(elements: T[]): T[] {
 
 const updater = new ConcurrentUpdater(new RenderingEngine());
 
-mountValue(block(App, {}), document.body, updater);
+mount(block(App, {}), document.body, updater);

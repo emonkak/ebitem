@@ -1,8 +1,8 @@
 export interface Updater<TContext = unknown> {
   getCurrentComponent(): Component<TContext> | null;
   getCurrentPriority(): TaskPriority;
+  isPending(): boolean;
   isScheduled(): boolean;
-  isUpdating(): boolean;
   waitForUpdate(): Promise<void>;
   enqueueComponent(component: Component<TContext>): void;
   enqueueLayoutEffect(effect: Effect): void;

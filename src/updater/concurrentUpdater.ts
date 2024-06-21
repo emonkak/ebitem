@@ -1,12 +1,12 @@
-import { type Scheduler, createDefaultScheduler } from './scheduler.js';
-import { AtomSignal } from './signal.js';
+import { type Scheduler, getDefaultScheduler } from '../scheduler.js';
+import { AtomSignal } from '../signal.js';
 import type {
   Component,
   Effect,
   TaskPriority,
   UpdateContext,
   Updater,
-} from './types.js';
+} from '../types.js';
 
 export interface ConcurrentUpdaterOptions {
   scheduler?: Scheduler;
@@ -33,7 +33,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
   constructor(
     context: UpdateContext<TContext>,
     {
-      scheduler = createDefaultScheduler(),
+      scheduler = getDefaultScheduler(),
       taskCount = new AtomSignal(0),
     }: ConcurrentUpdaterOptions = {},
   ) {
@@ -87,9 +87,8 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
     this._schedulePassiveEffects();
   }
 
-  isScheduled(): boolean {
+  isPending(): boolean {
     return (
-      this._taskCount.value > 0 ||
       this._pendingComponents.length > 0 ||
       this._pendingLayoutEffects.length > 0 ||
       this._pendingMutationEffects.length > 0 ||
@@ -97,7 +96,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
     );
   }
 
-  isUpdating(): boolean {
+  isScheduled(): boolean {
     return this._taskCount.value > 0;
   }
 
@@ -220,129 +219,6 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
       );
       this._taskCount.value++;
     }
-  }
-}
-
-export class SyncUpdater<TContext> implements Updater<TContext> {
-  private readonly _context: UpdateContext<TContext>;
-
-  private _currentComponent: Component<TContext> | null = null;
-
-  private _pendingComponents: Component<TContext>[] = [];
-
-  private _pendingMutationEffects: Effect[] = [];
-
-  private _pendingLayoutEffects: Effect[] = [];
-
-  private _pendingPassiveEffects: Effect[] = [];
-
-  private _isUpdating = false;
-
-  constructor(context: UpdateContext<TContext>) {
-    this._context = context;
-  }
-
-  getCurrentComponent(): Component<TContext> | null {
-    return this._currentComponent;
-  }
-
-  getCurrentPriority(): TaskPriority {
-    return 'user-blocking';
-  }
-
-  enqueueComponent(component: Component<TContext>): void {
-    this._pendingComponents.push(component);
-  }
-
-  enqueueLayoutEffect(effect: Effect): void {
-    this._pendingLayoutEffects.push(effect);
-  }
-
-  enqueueMutationEffect(effect: Effect): void {
-    this._pendingMutationEffects.push(effect);
-  }
-
-  enqueuePassiveEffect(effect: Effect): void {
-    this._pendingPassiveEffects.push(effect);
-  }
-
-  isScheduled(): boolean {
-    return (
-      this._pendingComponents.length > 0 &&
-      this._pendingLayoutEffects.length > 0 &&
-      this._pendingMutationEffects.length > 0 &&
-      this._pendingPassiveEffects.length > 0
-    );
-  }
-
-  isUpdating(): boolean {
-    return this._isUpdating;
-  }
-
-  scheduleUpdate(): void {
-    if (this._isUpdating) {
-      return;
-    }
-
-    this._isUpdating = true;
-
-    queueMicrotask(() => {
-      try {
-        this.flush();
-      } finally {
-        this._isUpdating = false;
-      }
-    });
-  }
-
-  waitForUpdate(): Promise<void> {
-    return new Promise(queueMicrotask);
-  }
-
-  flush(): void {
-    do {
-      while (this._pendingComponents.length > 0) {
-        const pendingComponents = this._pendingComponents;
-
-        this._pendingComponents = [];
-
-        for (let i = 0, l = pendingComponents.length; i < l; i++) {
-          const component = pendingComponents[i]!;
-          if (!component.shouldUpdate()) {
-            continue;
-          }
-          this._currentComponent = component;
-          try {
-            component.update(this._context, this);
-          } finally {
-            this._currentComponent = null;
-          }
-        }
-      }
-
-      if (this._pendingMutationEffects.length > 0) {
-        const pendingMutationEffects = this._pendingMutationEffects;
-        this._pendingMutationEffects = [];
-        this._context.flushEffects(pendingMutationEffects, 'mutation');
-      }
-
-      if (this._pendingLayoutEffects.length > 0) {
-        const pendingLayoutEffects = this._pendingLayoutEffects;
-        this._pendingLayoutEffects = [];
-        this._context.flushEffects(pendingLayoutEffects, 'layout');
-      }
-
-      if (this._pendingPassiveEffects.length > 0) {
-        const pendingPassiveEffects = this._pendingPassiveEffects;
-        this._pendingPassiveEffects = [];
-        this._context.flushEffects(pendingPassiveEffects, 'passive');
-      }
-    } while (
-      this._pendingComponents.length > 0 ||
-      this._pendingMutationEffects.length > 0 ||
-      this._pendingLayoutEffects.length > 0 ||
-      this._pendingPassiveEffects.length > 0
-    );
   }
 }
 

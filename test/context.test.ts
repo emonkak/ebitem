@@ -10,7 +10,7 @@ import {
   TextTemplate,
 } from '../src/template/valueTemplate.js';
 import { type Hook, HookType } from '../src/types.js';
-import { SyncUpdater } from '../src/updater.js';
+import { SyncUpdater } from '../src/updater/syncUpdater.js';
 import { MockComponent } from './mocks.js';
 
 describe('Context', () => {
