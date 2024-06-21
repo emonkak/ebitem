@@ -10,13 +10,7 @@ import type {
 
 export interface ConcurrentUpdaterOptions {
   scheduler?: Scheduler;
-}
-
-interface Pipeline<TContext> {
-  pendingComponents: Component<TContext>[];
-  pendingLayoutEffects: Effect[];
-  pendingMutationEffects: Effect[];
-  pendingPassiveEffects: Effect[];
+  taskCount?: AtomSignal<number>;
 }
 
 export class ConcurrentUpdater<TContext> implements Updater<TContext> {
@@ -28,14 +22,31 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
 
   private _currentComponent: Component<TContext> | null = null;
 
-  private _currentPipeline: Pipeline<TContext> = createPipeline();
+  private _pendingComponents: Component<TContext>[] = [];
+
+  private _pendingLayoutEffects: Effect[] = [];
+
+  private _pendingMutationEffects: Effect[] = [];
+
+  private _pendingPassiveEffects: Effect[] = [];
 
   constructor(
     context: UpdateContext<TContext>,
-    { scheduler = createDefaultScheduler() }: ConcurrentUpdaterOptions = {},
+    {
+      scheduler = createDefaultScheduler(),
+      taskCount = new AtomSignal(0),
+    }: ConcurrentUpdaterOptions = {},
   ) {
     this._context = context;
     this._scheduler = scheduler;
+    this._taskCount = taskCount;
+  }
+
+  beginRenderingPipeline(): ConcurrentUpdater<TContext> {
+    return new ConcurrentUpdater(this._context, {
+      scheduler: this._scheduler,
+      taskCount: this._taskCount,
+    });
   }
 
   getCurrentComponent(): Component<TContext> | null {
@@ -52,39 +63,37 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
   }
 
   enqueueComponent(component: Component<TContext>): void {
-    this._currentPipeline.pendingComponents.push(component);
+    this._pendingComponents.push(component);
   }
 
   enqueueLayoutEffect(effect: Effect): void {
-    this._currentPipeline.pendingLayoutEffects.push(effect);
+    this._pendingLayoutEffects.push(effect);
   }
 
   enqueueMutationEffect(effect: Effect): void {
-    this._currentPipeline.pendingMutationEffects.push(effect);
+    this._pendingMutationEffects.push(effect);
   }
 
   enqueuePassiveEffect(effect: Effect): void {
-    this._currentPipeline.pendingPassiveEffects.push(effect);
+    this._pendingPassiveEffects.push(effect);
   }
 
   scheduleUpdate(): void {
     if (this._currentComponent !== null) {
       return;
     }
-    const pipeline = this._currentPipeline;
-    this._scheduleRenderPipelines(pipeline);
-    this._scheduleBlockingEffects(pipeline);
-    this._schedulePassiveEffects(pipeline);
+    this._scheduleRenderPipelines();
+    this._scheduleBlockingEffects();
+    this._schedulePassiveEffects();
   }
 
   isScheduled(): boolean {
-    const pipeline = this._currentPipeline;
     return (
       this._taskCount.value > 0 ||
-      pipeline.pendingComponents.length > 0 ||
-      pipeline.pendingLayoutEffects.length > 0 ||
-      pipeline.pendingMutationEffects.length > 0 ||
-      pipeline.pendingPassiveEffects.length > 0
+      this._pendingComponents.length > 0 ||
+      this._pendingLayoutEffects.length > 0 ||
+      this._pendingMutationEffects.length > 0 ||
+      this._pendingPassiveEffects.length > 0
     );
   }
 
@@ -108,12 +117,9 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
     }
   }
 
-  private async _beginRenderPipeline(
+  private async _updateComponent(
     rootComponent: Component<TContext>,
   ): Promise<void> {
-    const pipeline = createPipeline();
-    const previousPipeline = this._currentPipeline;
-
     let pendingComponents = [rootComponent];
     let startTime = this._scheduler.getCurrentTime();
 
@@ -136,33 +142,31 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
         }
 
         this._currentComponent = component;
-        this._currentPipeline = pipeline;
         try {
           component.update(this._context, this);
         } finally {
           this._currentComponent = null;
-          this._currentPipeline = previousPipeline;
         }
       }
 
-      pendingComponents = pipeline.pendingComponents;
-      pipeline.pendingComponents = [];
+      pendingComponents = this._pendingComponents;
+      this._pendingComponents = [];
     } while (pendingComponents.length > 0);
 
-    this._scheduleBlockingEffects(pipeline);
-    this._schedulePassiveEffects(pipeline);
+    this._scheduleBlockingEffects();
+    this._schedulePassiveEffects();
   }
 
-  private _scheduleRenderPipelines(pipeline: Pipeline<TContext>): void {
-    const { pendingComponents } = pipeline;
-    pipeline.pendingComponents = [];
+  private _scheduleRenderPipelines(): void {
+    const pendingComponents = this._pendingComponents;
+    this._pendingComponents = [];
 
     for (let i = 0, l = pendingComponents.length; i < l; i++) {
       const component = pendingComponents[i]!;
       this._scheduler.requestCallback(
         async () => {
           try {
-            await this._beginRenderPipeline(component);
+            await this.beginRenderingPipeline()._updateComponent(component);
           } finally {
             this._taskCount.value--;
           }
@@ -175,12 +179,13 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
     }
   }
 
-  private _scheduleBlockingEffects(pipeline: Pipeline<TContext>): void {
-    const { pendingMutationEffects, pendingLayoutEffects } = pipeline;
+  private _scheduleBlockingEffects(): void {
+    const pendingMutationEffects = this._pendingMutationEffects;
+    const pendingLayoutEffects = this._pendingLayoutEffects;
 
     if (pendingMutationEffects.length > 0 || pendingLayoutEffects.length > 0) {
-      pipeline.pendingMutationEffects = [];
-      pipeline.pendingLayoutEffects = [];
+      this._pendingMutationEffects = [];
+      this._pendingLayoutEffects = [];
 
       this._scheduler.requestCallback(
         () => {
@@ -197,11 +202,11 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
     }
   }
 
-  private _schedulePassiveEffects(pipeline: Pipeline<TContext>): void {
-    const { pendingPassiveEffects } = pipeline;
+  private _schedulePassiveEffects(): void {
+    const pendingPassiveEffects = this._pendingPassiveEffects;
 
     if (pendingPassiveEffects.length > 0) {
-      pipeline.pendingPassiveEffects = [];
+      this._pendingPassiveEffects = [];
 
       this._scheduler.requestCallback(
         () => {
@@ -339,15 +344,6 @@ export class SyncUpdater<TContext> implements Updater<TContext> {
       this._pendingPassiveEffects.length > 0
     );
   }
-}
-
-function createPipeline<TContext>(): Pipeline<TContext> {
-  return {
-    pendingComponents: [],
-    pendingLayoutEffects: [],
-    pendingMutationEffects: [],
-    pendingPassiveEffects: [],
-  };
 }
 
 function isContinuousEvent(event: Event): boolean {
