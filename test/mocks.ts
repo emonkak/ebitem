@@ -1,7 +1,16 @@
 import { type Binding, type Directive, directiveTag } from '../src/binding.js';
 import type {
+  RequestCallbackOptions,
+  Scheduler,
+  YieldToMainOptions,
+} from '../src/scheduler.js';
+import type {
+  Block,
   ChildNodePart,
   Component,
+  Effect,
+  EffectMode,
+  Hook,
   Part,
   TaskPriority,
   Template,
@@ -10,12 +19,6 @@ import type {
   UpdateContext,
   Updater,
 } from '../src/types.js';
-
-export class MockDirective implements Directive {
-  [directiveTag](part: Part, _updater: Updater): MockBinding {
-    return new MockBinding(this, part);
-  }
-}
 
 export class MockBinding implements Binding<MockDirective> {
   private _value: MockDirective;
@@ -83,6 +86,55 @@ export class MockComponent<TContext> implements Component<TContext> {
     _context: UpdateContext<TContext>,
     _updater: Updater<TContext>,
   ): void {}
+}
+
+export class MockDirective implements Directive {
+  [directiveTag](part: Part, _updater: Updater): MockBinding {
+    return new MockBinding(this, part);
+  }
+}
+
+export class MockScheduler implements Scheduler {
+  getCurrentTime(): number {
+    return Date.now();
+  }
+
+  requestCallback(
+    callback: () => void,
+    _options?: RequestCallbackOptions,
+  ): void {
+    callback();
+  }
+
+  shouldYieldToMain(_elapsedTime: number): boolean {
+    return false;
+  }
+
+  yieldToMain(_options?: YieldToMainOptions): Promise<void> {
+    return Promise.resolve();
+  }
+}
+
+export class MockRenderingContext {}
+
+export class MockRenderingEngine
+  implements UpdateContext<MockRenderingContext>
+{
+  flushEffects(effects: Effect[], mode: EffectMode): void {
+    for (let i = 0, l = effects.length; i < l; i++) {
+      effects[i]!.commit(mode);
+    }
+  }
+
+  renderBlock<TProps, TData>(
+    block: Block<TProps, TData, MockRenderingContext>,
+    props: TProps,
+    _hooks: Hook[],
+    _component: Component<MockRenderingContext>,
+    _updater: Updater<MockRenderingContext>,
+  ): TemplateResult<TData, MockRenderingContext> {
+    return block(props, new MockRenderingContext());
+  }
 }
 
 export class MockTemplate<TData, TContext>

@@ -2,10 +2,7 @@ import type { TaskPriority } from './types.js';
 
 export interface Scheduler {
   getCurrentTime(): number;
-  requestCallback<T>(
-    callback: () => T | PromiseLike<T>,
-    options?: RequestCallbackOptions,
-  ): void;
+  requestCallback(callback: () => void, options?: RequestCallbackOptions): void;
   shouldYieldToMain(elapsedTime: number): boolean;
   yieldToMain(options?: YieldToMainOptions): Promise<void>;
 }

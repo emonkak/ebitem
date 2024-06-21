@@ -42,13 +42,6 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
     this._taskCount = taskCount;
   }
 
-  beginRenderingPipeline(): ConcurrentUpdater<TContext> {
-    return new ConcurrentUpdater(this._context, {
-      scheduler: this._scheduler,
-      taskCount: this._taskCount,
-    });
-  }
-
   getCurrentComponent(): Component<TContext> | null {
     return this._currentComponent;
   }
@@ -78,15 +71,6 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
     this._pendingPassiveEffects.push(effect);
   }
 
-  scheduleUpdate(): void {
-    if (this._currentComponent !== null) {
-      return;
-    }
-    this._scheduleRenderPipelines();
-    this._scheduleBlockingEffects();
-    this._schedulePassiveEffects();
-  }
-
   isPending(): boolean {
     return (
       this._pendingComponents.length > 0 ||
@@ -98,6 +82,15 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
 
   isScheduled(): boolean {
     return this._taskCount.value > 0;
+  }
+
+  scheduleUpdate(): void {
+    if (this._currentComponent !== null) {
+      return;
+    }
+    this._scheduleRenderPipelines();
+    this._scheduleBlockingEffects();
+    this._schedulePassiveEffects();
   }
 
   waitForUpdate(): Promise<void> {
@@ -114,6 +107,13 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
     } else {
       return Promise.resolve();
     }
+  }
+
+  private _beginRenderPipeline(): ConcurrentUpdater<TContext> {
+    return new ConcurrentUpdater(this._context, {
+      scheduler: this._scheduler,
+      taskCount: this._taskCount,
+    });
   }
 
   private async _updateComponent(
@@ -165,7 +165,7 @@ export class ConcurrentUpdater<TContext> implements Updater<TContext> {
       this._scheduler.requestCallback(
         async () => {
           try {
-            await this.beginRenderingPipeline()._updateComponent(component);
+            await this._beginRenderPipeline()._updateComponent(component);
           } finally {
             this._taskCount.value--;
           }

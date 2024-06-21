@@ -8,7 +8,6 @@ import {
   PropertyBinding,
   directiveTag,
 } from '../../src/binding.js';
-import { RenderingEngine } from '../../src/renderingEngine.js';
 import {
   TaggedTemplate,
   TaggedTemplateFragment,
@@ -17,7 +16,7 @@ import {
 } from '../../src/template/taggedTemplate.js';
 import { type Part, PartType, type Template } from '../../src/types.js';
 import { SyncUpdater } from '../../src/updater/syncUpdater.js';
-import { MockBinding, MockDirective } from '../mocks.js';
+import { MockBinding, MockDirective, MockRenderingEngine } from '../mocks.js';
 
 const MARKER = getMarker();
 
@@ -315,7 +314,7 @@ describe('TaggedTemplate', () => {
         { class: 'qux' },
         new MockDirective(),
       ];
-      const updater = new SyncUpdater(new RenderingEngine());
+      const updater = new SyncUpdater(new MockRenderingEngine());
       const fragment = template.hydrate(values, updater);
 
       expect(fragment).toBeInstanceOf(TaggedTemplateFragment);
@@ -371,7 +370,7 @@ describe('TaggedTemplate', () => {
 
     it('should hydrate a TaggedTemplateFragment without bindings', () => {
       const template = html`<div></div>`;
-      const updater = new SyncUpdater(new RenderingEngine());
+      const updater = new SyncUpdater(new MockRenderingEngine());
       const fragment = template.hydrate([], updater);
 
       expect(fragment).toBeInstanceOf(TaggedTemplateFragment);
@@ -383,7 +382,7 @@ describe('TaggedTemplate', () => {
 
     it('should hydrate a TaggedTemplateFragment with empty template', () => {
       const template = html``;
-      const updater = new SyncUpdater(new RenderingEngine());
+      const updater = new SyncUpdater(new MockRenderingEngine());
       const fragment = template.hydrate([], updater);
 
       expect(fragment).toBeInstanceOf(TaggedTemplateFragment);
@@ -398,7 +397,7 @@ describe('TaggedTemplate', () => {
         <div class=${0} class=${1}></div>
       `;
       const values = ['foo', 'bar'];
-      const updater = new SyncUpdater(new RenderingEngine());
+      const updater = new SyncUpdater(new MockRenderingEngine());
 
       expect(() => {
         template.hydrate(values, updater);
@@ -431,7 +430,7 @@ describe('TaggedTemplateFragment', () => {
         <div class="${0}">${1} ${2}</div>
       `;
       const values = ['foo', 'bar', 'baz'];
-      const updater = new SyncUpdater(new RenderingEngine());
+      const updater = new SyncUpdater(new MockRenderingEngine());
       const fragment = template.hydrate(values, updater);
 
       updater.flush();
@@ -460,7 +459,7 @@ describe('TaggedTemplateFragment', () => {
         type: PartType.ChildNode,
         node: document.createComment(''),
       } as const;
-      const updater = new SyncUpdater(new RenderingEngine());
+      const updater = new SyncUpdater(new MockRenderingEngine());
       const fragment = template.hydrate(values, updater);
 
       container.appendChild(part.node);
@@ -506,7 +505,7 @@ describe('TaggedTemplateFragment', () => {
       const template = html`
         <p>Count: ${0}</p>
       `;
-      const updater = new SyncUpdater(new RenderingEngine());
+      const updater = new SyncUpdater(new MockRenderingEngine());
       const fragment = template.hydrate([0], updater);
 
       expect(() => {
@@ -533,7 +532,7 @@ describe('TaggedTemplateFragment', () => {
         return binding;
       });
       const values = [directive];
-      const updater = new SyncUpdater(new RenderingEngine());
+      const updater = new SyncUpdater(new MockRenderingEngine());
       const fragment = template.hydrate(values, updater);
 
       expect(disconnects).toBe(0);
@@ -550,7 +549,7 @@ describe('TaggedTemplateFragment', () => {
         <p>Hello, ${0}!</p>
       `;
       const values = ['World'];
-      const updater = new SyncUpdater(new RenderingEngine());
+      const updater = new SyncUpdater(new MockRenderingEngine());
       const fragment = template.hydrate(values, updater);
 
       updater.flush();
@@ -576,7 +575,7 @@ describe('TaggedTemplateFragment', () => {
         <p>Hello, ${0}!</p>
       `;
       const values = ['World'];
-      const updater = new SyncUpdater(new RenderingEngine());
+      const updater = new SyncUpdater(new MockRenderingEngine());
       const fragment = template.hydrate(values, updater);
 
       updater.flush();
