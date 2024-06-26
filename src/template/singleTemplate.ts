@@ -18,14 +18,14 @@ export class ChildNodeTemplate<T> implements Template<T> {
     }
   }
 
-  hydrate(data: T, updater: Updater): ValueTemplateFragment<T> {
+  hydrate(data: T, updater: Updater): SingleTemplateFragment<T> {
     const part = {
       type: PartType.ChildNode,
       node: document.createComment(''),
     } as const;
     const binding = resolveBinding(data, part, updater);
     binding.connect(updater);
-    return new ValueTemplateFragment(binding);
+    return new SingleTemplateFragment(binding);
   }
 
   isSameTemplate(other: Template<T>): boolean {
@@ -42,14 +42,14 @@ export class TextTemplate<T> implements Template<T> {
     }
   }
 
-  hydrate(data: T, updater: Updater): ValueTemplateFragment<T> {
+  hydrate(data: T, updater: Updater): SingleTemplateFragment<T> {
     const part = {
       type: PartType.Node,
       node: document.createTextNode(''),
     } as const;
     const binding = resolveBinding(data, part, updater);
     binding.connect(updater);
-    return new ValueTemplateFragment(binding);
+    return new SingleTemplateFragment(binding);
   }
 
   isSameTemplate(other: Template<T>): boolean {
@@ -57,11 +57,15 @@ export class TextTemplate<T> implements Template<T> {
   }
 }
 
-export class ValueTemplateFragment<T> implements TemplateFragment<T> {
+export class SingleTemplateFragment<T> implements TemplateFragment<T> {
   private readonly _binding: Binding<T>;
 
   constructor(binding: Binding<T>) {
     this._binding = binding;
+  }
+
+  get binding(): Binding<T> {
+    return this._binding;
   }
 
   get startNode(): ChildNode {
@@ -82,16 +86,11 @@ export class ValueTemplateFragment<T> implements TemplateFragment<T> {
 
   mount(part: ChildNodePart): void {
     const referenceNode = part.node;
-
     referenceNode.before(this._binding.part.node);
   }
 
   unmount(part: ChildNodePart): void {
-    const { parentNode } = part.node;
-
-    if (parentNode !== null) {
-      parentNode.removeChild(this._binding.part.node);
-    }
+    part.node.parentNode?.removeChild(this._binding.part.node);
   }
 
   disconnect(): void {

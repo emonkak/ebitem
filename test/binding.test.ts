@@ -172,7 +172,7 @@ describe('AttributeBinding', () => {
       expect(updater.isScheduled()).toBe(false);
     });
 
-    it('should do nothing if called twice', () => {
+    it('should do nothing if the update is already scheduled', () => {
       const element = document.createElement('div');
       const part = {
         type: PartType.Attribute,
@@ -229,7 +229,7 @@ describe('AttributeBinding', () => {
       expect(element.hasAttribute('contenteditable')).toBe(false);
     });
 
-    it('should do nothing if called twice', () => {
+    it('should do nothing if the update is already scheduled', () => {
       const element = document.createElement('div');
       const part = {
         type: PartType.Attribute,
@@ -462,7 +462,7 @@ describe('EventBinding', () => {
       expect(listener).toHaveBeenCalledWith(event);
     });
 
-    it('should do nothing if called twice', () => {
+    it('should do nothing if the update is already scheduled', () => {
       const listener = () => {};
       const element = document.createElement('div');
       const part = {
@@ -548,7 +548,7 @@ describe('EventBinding', () => {
       expect(listener).toHaveBeenCalledWith(event);
     });
 
-    it('should do nothing if called twice', () => {
+    it('should do nothing if the update is already scheduled', () => {
       const listener = () => {};
       const element = document.createElement('div');
       const part = {
@@ -750,7 +750,7 @@ describe('NodeBinding', () => {
       expect(updater.isScheduled()).toBe(false);
     });
 
-    it('should do nothing if called twice', () => {
+    it('should do nothing if the update is already scheduled', () => {
       const node = document.createTextNode('');
       const part = {
         type: PartType.Node,
@@ -808,7 +808,7 @@ describe('NodeBinding', () => {
       expect(node.nodeValue).toBe('');
     });
 
-    it('should do nothing if called twice', () => {
+    it('should do nothing if the update is already scheduled', () => {
       const node = document.createTextNode('');
       const part = {
         type: PartType.Node,
@@ -905,7 +905,7 @@ describe('PropertyBinding', () => {
       expect(updater.isScheduled()).toBe(false);
     });
 
-    it('should do nothing if called twice', () => {
+    it('should do nothing if the update is already scheduled', () => {
       const element = document.createElement('div');
       const part = {
         type: PartType.Property,

@@ -29,8 +29,8 @@ export {
 export {
   ChildNodeTemplate,
   TextTemplate,
-  ValueTemplateFragment,
-} from './template/valueTemplate.js';
+  SingleTemplateFragment,
+} from './template/singleTemplate.js';
 export {
   type ConcurrentUpdaterOptions,
   ConcurrentUpdater,

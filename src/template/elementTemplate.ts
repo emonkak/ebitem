@@ -70,6 +70,14 @@ export class ElementTemplateFragment<TElementValue, TChildNodeValue>
     this._childNodeBinding = childNodeBinding;
   }
 
+  get elementBinding(): Binding<TElementValue> {
+    return this._elementBinding;
+  }
+
+  get childNodeBinding(): Binding<TChildNodeValue> {
+    return this._childNodeBinding;
+  }
+
   get startNode(): ChildNode {
     return this._elementBinding.startNode;
   }

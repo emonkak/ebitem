@@ -4,7 +4,7 @@ import {
   type ElementData,
   ElementTemplate,
 } from './template/elementTemplate.js';
-import { ChildNodeTemplate, TextTemplate } from './template/valueTemplate.js';
+import { ChildNodeTemplate, TextTemplate } from './template/singleTemplate.js';
 import {
   type Cleanup,
   type EffectCallback,

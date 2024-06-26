@@ -8,7 +8,7 @@ import { TaggedTemplate } from '../src/template/taggedTemplate.js';
 import {
   ChildNodeTemplate,
   TextTemplate,
-} from '../src/template/valueTemplate.js';
+} from '../src/template/singleTemplate.js';
 import { type Hook, HookType } from '../src/types.js';
 import { SyncUpdater } from '../src/updater/syncUpdater.js';
 import { MockComponent } from './mocks.js';
