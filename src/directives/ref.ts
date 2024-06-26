@@ -41,9 +41,9 @@ export class RefDirective implements Directive {
 export class RefBinding implements Binding<RefDirective>, Effect {
   private _pendingDirective: RefDirective;
 
-  private _memoizedDirective: RefDirective | null = null;
-
   private readonly _part: AttributePart;
+
+  private _memoizedRef: ElementRef | null = null;
 
   private _dirty = false;
 
@@ -97,7 +97,7 @@ export class RefBinding implements Binding<RefDirective>, Effect {
   disconnect() {}
 
   commit(): void {
-    const oldRef = this._memoizedDirective?.ref ?? null;
+    const oldRef = this._memoizedRef ?? null;
     const newRef = this._pendingDirective.ref;
 
     if (oldRef !== null) {
@@ -114,8 +114,9 @@ export class RefBinding implements Binding<RefDirective>, Effect {
       } else {
         newRef.current = this._part.node;
       }
-
-      this._memoizedDirective = this._pendingDirective;
     }
+
+    this._memoizedRef = this._pendingDirective.ref;
+    this._dirty = false;
   }
 }

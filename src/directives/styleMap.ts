@@ -13,11 +13,18 @@ import {
 } from '../types.js';
 import { shallowEqual } from '../utils.js';
 
-export type StyleMap = { [P in StyleProperty]?: string | CSSStyleValue };
+const VENDOR_PREFIX_PATTERN = /^(webkit|moz|ms|o)(?=[A-Z])/;
+const UPPERCASE_LETTERS_PATTERN = /[A-Z]/g;
 
-type StyleProperty = ExtractStringProperty<CSSStyleDeclaration>;
+export type StyleMap = {
+  [P in JSStyleProperties]?: string;
+};
 
-type ExtractStringProperty<T> = {
+type JSStyleProperties =
+  | ExtractStringProperties<CSSStyleDeclaration>
+  | `--${string}`;
+
+type ExtractStringProperties<T> = {
   [P in keyof T]: P extends string ? (T[P] extends string ? P : never) : never;
 }[keyof T];
 
@@ -48,6 +55,8 @@ export class StyleMapBinding implements Binding<StyleMapDirective>, Effect {
   private _directive: StyleMapDirective;
 
   private readonly _part: AttributePart;
+
+  private _memoizedStyleMap: StyleMap = {};
 
   private _dirty = false;
 
@@ -91,8 +100,8 @@ export class StyleMapBinding implements Binding<StyleMapDirective>, Effect {
   }
 
   unbind(updater: Updater): void {
-    const oldValue = this._directive;
-    if (Object.keys(oldValue).length > 0) {
+    const { styleMap } = this._directive;
+    if (Object.keys(styleMap).length > 0) {
       this._directive = new StyleMapDirective({});
       this.connect(updater);
     }
@@ -101,21 +110,46 @@ export class StyleMapBinding implements Binding<StyleMapDirective>, Effect {
   disconnect(): void {}
 
   commit(): void {
-    const { attributeStyleMap } = this._part.node as
+    const { style } = this._part.node as
       | HTMLElement
       | MathMLElement
       | SVGElement;
-    const { styleMap } = this._directive;
+    const oldStyleMap = this._memoizedStyleMap;
+    const newStyleMap = this._directive.styleMap;
 
-    for (const property in styleMap) {
-      const value = styleMap[property as StyleProperty]!;
-      attributeStyleMap.set(property, value);
+    for (const newProperty in newStyleMap) {
+      const cssProperty = toCSSProperty(newProperty);
+      const cssValue = newStyleMap[newProperty as JSStyleProperties]!;
+      style.setProperty(cssProperty, cssValue);
     }
 
-    for (const property of attributeStyleMap.keys()) {
-      if (!Object.hasOwn(styleMap, property)) {
-        attributeStyleMap.delete(property);
+    for (const oldProperty in oldStyleMap) {
+      if (!Object.hasOwn(newStyleMap, oldProperty)) {
+        const cssProperty = toCSSProperty(oldProperty);
+        style.removeProperty(cssProperty);
       }
     }
+
+    this._memoizedStyleMap = newStyleMap;
+    this._dirty = false;
   }
+}
+
+/**
+ * Convert JS style property expressed in lowerCamelCase to CSS style property
+ * expressed in kebab-case.
+ *
+ * @example
+ * toCSSProperty('webkitFontSmoothing'); // => '-webkit-font-smoothing'
+ * @example
+ * toCSSProperty('paddingBlock'); // => 'padding-block'
+ * @example
+ * // returns the given property as is.
+ * toCSSProperty('--my-css-property');
+ * toCSSProperty('padding-block');
+ */
+function toCSSProperty(jsProperty: string): string {
+  return jsProperty
+    .replace(VENDOR_PREFIX_PATTERN, '-$1')
+    .replace(UPPERCASE_LETTERS_PATTERN, (c) => '-' + c.toLowerCase());
 }

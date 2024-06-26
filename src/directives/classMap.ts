@@ -99,22 +99,16 @@ export class ClassMapBinding implements Effect, Binding<ClassMapDirective> {
   commit(): void {
     const { classList } = this._part.node;
     const { classMap } = this._directive;
-    const addedClasses: string[] = [];
 
     for (const className in classMap) {
       const enabled = classMap[className];
       classList.toggle(className, enabled);
-      if (enabled) {
-        addedClasses.push(className);
-      }
     }
 
-    if (addedClasses.length < classList.length) {
-      for (let i = classList.length - 1; i >= 0; i--) {
-        const className = classList[i]!;
-        if (!addedClasses.includes(className)) {
-          classList.remove(className);
-        }
+    for (let i = classList.length - 1; i >= 0; i--) {
+      const className = classList[i]!;
+      if (!Object.hasOwn(classMap, className)) {
+        classList.remove(className);
       }
     }
 

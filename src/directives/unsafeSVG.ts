@@ -108,6 +108,8 @@ export class UnsafeSVGBinding implements Binding<UnsafeSVGDirective> {
 
       const reference = this._part.node;
       reference.before(...this._childNodes);
+    } else {
+      this._childNodes = [];
     }
 
     this._dirty = false;

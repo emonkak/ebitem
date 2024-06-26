@@ -108,6 +108,8 @@ export class UnsafeHTMLBinding implements Binding<UnsafeHTMLDirective> {
 
       const reference = this._part.node;
       reference.before(fragment);
+    } else {
+      this._childNodes = [];
     }
 
     this._dirty = false;

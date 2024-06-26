@@ -12,7 +12,7 @@ import { MockBinding, MockDirective, MockRenderingEngine } from '../mocks.js';
 
 describe('ChildNodeTemplate', () => {
   describe('.constructor()', () => {
-    it('should throw an error if called directly', () => {
+    it('should be forbidden from being called directly', () => {
       expect(() => new (ChildNodeTemplate as any)()).toThrow(
         'ChildNodeTemplate constructor cannot be called directly.',
       );
@@ -59,7 +59,7 @@ describe('ChildNodeTemplate', () => {
 
 describe('TextTemplate', () => {
   describe('.constructor()', () => {
-    it('should throw an error if called directly', () => {
+    it('should be forbidden from being called directly', () => {
       expect(() => new (TextTemplate as any)()).toThrow(
         'TextTemplate constructor cannot be called directly.',
       );

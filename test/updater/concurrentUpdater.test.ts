@@ -74,6 +74,17 @@ describe('ConcurrentUpdater', () => {
       const updater = new ConcurrentUpdater(engine);
 
       updater.enqueueComponent(new MockComponent());
+
+      expect(updater.isPending()).toBe(true);
+    });
+
+    it('should return true if there is a component scheduled in rendering pipelines', () => {
+      const engine = new MockRenderingEngine();
+      const updater = new ConcurrentUpdater(engine);
+
+      updater.enqueueComponent(new MockComponent());
+      updater.scheduleUpdate();
+
       expect(updater.isPending()).toBe(true);
     });
 
@@ -82,6 +93,7 @@ describe('ConcurrentUpdater', () => {
       const updater = new ConcurrentUpdater(engine);
 
       updater.enqueueMutationEffect({ commit() {} });
+
       expect(updater.isPending()).toBe(true);
     });
 
@@ -90,6 +102,7 @@ describe('ConcurrentUpdater', () => {
       const updater = new ConcurrentUpdater(engine);
 
       updater.enqueueLayoutEffect({ commit() {} });
+
       expect(updater.isPending()).toBe(true);
     });
 
@@ -98,6 +111,7 @@ describe('ConcurrentUpdater', () => {
       const updater = new ConcurrentUpdater(engine);
 
       updater.enqueuePassiveEffect({ commit() {} });
+
       expect(updater.isPending()).toBe(true);
     });
 
