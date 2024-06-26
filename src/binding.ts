@@ -352,7 +352,7 @@ export class PropertyBinding implements Binding<unknown>, Effect {
   }
 }
 
-export class SpreadBinding implements Binding<unknown> {
+export class ElementBinding implements Binding<unknown> {
   private _props: { [key: string]: unknown };
 
   private readonly _part: ElementPart;
@@ -501,7 +501,7 @@ export function resolvePrimitiveBinding(
     case PartType.ChildNode:
       return new NodeBinding(value, part);
     case PartType.Element:
-      return new SpreadBinding(value, part);
+      return new ElementBinding(value, part);
     case PartType.Event:
       return new EventBinding(value, part);
     case PartType.Node:
@@ -536,7 +536,7 @@ function ensureSpreadProps(
 ): asserts value is { [key: string]: unknown } {
   if (!(value != null && typeof value === 'object')) {
     throw new Error(
-      'A value of SpreadBinding must be an object, but got "' + value + '".',
+      'A value of ElementBinding must be an object, but got "' + value + '".',
     );
   }
 }

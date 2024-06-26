@@ -2,10 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   AttributeBinding,
+  ElementBinding,
   EventBinding,
   NodeBinding,
   PropertyBinding,
-  SpreadBinding,
   directiveTag,
   isDirective,
   mount,
@@ -949,16 +949,16 @@ describe('PropertyBinding', () => {
   });
 });
 
-describe('SpreadBinding', () => {
+describe('ElementBinding', () => {
   describe('.constructor()', () => {
-    it('should construct a new SpreadBinding', () => {
+    it('should construct a new ElementBinding', () => {
       const props = {};
       const element = document.createElement('div');
       const part = {
         type: PartType.Element,
         node: element,
       } as const;
-      const binding = new SpreadBinding(props, part);
+      const binding = new ElementBinding(props, part);
 
       expect(binding.part).toBe(part);
       expect(binding.startNode).toBe(element);
@@ -968,18 +968,18 @@ describe('SpreadBinding', () => {
 
     it('should throw the error when a non-object value is passed', () => {
       expect(() => {
-        new SpreadBinding(null, {
+        new ElementBinding(null, {
           type: PartType.Element,
           node: document.createElement('div'),
         });
-      }).toThrow('A value of SpreadBinding must be an object,');
+      }).toThrow('A value of ElementBinding must be an object,');
     });
   });
 
   describe('.value', () => {
     it('should throw the error when a non-object value is passed', () => {
       expect(() => {
-        const binding = new SpreadBinding(
+        const binding = new ElementBinding(
           {},
           {
             type: PartType.Element,
@@ -988,7 +988,7 @@ describe('SpreadBinding', () => {
         );
         const updater = new SyncUpdater(new RenderingEngine());
         binding.bind(null, updater);
-      }).toThrow('A value of SpreadBinding must be an object,');
+      }).toThrow('A value of ElementBinding must be an object,');
     });
   });
 
@@ -1003,7 +1003,7 @@ describe('SpreadBinding', () => {
         type: PartType.Element,
         node: element,
       } as const;
-      const binding = new SpreadBinding(props, part);
+      const binding = new ElementBinding(props, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
       binding.connect(updater);
@@ -1023,7 +1023,7 @@ describe('SpreadBinding', () => {
         type: PartType.Element,
         node: element,
       } as const;
-      const binding = new SpreadBinding(props, part);
+      const binding = new ElementBinding(props, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
       binding.connect(updater);
@@ -1044,7 +1044,7 @@ describe('SpreadBinding', () => {
         type: PartType.Element,
         node: element,
       } as const;
-      const binding = new SpreadBinding(props, part);
+      const binding = new ElementBinding(props, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
       binding.connect(updater);
@@ -1071,7 +1071,7 @@ describe('SpreadBinding', () => {
         type: PartType.Element,
         node: element,
       } as const;
-      const binding = new SpreadBinding(props, part);
+      const binding = new ElementBinding(props, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
       binding.connect(updater);
@@ -1095,7 +1095,7 @@ describe('SpreadBinding', () => {
         type: PartType.Element,
         node: element,
       } as const;
-      const binding = new SpreadBinding(props, part);
+      const binding = new ElementBinding(props, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
       binding.connect(updater);
@@ -1128,7 +1128,7 @@ describe('SpreadBinding', () => {
         type: PartType.Element,
         node: element,
       } as const;
-      const binding = new SpreadBinding(props, part);
+      const binding = new ElementBinding(props, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
       binding.connect(updater);
@@ -1153,7 +1153,7 @@ describe('SpreadBinding', () => {
         type: PartType.Element,
         node: element,
       } as const;
-      const binding = new SpreadBinding(props, part);
+      const binding = new ElementBinding(props, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
       binding.connect(updater);
@@ -1190,7 +1190,7 @@ describe('SpreadBinding', () => {
         type: PartType.Element,
         node: element,
       } as const;
-      const binding = new SpreadBinding(props, part);
+      const binding = new ElementBinding(props, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
       binding.connect(updater);
@@ -1298,7 +1298,7 @@ describe('resolveBinding()', () => {
     expect(updater.isScheduled()).toBe(false);
   });
 
-  it('should resolve the value as a SpreadBinding if the part is a ElementPart', () => {
+  it('should resolve the value as a ElementBinding if the part is a ElementPart', () => {
     const element = document.createElement('div');
     const part = {
       type: PartType.Element,
@@ -1314,7 +1314,7 @@ describe('resolveBinding()', () => {
     binding.connect(updater);
     updater.flush();
 
-    expect(binding).toBeInstanceOf(SpreadBinding);
+    expect(binding).toBeInstanceOf(ElementBinding);
     expect(binding.value).toBe(props);
     expect(updater.isPending()).toBe(false);
     expect(updater.isScheduled()).toBe(false);

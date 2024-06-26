@@ -2,10 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   AttributeBinding,
+  ElementBinding,
   EventBinding,
   NodeBinding,
   PropertyBinding,
-  SpreadBinding,
   directiveTag,
 } from '../../src/binding.js';
 import { RenderingEngine } from '../../src/renderingEngine.js';
@@ -340,7 +340,7 @@ describe('TaggedTemplate', () => {
         type: PartType.Event,
         name: 'onchange',
       });
-      expect(fragment.bindings[4]).toBeInstanceOf(SpreadBinding);
+      expect(fragment.bindings[4]).toBeInstanceOf(ElementBinding);
       expect(fragment.bindings[4]?.part).toMatchObject({
         type: PartType.Element,
       });
