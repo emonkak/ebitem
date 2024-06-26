@@ -56,6 +56,10 @@ export class StyleMapBinding implements Binding<StyleMapDirective>, Effect {
     this._part = part;
   }
 
+  get value(): StyleMapDirective {
+    return this._directive;
+  }
+
   get part(): AttributePart {
     return this._part;
   }
@@ -68,8 +72,11 @@ export class StyleMapBinding implements Binding<StyleMapDirective>, Effect {
     return this._part.node;
   }
 
-  get value(): StyleMapDirective {
-    return this._directive;
+  connect(updater: Updater): void {
+    if (!this._dirty) {
+      updater.enqueueMutationEffect(this);
+      this._dirty = true;
+    }
   }
 
   bind(newValue: StyleMapDirective, updater: Updater): void {
@@ -79,14 +86,7 @@ export class StyleMapBinding implements Binding<StyleMapDirective>, Effect {
     const oldValue = this._directive;
     if (!shallowEqual(newValue.styleMap, oldValue.styleMap)) {
       this._directive = newValue;
-      this.rebind(updater);
-    }
-  }
-
-  rebind(updater: Updater): void {
-    if (!this._dirty) {
-      updater.enqueueMutationEffect(this);
-      this._dirty = true;
+      this.connect(updater);
     }
   }
 
@@ -94,7 +94,7 @@ export class StyleMapBinding implements Binding<StyleMapDirective>, Effect {
     const oldValue = this._directive;
     if (Object.keys(oldValue).length > 0) {
       this._directive = new StyleMapDirective({});
-      this.rebind(updater);
+      this.connect(updater);
     }
   }
 

@@ -53,6 +53,10 @@ export class ChoiceBinding<TKey, TValue>
     this._part = part;
   }
 
+  get value(): ChoiceDirective<TKey, TValue> {
+    return this._directive;
+  }
+
   get part(): Part {
     return this._part;
   }
@@ -65,8 +69,15 @@ export class ChoiceBinding<TKey, TValue>
     return this._currentBinding?.endNode ?? this._part.node;
   }
 
-  get value(): ChoiceDirective<TKey, TValue> {
-    return this._directive;
+  connect(updater: Updater): void {
+    if (this._currentBinding !== null) {
+      this._currentBinding.connect(updater);
+    } else {
+      const { key, factory } = this._directive;
+      const value = factory(key);
+      this._currentBinding = resolveBinding(value, this._part, updater);
+      this._currentBinding.connect(updater);
+    }
   }
 
   bind(newValue: ChoiceDirective<TKey, TValue>, updater: Updater): void {
@@ -100,17 +111,6 @@ export class ChoiceBinding<TKey, TValue>
     }
   }
 
-  rebind(updater: Updater): void {
-    if (this._currentBinding !== null) {
-      this._currentBinding.rebind(updater);
-    } else {
-      const { key, factory } = this._directive;
-      const value = factory(key);
-      this._currentBinding = resolveBinding(value, this._part, updater);
-      this._currentBinding.rebind(updater);
-    }
-  }
-
   unbind(updater: Updater): void {
     this._currentBinding?.unbind(updater);
   }
@@ -130,7 +130,7 @@ export class ChoiceBinding<TKey, TValue>
       return cachedBinding;
     } else {
       const binding = resolveBinding(newValue, this._part, updater);
-      binding.rebind(updater);
+      binding.connect(updater);
       return binding;
     }
   }

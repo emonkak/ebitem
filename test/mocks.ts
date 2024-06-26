@@ -27,6 +27,10 @@ export class MockBinding implements Binding<MockDirective> {
     this._part = part;
   }
 
+  get value(): MockDirective {
+    return this._value;
+  }
+
   get part(): Part {
     return this._part;
   }
@@ -39,15 +43,11 @@ export class MockBinding implements Binding<MockDirective> {
     return this._part.node;
   }
 
-  get value(): MockDirective {
-    return this._value;
-  }
-
   bind(newValue: MockDirective, _updater: Updater): void {
     this._value = newValue;
   }
 
-  rebind(_updater: Updater): void {}
+  connect(_updater: Updater): void {}
 
   unbind(_updater: Updater): void {}
 

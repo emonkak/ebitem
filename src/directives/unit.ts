@@ -27,6 +27,10 @@ export class UnitBinding implements Binding<UnitDirective> {
     this._part = part;
   }
 
+  get value(): UnitDirective {
+    return UnitDirective.instance;
+  }
+
   get part(): Part {
     return this._part;
   }
@@ -39,17 +43,13 @@ export class UnitBinding implements Binding<UnitDirective> {
     return this._part.node;
   }
 
-  get value(): UnitDirective {
-    return UnitDirective.instance;
-  }
+  connect(_updater: Updater): void {}
 
   bind(newValue: UnitDirective, _updater: Updater): void {
     DEBUG: {
       ensureDirective(UnitDirective, newValue);
     }
   }
-
-  rebind(_updater: Updater): void {}
 
   unbind(_updater: Updater): void {}
 

@@ -45,7 +45,7 @@ describe('AttributeBinding', () => {
       const binding = new AttributeBinding('foo', part);
       const updater = new SyncUpdater(new RenderingEngine());
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       expect(binding.value).toBe('foo');
@@ -78,7 +78,7 @@ describe('AttributeBinding', () => {
       const binding = new AttributeBinding(obj1, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       expect(binding.value).toBe(obj1);
@@ -101,7 +101,7 @@ describe('AttributeBinding', () => {
       const binding = new AttributeBinding(true, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       expect(binding.value).toBe(true);
@@ -125,7 +125,7 @@ describe('AttributeBinding', () => {
       const updater = new SyncUpdater(new RenderingEngine());
 
       element.toggleAttribute('contenteditable', true);
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       expect(binding.value).toBe(null);
@@ -143,7 +143,7 @@ describe('AttributeBinding', () => {
       const updater = new SyncUpdater(new RenderingEngine());
 
       element.toggleAttribute('contenteditable', true);
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       expect(binding.value).toBe(undefined);
@@ -182,8 +182,8 @@ describe('AttributeBinding', () => {
         'enqueueMutationEffect',
       );
 
-      binding.rebind(updater);
-      binding.rebind(updater);
+      binding.connect(updater);
+      binding.connect(updater);
 
       expect(enqueueMutationEffectSpy).toHaveBeenCalledOnce();
       expect(enqueueMutationEffectSpy).toHaveBeenCalledWith(binding);
@@ -303,7 +303,7 @@ describe('EventBinding', () => {
   });
 
   describe('.bind()', () => {
-    it('should attach the function to the element as an event listener', () => {
+    it('should connect the function to the element as an event listener', () => {
       const listener1 = vi.fn();
       const listener2 = vi.fn();
       const event = new CustomEvent('hello');
@@ -318,7 +318,7 @@ describe('EventBinding', () => {
 
       const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
       element.dispatchEvent(event);
 
@@ -336,7 +336,7 @@ describe('EventBinding', () => {
       expect(listener2).toHaveBeenCalledWith(event);
     });
 
-    it('should attach the object to the element as an event listener', () => {
+    it('should connect the object to the element as an event listener', () => {
       const listener1 = {
         capture: true,
         handleEvent: vi.fn(),
@@ -358,7 +358,7 @@ describe('EventBinding', () => {
       const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
       const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
       element.dispatchEvent(event);
 
@@ -392,7 +392,7 @@ describe('EventBinding', () => {
       expect(listener2.handleEvent).toHaveBeenCalledWith(event);
     });
 
-    it('should not attach the event listener if the new and current listeners are the same', () => {
+    it('should not connect the event listener if the new and current listeners are the same', () => {
       const listener = () => {};
       const element = document.createElement('div');
       const part = {
@@ -406,7 +406,7 @@ describe('EventBinding', () => {
       const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
       const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       expect(addEventListenerSpy).toHaveBeenCalledOnce();
@@ -418,7 +418,7 @@ describe('EventBinding', () => {
       expect(updater.isScheduled()).toBe(false);
     });
 
-    it('should detach the active event listener when null is passed', () => {
+    it('should unbind the active event listener when null is passed', () => {
       const element = document.createElement('div');
       const part = {
         type: PartType.Event,
@@ -433,7 +433,7 @@ describe('EventBinding', () => {
       const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
       const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
       element.dispatchEvent(event);
 
@@ -465,8 +465,8 @@ describe('EventBinding', () => {
         'enqueueMutationEffect',
       );
 
-      binding.rebind(updater);
-      binding.rebind(updater);
+      binding.connect(updater);
+      binding.connect(updater);
 
       expect(enqueueMutationEffectSpy).toHaveBeenCalledOnce();
       expect(enqueueMutationEffectSpy).toHaveBeenCalledWith(binding);
@@ -499,7 +499,7 @@ describe('EventBinding', () => {
   });
 
   describe('.unbind()', () => {
-    it('should detach the active event listener', () => {
+    it('should unbind the active event listener', () => {
       const listener = vi.fn();
       const element = document.createElement('div');
       const part = {
@@ -514,7 +514,7 @@ describe('EventBinding', () => {
       const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
       const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
       element.dispatchEvent(event);
 
@@ -542,7 +542,7 @@ describe('EventBinding', () => {
       const binding = new EventBinding(listener, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
-      binding.rebind(updater);
+      binding.connect(updater);
 
       updater.flush();
 
@@ -581,7 +581,7 @@ describe('EventBinding', () => {
   });
 
   describe('.disconnect()', () => {
-    it('should detach the active event listener function', () => {
+    it('should unbind the active event listener function', () => {
       const listener = () => {};
       const element = document.createElement('div');
       const part = {
@@ -595,7 +595,7 @@ describe('EventBinding', () => {
       const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
       const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       binding.disconnect();
@@ -609,15 +609,15 @@ describe('EventBinding', () => {
 
       expect(
         addEventListenerSpy,
-        'Do nothing if the event listener is already detached.',
+        'Do nothing if the event listener is already unbinded.',
       ).toHaveBeenCalledOnce();
       expect(
         removeEventListenerSpy,
-        'Do nothing if the event listener is already detached.',
+        'Do nothing if the event listener is already unbinded.',
       ).toHaveBeenCalledOnce();
     });
 
-    it('should detach the active event listener object', () => {
+    it('should unbind the active event listener object', () => {
       const listener = { handleEvent: () => {}, capture: true };
       const element = document.createElement('div');
       const part = {
@@ -631,7 +631,7 @@ describe('EventBinding', () => {
       const addEventListenerSpy = vi.spyOn(element, 'addEventListener');
       const removeEventListenerSpy = vi.spyOn(element, 'removeEventListener');
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       binding.disconnect();
@@ -653,11 +653,11 @@ describe('EventBinding', () => {
 
       expect(
         addEventListenerSpy,
-        'Do nothing if the event listener is already detached.',
+        'Do nothing if the event listener is already unbinded.',
       ).toHaveBeenCalledOnce();
       expect(
         removeEventListenerSpy,
-        'Do nothing if the event listener is already detached.',
+        'Do nothing if the event listener is already unbinded.',
       ).toHaveBeenCalledOnce();
     });
   });
@@ -691,7 +691,7 @@ describe('NodeBinding', () => {
       const binding = new NodeBinding('foo', part);
       const updater = new SyncUpdater(new RenderingEngine());
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       expect(binding.value).toBe('foo');
@@ -740,8 +740,8 @@ describe('NodeBinding', () => {
         'enqueueMutationEffect',
       );
 
-      binding.rebind(updater);
-      binding.rebind(updater);
+      binding.connect(updater);
+      binding.connect(updater);
 
       expect(enqueueMutationEffectSpy).toHaveBeenCalledOnce();
       expect(enqueueMutationEffectSpy).toHaveBeenCalledWith(binding);
@@ -769,7 +769,7 @@ describe('NodeBinding', () => {
       const binding = new NodeBinding('foo', part);
       const updater = new SyncUpdater(new RenderingEngine());
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       expect(binding.value).toBe('foo');
@@ -846,7 +846,7 @@ describe('PropertyBinding', () => {
       const binding = new PropertyBinding('foo', part);
       const updater = new SyncUpdater(new RenderingEngine());
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       expect(binding.value).toBe('foo');
@@ -890,8 +890,8 @@ describe('PropertyBinding', () => {
         'enqueueMutationEffect',
       );
 
-      binding.rebind(updater);
-      binding.rebind(updater);
+      binding.connect(updater);
+      binding.connect(updater);
 
       expect(enqueueMutationEffectSpy).toHaveBeenCalledOnce();
       expect(enqueueMutationEffectSpy).toHaveBeenCalledWith(binding);
@@ -992,7 +992,7 @@ describe('SpreadBinding', () => {
     });
   });
 
-  describe('.rebind()', () => {
+  describe('.connect()', () => {
     it('should bind element attributes', () => {
       const props = {
         class: 'foo',
@@ -1006,7 +1006,7 @@ describe('SpreadBinding', () => {
       const binding = new SpreadBinding(props, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       expect(element.getAttribute('class')).toBe('foo');
@@ -1026,7 +1026,7 @@ describe('SpreadBinding', () => {
       const binding = new SpreadBinding(props, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       expect(element.className).toBe('foo');
@@ -1047,7 +1047,7 @@ describe('SpreadBinding', () => {
       const binding = new SpreadBinding(props, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       expect(addEventListenerSpy).toHaveBeenCalledTimes(2);
@@ -1074,7 +1074,7 @@ describe('SpreadBinding', () => {
       const binding = new SpreadBinding(props, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       binding.bind(props, updater);
@@ -1098,7 +1098,7 @@ describe('SpreadBinding', () => {
       const binding = new SpreadBinding(props, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       binding.bind(
@@ -1131,7 +1131,7 @@ describe('SpreadBinding', () => {
       const binding = new SpreadBinding(props, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       binding.bind({ class: undefined }, updater);
@@ -1156,7 +1156,7 @@ describe('SpreadBinding', () => {
       const binding = new SpreadBinding(props, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       binding.unbind(updater);
@@ -1193,7 +1193,7 @@ describe('SpreadBinding', () => {
       const binding = new SpreadBinding(props, part);
       const updater = new SyncUpdater(new RenderingEngine());
 
-      binding.rebind(updater);
+      binding.connect(updater);
       updater.flush();
 
       binding.disconnect();
@@ -1311,7 +1311,7 @@ describe('resolveBinding()', () => {
     };
     const binding = resolveBinding(props, part, updater);
 
-    binding.rebind(updater);
+    binding.connect(updater);
     updater.flush();
 
     expect(binding).toBeInstanceOf(SpreadBinding);

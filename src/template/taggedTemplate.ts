@@ -176,7 +176,7 @@ export class TaggedTemplate implements Template<unknown[]> {
           }
 
           const binding = resolveBinding(data[holeIndex], part, updater);
-          binding.rebind(updater);
+          binding.connect(updater);
 
           bindings[holeIndex] = binding;
           holeIndex++;

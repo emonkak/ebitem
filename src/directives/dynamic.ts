@@ -42,6 +42,10 @@ export class DynamicBinding implements Binding<unknown> {
     this._part = part;
   }
 
+  get value(): DynamicDirective {
+    return this._directive;
+  }
+
   get part(): Part {
     return this._part;
   }
@@ -54,8 +58,8 @@ export class DynamicBinding implements Binding<unknown> {
     return this._part.node;
   }
 
-  get value(): DynamicDirective {
-    return this._directive;
+  connect(updater: Updater): void {
+    this._binding.connect(updater);
   }
 
   bind(newValue: DynamicDirective, updater: Updater): void {
@@ -70,21 +74,17 @@ export class DynamicBinding implements Binding<unknown> {
       } else {
         this._binding.unbind(updater);
         this._binding = newDynamic[directiveTag](this._binding.part, updater);
-        this._binding.rebind(updater);
+        this._binding.connect(updater);
       }
     } else {
       if (isDirective(oldDynamic)) {
         this._binding.unbind(updater);
         this._binding = resolvePrimitiveBinding(newDynamic, this._binding.part);
-        this._binding.rebind(updater);
+        this._binding.connect(updater);
       } else {
         this._binding.bind(newDynamic, updater);
       }
     }
-  }
-
-  rebind(updater: Updater): void {
-    this._binding.rebind(updater);
   }
 
   unbind(updater: Updater): void {

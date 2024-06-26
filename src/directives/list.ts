@@ -94,6 +94,10 @@ export class ListBinding<TItem, TValue, TKey>
     this._part = part;
   }
 
+  get value(): ListDirective<TItem, TValue, TKey> {
+    return this._directive;
+  }
+
   get part(): ChildNodePart {
     return this._part;
   }
@@ -106,8 +110,12 @@ export class ListBinding<TItem, TValue, TKey>
     return this._part.node;
   }
 
-  get value(): ListDirective<TItem, TValue, TKey> {
-    return this._directive;
+  connect(updater: Updater): void {
+    if (this._bindings.length > 0) {
+      this._reconcileItems(updater);
+    } else {
+      this._initializeItems(updater);
+    }
   }
 
   bind(newValue: ListDirective<TItem, TValue, TKey>, updater: Updater): void {
@@ -121,15 +129,7 @@ export class ListBinding<TItem, TValue, TKey>
       oldValue.valueSelector !== newValue.valueSelector
     ) {
       this._directive = newValue;
-      this.rebind(updater);
-    }
-  }
-
-  rebind(updater: Updater): void {
-    if (this._bindings.length > 0) {
-      this._reconcileItems(updater);
-    } else {
-      this._initializeItems(updater);
+      this.connect(updater);
     }
   }
 
@@ -344,7 +344,7 @@ function addItem<T>(value: T, listPart: Part, updater: Updater): Binding<T> {
 
   const binding = resolveBinding(value, part, updater);
 
-  binding.rebind(updater);
+  binding.connect(updater);
 
   return binding;
 }

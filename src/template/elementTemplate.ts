@@ -40,8 +40,8 @@ export class ElementTemplate<TElementValue, TChildNodeValue>
       childNodePart,
       updater,
     );
-    elementBinding.rebind(updater);
-    childNodeBinding.rebind(updater);
+    elementBinding.connect(updater);
+    childNodeBinding.connect(updater);
     return new ElementTemplateFragment(elementBinding, childNodeBinding);
   }
 

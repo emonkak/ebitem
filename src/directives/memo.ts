@@ -48,6 +48,10 @@ export class MemoBinding implements Binding<unknown> {
     this._part = part;
   }
 
+  get value(): MemoDirective {
+    return this._directive;
+  }
+
   get part(): Part {
     return this._part;
   }
@@ -60,8 +64,8 @@ export class MemoBinding implements Binding<unknown> {
     return this._part.node;
   }
 
-  get value(): MemoDirective {
-    return this._directive;
+  connect(updater: Updater): void {
+    this._binding.connect(updater);
   }
 
   bind(newValue: MemoDirective, updater: Updater): void {
@@ -74,10 +78,6 @@ export class MemoBinding implements Binding<unknown> {
       this._directive = newValue;
       this._binding.bind(newValue.value, updater);
     }
-  }
-
-  rebind(updater: Updater): void {
-    this._binding.rebind(updater);
   }
 
   unbind(updater: Updater): void {

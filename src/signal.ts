@@ -83,6 +83,10 @@ export class SignalBinding<TValue> implements Binding<Signal<TValue>> {
     this._binding = resolveBinding(signal.value, part, updater);
   }
 
+  get value(): Signal<TValue> {
+    return this._signal;
+  }
+
   get part(): Part {
     return this._binding.part;
   }
@@ -95,12 +99,13 @@ export class SignalBinding<TValue> implements Binding<Signal<TValue>> {
     return this._binding.endNode;
   }
 
-  get value(): Signal<TValue> {
-    return this._signal;
-  }
-
   get binding(): Binding<TValue> {
     return this._binding;
+  }
+
+  connect(updater: Updater): void {
+    this._binding.connect(updater);
+    this._subscription ??= this._subscribeSignal(this._signal, updater);
   }
 
   bind(newValue: Signal<TValue>, updater: Updater) {
@@ -114,11 +119,6 @@ export class SignalBinding<TValue> implements Binding<Signal<TValue>> {
     }
     this._binding.bind(newValue.value, updater);
     this._subscription ??= this._subscribeSignal(newValue, updater);
-  }
-
-  rebind(updater: Updater): void {
-    this._binding.rebind(updater);
-    this._subscription ??= this._subscribeSignal(this._signal, updater);
   }
 
   unbind(updater: Updater): void {

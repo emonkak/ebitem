@@ -167,7 +167,7 @@ export class BlockBinding<TProps, TData, TContext>
 
     if (this._pendingFragment !== null) {
       if (this._memoizedTemplate !== template) {
-        // First, detach of the current fragment.
+        // First, unbind of the current fragment.
         this._pendingFragment.unbind(updater);
 
         // We need to mount child nodes before hydration.
@@ -226,6 +226,16 @@ export class BlockBinding<TProps, TData, TContext>
     this._flags &= ~FLAG_UNMOUNTING;
   }
 
+  connect(updater: Updater): void {
+    if (!(this._flags & FLAG_UPDATING)) {
+      this._priority = this._parent?.priority ?? updater.getCurrentPriority();
+      this._flags |= FLAG_UPDATING;
+      updater.enqueueComponent(this);
+    }
+
+    this._flags &= ~FLAG_UNMOUNTING;
+  }
+
   bind(
     newValue: BlockDirective<TProps, TData, TContext>,
     updater: Updater,
@@ -234,17 +244,7 @@ export class BlockBinding<TProps, TData, TContext>
       ensureDirective(BlockDirective, newValue);
     }
     this._directive = newValue;
-    this.rebind(updater);
-  }
-
-  rebind(updater: Updater): void {
-    if (!(this._flags & FLAG_UPDATING)) {
-      this._priority = this._parent?.priority ?? updater.getCurrentPriority();
-      this._flags |= FLAG_UPDATING;
-      updater.enqueueComponent(this);
-    }
-
-    this._flags &= ~FLAG_UNMOUNTING;
+    this.connect(updater);
   }
 
   unbind(updater: Updater): void {

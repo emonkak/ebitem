@@ -85,6 +85,10 @@ export class ConditionBinding<TTrue, TFalse>
     this._part = part;
   }
 
+  get value(): ConditionDirective<TTrue, TFalse> {
+    return this._directive;
+  }
+
   get part(): Part {
     return this._part;
   }
@@ -97,12 +101,26 @@ export class ConditionBinding<TTrue, TFalse>
     return this.currentBinding?.endNode ?? this._part.node;
   }
 
-  get value(): ConditionDirective<TTrue, TFalse> {
-    return this._directive;
-  }
-
   get currentBinding(): Binding<TTrue> | Binding<TFalse> | null {
     return this._directive.condition ? this._trueBinding : this._falseBinding;
+  }
+
+  connect(updater: Updater): void {
+    const { condition, trueCase, falseCase } = this._directive;
+
+    if (condition) {
+      if (this._trueBinding === null) {
+        const value = typeof trueCase === 'function' ? trueCase() : trueCase;
+        this._trueBinding = resolveBinding(value, this._part, updater);
+      }
+      this._trueBinding.connect(updater);
+    } else {
+      if (this._falseBinding === null) {
+        const value = typeof falseCase === 'function' ? falseCase() : trueCase;
+        this._falseBinding = resolveBinding(value, this._part, updater);
+      }
+      this._falseBinding.connect(updater);
+    }
   }
 
   bind(newValue: ConditionDirective<TTrue, TFalse>, updater: Updater): void {
@@ -129,7 +147,7 @@ export class ConditionBinding<TTrue, TFalse>
         } else {
           this._falseBinding?.unbind(updater);
           this._trueBinding = resolveBinding(value, this._part, updater);
-          this._trueBinding.rebind(updater);
+          this._trueBinding.connect(updater);
         }
       } else {
         const value = typeof falseCase === 'function' ? falseCase() : falseCase;
@@ -141,29 +159,11 @@ export class ConditionBinding<TTrue, TFalse>
         } else {
           this._trueBinding?.unbind(updater);
           this._falseBinding = resolveBinding(value, this._part, updater);
-          this._falseBinding.rebind(updater);
+          this._falseBinding.connect(updater);
         }
       }
 
       this._directive = newValue;
-    }
-  }
-
-  rebind(updater: Updater): void {
-    const { condition, trueCase, falseCase } = this._directive;
-
-    if (condition) {
-      if (this._trueBinding === null) {
-        const value = typeof trueCase === 'function' ? trueCase() : trueCase;
-        this._trueBinding = resolveBinding(value, this._part, updater);
-      }
-      this._trueBinding.rebind(updater);
-    } else {
-      if (this._falseBinding === null) {
-        const value = typeof falseCase === 'function' ? falseCase() : trueCase;
-        this._falseBinding = resolveBinding(value, this._part, updater);
-      }
-      this._falseBinding.rebind(updater);
     }
   }
 

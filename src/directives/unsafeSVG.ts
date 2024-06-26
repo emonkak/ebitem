@@ -48,6 +48,10 @@ export class UnsafeSVGBinding implements Binding<UnsafeSVGDirective> {
     this._part = part;
   }
 
+  get value(): UnsafeSVGDirective {
+    return this._directive;
+  }
+
   get part(): ChildNodePart {
     return this._part;
   }
@@ -60,8 +64,11 @@ export class UnsafeSVGBinding implements Binding<UnsafeSVGDirective> {
     return this._part.node;
   }
 
-  get value(): UnsafeSVGDirective {
-    return this._directive;
+  connect(updater: Updater): void {
+    if (!this._dirty) {
+      updater.enqueueMutationEffect(this);
+      this._dirty = true;
+    }
   }
 
   bind(newValue: UnsafeSVGDirective, updater: Updater): void {
@@ -71,14 +78,7 @@ export class UnsafeSVGBinding implements Binding<UnsafeSVGDirective> {
     const oldValue = this._directive;
     if (oldValue.unsafeContent !== newValue.unsafeContent) {
       this._directive = newValue;
-      this.rebind(updater);
-    }
-  }
-
-  rebind(updater: Updater): void {
-    if (!this._dirty) {
-      updater.enqueueMutationEffect(this);
-      this._dirty = true;
+      this.connect(updater);
     }
   }
 
@@ -86,7 +86,7 @@ export class UnsafeSVGBinding implements Binding<UnsafeSVGDirective> {
     const { unsafeContent } = this._directive;
     if (unsafeContent !== '') {
       this._directive = new UnsafeSVGDirective('');
-      this.rebind(updater);
+      this.connect(updater);
     }
   }
 

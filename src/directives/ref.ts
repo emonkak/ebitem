@@ -52,6 +52,10 @@ export class RefBinding implements Binding<RefDirective>, Effect {
     this._part = part;
   }
 
+  get value(): RefDirective {
+    return this._pendingDirective;
+  }
+
   get part(): AttributePart {
     return this._part;
   }
@@ -64,8 +68,11 @@ export class RefBinding implements Binding<RefDirective>, Effect {
     return this._part.node;
   }
 
-  get value(): RefDirective {
-    return this._pendingDirective;
+  connect(updater: Updater): void {
+    if (!this._dirty) {
+      updater.enqueuePassiveEffect(this);
+      this._dirty = true;
+    }
   }
 
   bind(newValue: RefDirective, updater: Updater): void {
@@ -75,14 +82,7 @@ export class RefBinding implements Binding<RefDirective>, Effect {
     const oldValue = this._pendingDirective;
     if (oldValue.ref !== newValue.ref) {
       this._pendingDirective = newValue;
-      this.rebind(updater);
-    }
-  }
-
-  rebind(updater: Updater): void {
-    if (!this._dirty) {
-      updater.enqueuePassiveEffect(this);
-      this._dirty = true;
+      this.connect(updater);
     }
   }
 
@@ -90,7 +90,7 @@ export class RefBinding implements Binding<RefDirective>, Effect {
     const { ref } = this._pendingDirective;
     if (ref !== null) {
       this._pendingDirective = new RefDirective(null);
-      this.rebind(updater);
+      this.connect(updater);
     }
   }
 

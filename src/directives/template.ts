@@ -167,15 +167,7 @@ export class TemplateBinding<TData, TContext>
     this._flags &= ~FLAG_UNMOUNTING;
   }
 
-  bind(newValue: TemplateDirective<TData, TContext>, updater: Updater): void {
-    DEBUG: {
-      ensureDirective(TemplateDirective, newValue);
-    }
-    this._directive = newValue;
-    this.rebind(updater);
-  }
-
-  rebind(updater: Updater<TContext>): void {
+  connect(updater: Updater<TContext>): void {
     if (!(this._flags & FLAG_UPDATING)) {
       this._priority = this._parent?.priority ?? updater.getCurrentPriority();
       this._flags |= FLAG_UPDATING;
@@ -183,6 +175,14 @@ export class TemplateBinding<TData, TContext>
     }
 
     this._flags &= ~FLAG_UNMOUNTING;
+  }
+
+  bind(newValue: TemplateDirective<TData, TContext>, updater: Updater): void {
+    DEBUG: {
+      ensureDirective(TemplateDirective, newValue);
+    }
+    this._directive = newValue;
+    this.connect(updater);
   }
 
   unbind(updater: Updater<TContext>): void {

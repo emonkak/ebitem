@@ -52,6 +52,10 @@ export class ClassMapBinding implements Effect, Binding<ClassMapDirective> {
     this._part = part;
   }
 
+  get value(): ClassMapDirective {
+    return this._directive;
+  }
+
   get part(): AttributePart {
     return this._part;
   }
@@ -64,8 +68,11 @@ export class ClassMapBinding implements Effect, Binding<ClassMapDirective> {
     return this._part.node;
   }
 
-  get value(): ClassMapDirective {
-    return this._directive;
+  connect(updater: Updater): void {
+    if (!this._dirty) {
+      updater.enqueueMutationEffect(this);
+      this._dirty = true;
+    }
   }
 
   bind(newValue: ClassMapDirective, updater: Updater): void {
@@ -75,14 +82,7 @@ export class ClassMapBinding implements Effect, Binding<ClassMapDirective> {
     const oldValue = this._directive;
     if (!shallowEqual(oldValue.classMap, newValue.classMap)) {
       this._directive = newValue;
-      this.rebind(updater);
-    }
-  }
-
-  rebind(updater: Updater): void {
-    if (!this._dirty) {
-      updater.enqueueMutationEffect(this);
-      this._dirty = true;
+      this.connect(updater);
     }
   }
 
@@ -90,7 +90,7 @@ export class ClassMapBinding implements Effect, Binding<ClassMapDirective> {
     const { classMap } = this._directive;
     if (Object.keys(classMap).length > 0) {
       this._directive = new ClassMapDirective({});
-      this.rebind(updater);
+      this.connect(updater);
     }
   }
 

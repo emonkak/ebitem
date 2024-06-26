@@ -24,7 +24,7 @@ export class ChildNodeTemplate<T> implements Template<T> {
       node: document.createComment(''),
     } as const;
     const binding = resolveBinding(data, part, updater);
-    binding.rebind(updater);
+    binding.connect(updater);
     return new ValueTemplateFragment(binding);
   }
 
@@ -48,7 +48,7 @@ export class TextTemplate<T> implements Template<T> {
       node: document.createTextNode(''),
     } as const;
     const binding = resolveBinding(data, part, updater);
-    binding.rebind(updater);
+    binding.connect(updater);
     return new ValueTemplateFragment(binding);
   }
 

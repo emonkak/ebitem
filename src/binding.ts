@@ -12,12 +12,12 @@ import {
 export const directiveTag = Symbol('Directive');
 
 export interface Binding<TValue, TContext = unknown> {
+  get value(): TValue;
   get part(): Part;
   get startNode(): ChildNode;
   get endNode(): ChildNode;
-  get value(): TValue;
+  connect(updater: Updater<TContext>): void;
   bind(newValue: TValue, updater: Updater<TContext>): void;
-  rebind(updater: Updater<TContext>): void;
   unbind(updater: Updater<TContext>): void;
   disconnect(): void;
 }
@@ -44,6 +44,10 @@ export class AttributeBinding implements Binding<unknown>, Effect {
     this._part = part;
   }
 
+  get value(): unknown {
+    return this._value;
+  }
+
   get part(): AttributePart {
     return this._part;
   }
@@ -56,8 +60,11 @@ export class AttributeBinding implements Binding<unknown>, Effect {
     return this._part.node;
   }
 
-  get value(): unknown {
-    return this._value;
+  connect(updater: Updater): void {
+    if (!this._dirty) {
+      updater.enqueueMutationEffect(this);
+      this._dirty = true;
+    }
   }
 
   bind(newValue: unknown, updater: Updater): void {
@@ -66,21 +73,14 @@ export class AttributeBinding implements Binding<unknown>, Effect {
     }
     if (!Object.is(this._value, newValue)) {
       this._value = newValue;
-      this.rebind(updater);
-    }
-  }
-
-  rebind(updater: Updater): void {
-    if (!this._dirty) {
-      updater.enqueueMutationEffect(this);
-      this._dirty = true;
+      this.connect(updater);
     }
   }
 
   unbind(updater: Updater): void {
     if (this._value !== null) {
       this._value = null;
-      this.rebind(updater);
+      this.connect(updater);
     }
   }
 
@@ -119,6 +119,10 @@ export class EventBinding implements Binding<unknown>, Effect {
     this._part = part;
   }
 
+  get value(): unknown {
+    return this._pendingListener;
+  }
+
   get part(): EventPart {
     return this._part;
   }
@@ -131,29 +135,25 @@ export class EventBinding implements Binding<unknown>, Effect {
     return this._part.node;
   }
 
-  get value(): unknown {
-    return this._pendingListener;
-  }
-
-  bind(newValue: unknown, updater: Updater): void {
-    ensureEventListener(newValue);
-    if (this._memoizedListener !== newValue) {
-      this._pendingListener = newValue;
-      this.rebind(updater);
-    }
-  }
-
-  rebind(updater: Updater): void {
+  connect(updater: Updater): void {
     if (!this._dirty) {
       updater.enqueueMutationEffect(this);
       this._dirty = true;
     }
   }
 
+  bind(newValue: unknown, updater: Updater): void {
+    ensureEventListener(newValue);
+    if (this._memoizedListener !== newValue) {
+      this._pendingListener = newValue;
+      this.connect(updater);
+    }
+  }
+
   unbind(updater: Updater): void {
     this._pendingListener = null;
     if (this._memoizedListener !== null) {
-      this.rebind(updater);
+      this.connect(updater);
     }
   }
 
@@ -242,6 +242,10 @@ export class NodeBinding implements Binding<unknown>, Effect {
     this._part = part;
   }
 
+  get value(): unknown {
+    return this._value;
+  }
+
   get part(): Part {
     return this._part;
   }
@@ -254,8 +258,11 @@ export class NodeBinding implements Binding<unknown>, Effect {
     return this._part.node;
   }
 
-  get value(): unknown {
-    return this._value;
+  connect(updater: Updater): void {
+    if (!this._dirty) {
+      updater.enqueueMutationEffect(this);
+      this._dirty = true;
+    }
   }
 
   bind(newValue: unknown, updater: Updater): void {
@@ -264,21 +271,14 @@ export class NodeBinding implements Binding<unknown>, Effect {
     }
     if (!Object.is(this._value, newValue)) {
       this._value = newValue;
-      this.rebind(updater);
-    }
-  }
-
-  rebind(updater: Updater): void {
-    if (!this._dirty) {
-      updater.enqueueMutationEffect(this);
-      this._dirty = true;
+      this.connect(updater);
     }
   }
 
   unbind(updater: Updater): void {
     if (this._value !== null) {
       this._value = null;
-      this.rebind(updater);
+      this.connect(updater);
     }
   }
 
@@ -308,6 +308,10 @@ export class PropertyBinding implements Binding<unknown>, Effect {
     this._part = part;
   }
 
+  get value(): unknown {
+    return this._value;
+  }
+
   get part(): PropertyPart {
     return this._part;
   }
@@ -320,8 +324,11 @@ export class PropertyBinding implements Binding<unknown>, Effect {
     return this._part.node;
   }
 
-  get value(): unknown {
-    return this._value;
+  connect(updater: Updater): void {
+    if (!this._dirty) {
+      updater.enqueueMutationEffect(this);
+      this._dirty = true;
+    }
   }
 
   bind(newValue: unknown, updater: Updater): void {
@@ -330,14 +337,7 @@ export class PropertyBinding implements Binding<unknown>, Effect {
     }
     if (!Object.is(this._value, newValue)) {
       this._value = newValue;
-      this.rebind(updater);
-    }
-  }
-
-  rebind(updater: Updater): void {
-    if (!this._dirty) {
-      updater.enqueueMutationEffect(this);
-      this._dirty = true;
+      this.connect(updater);
     }
   }
 
@@ -365,6 +365,10 @@ export class SpreadBinding implements Binding<unknown> {
     this._part = part;
   }
 
+  get value(): unknown {
+    return this._props;
+  }
+
   get part(): ElementPart {
     return this._part;
   }
@@ -377,19 +381,7 @@ export class SpreadBinding implements Binding<unknown> {
     return this._part.node;
   }
 
-  get value(): unknown {
-    return this._props;
-  }
-
-  bind(newValue: unknown, updater: Updater): void {
-    ensureSpreadProps(newValue);
-    if (this._props !== newValue) {
-      this._props = newValue;
-      this.rebind(updater);
-    }
-  }
-
-  rebind(updater: Updater): void {
+  connect(updater: Updater): void {
     for (const [name, binding] of this._bindings.entries()) {
       if (
         !Object.hasOwn(this._props, name) ||
@@ -413,9 +405,17 @@ export class SpreadBinding implements Binding<unknown> {
       } else {
         const part = resolveSpreadPart(name, this._part.node);
         binding = resolveBinding(value, part, updater);
-        binding.rebind(updater);
+        binding.connect(updater);
         this._bindings.set(name, binding);
       }
+    }
+  }
+
+  bind(newValue: unknown, updater: Updater): void {
+    ensureSpreadProps(newValue);
+    if (this._props !== newValue) {
+      this._props = newValue;
+      this.connect(updater);
     }
   }
 
@@ -470,7 +470,7 @@ export function mount<TValue, TContext>(
 
   const binding = resolveBinding(value, part, updater);
 
-  binding.rebind(updater);
+  binding.connect(updater);
 
   if (!updater.isScheduled()) {
     updater.scheduleUpdate();
